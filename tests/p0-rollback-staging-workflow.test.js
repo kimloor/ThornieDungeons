@@ -22,6 +22,10 @@ test("staging identity, restricted D1, and no routes or cron", () => {
   assert.match(workflow, /has\("routes"\) \| not/);
   assert.match(workflow, /has\("triggers"\) \| not/);
   assert.match(workflow, /\.result\.schedules \| length == 0/);
+  assert.match(workflow, /workers\/scripts\/\$WORKER_NAME\/versions\?per_page=20/);
+  assert.match(workflow, /workers\/scripts\/\$WORKER_NAME\/deployments\?per_page=20/);
+  assert.match(workflow, /\.result\.resources\.script\.etag == \$etag/);
+  assert.match(workflow, /max_by\(\.created_on\)/);
   assert.match(workflow, /Worker .*already exists; refusing/);
   assert.match(workflow, /Verify exact QA rows and unsettled Chapter Boss victory/);
   assert.match(workflow, /JOIN players p ON p\.id = c\.player_id/);
@@ -44,7 +48,7 @@ test("fault QA IDs and secret are mandatory; no production secrets", () => {
   assert.match(workflow, /openssl dgst -sha256 -binary/);
   assert.match(workflow, /FROM characters WHERE character_id='\$QA_CHARACTER_ID' AND player_id='\$QA_PLAYER_ID'/);
   assert.match(workflow, /expires_at > '\$created_at'/);
-  assert.match(workflow, /\.result\.bindings\[\]; \.name == "P0_ROLLBACK_TEST_KEY"/);
+  assert.match(workflow, /\.result\.resources\.bindings\[\]; \.name == "P0_ROLLBACK_TEST_KEY"/);
   assert.doesNotMatch(workflow, /secrets\.CF_API_TOKEN|secrets\.CF_ACCOUNT_ID/);
 });
 
@@ -54,4 +58,6 @@ test("known runner and Wrangler regressions protected", () => {
   assert.match(workflow, /runtime_config="\$GITHUB_WORKSPACE\//);
   assert.match(workflow, /wrangler deploy --dry-run/);
   assert.match(workflow, /\.result\.schedules \| type == "array"/);
+  assert.match(workflow, /Expected exactly one source-tagged Worker version/);
+  assert.match(workflow, /Active Worker version, source etag, QA binding or staging D1 mismatch/);
 });
