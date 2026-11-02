@@ -2022,18 +2022,16 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
       if (reservation && (reservation.result_json === "pending" || parseJsonColumn(reservation.payload_json, {})?.potionId !== potionId)) {
         return json({ error: "potion_receipt_conflict" }, 409);
       }
-      const reservation = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = 'consume_potion' AND request_id = ? LIMIT 1`)
-        .bind(characterId, potionRequestId).first();
-      if (reservation && (reservation.result_json === "pending" || parseJsonColumn(reservation.payload_json, {})?.potionId !== potionId)) {
-        return json({ error: "potion_receipt_conflict" }, 409);
+      // A completed pre-0032 receipt proves the old two-request client already
+      // deducted one Potion. Do not deduct it again; the durable action receipt below
+      // makes that legacy authorization one-time.
+      legacyPotionAlreadyConsumed = !!reservation && reservation.result_json !== "pending";
+      if (!legacyPotionAlreadyConsumed) {
+        const stacks = (await db.prepare(`SELECT item_id, extra_json FROM items WHERE character_id = ? AND player_id = ? AND slot_type = 'potion' AND json_extract(extra_json, '$.potionId') = ? ORDER BY rowid`)
+          .bind(characterId, id, potionId).all()).results || [];
+        potionStack = stacks.find(item => Math.max(0, Math.floor(Number(parseJsonColumn(item.extra_json, {})?.quantity) || 0)) > 0) || null;
+        if (!potionStack) return json({ error: "potion_not_owned" }, 409);
       }
-      const stacks = (await db.prepare(`SELECT item_id, extra_json FROM items WHERE character_id = ? AND player_id = ? AND slot_type = 'potion' AND json_extract(extra_json, '$.potionId') = ? ORDER BY rowid`)
-        .bind(characterId, id, potionId).all()).results || [];
-      potionStack = stacks.find(item => Math.max(0, Math.floor(Number(parseJsonColumn(item.extra_json, {})?.quantity) || 0)) > 0) || null;
-      // A completed pre-0032 receipt may represent an item consumed by the old
-      // two-request client. Honor it once, then pin it in battle_action_receipts.
-      legacyPotionAlreadyConsumed = !potionStack && !!reservation && reservation.result_json !== "pending";
-      if (!potionStack && !legacyPotionAlreadyConsumed) return json({ error: "potion_not_owned" }, 409);
       if (potionStack) {
         const extra = parseJsonColumn(potionStack.extra_json, {});
         potionNextQuantity = Math.max(0, Math.floor(Number(extra.quantity) || 0)) - 1;
