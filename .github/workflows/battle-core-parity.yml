@@ -23,6 +23,14 @@ on:
       - "tests/arena-v2-w98-w99.test.js"
       - "tests/fixtures/arena-v2-w9.js"
       - "tests/battle-core.test.js"
+      - "migrations/auto/0031_battle_authority_v1.sql"
+      - "tests/battle-persistence.test.js"
+      - "tests/battle-end-flow-v1.test.js"
+      - "tests/battle-ui-contract.test.js"
+      - "tests/battle-vfx-pack01.test.js"
+      - "tests/d1-latency-budget-v1.test.js"
+      - "tests/dungeon-v2-foundation.test.js"
+      - "tests/inventory-order.test.js"
       - "tests/combat-core-teams.test.js"
       - "docs/ARENA-V2-W9-IMPLEMENTATION-ROADMAP.md"
       - ".github/workflows/battle-core-parity.yml"
@@ -101,6 +109,17 @@ jobs:
 
       - name: Run W9.8/W9.9 executable Arena suite
         run: node --test --test-concurrency=1 tests/arena-v2-w98-w99.test.js
+
+      - name: Run P0 Dungeon authority and settlement regression suite
+        run: >-
+          node --test --test-concurrency=1
+          tests/battle-persistence.test.js
+          tests/battle-end-flow-v1.test.js
+          tests/battle-ui-contract.test.js
+          tests/battle-vfx-pack01.test.js
+          tests/d1-latency-budget-v1.test.js
+          tests/dungeon-v2-foundation.test.js
+          tests/inventory-order.test.js
 
       - name: Verify generated frontend is current
         shell: bash
