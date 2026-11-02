@@ -1289,7 +1289,7 @@ async function handleGetBattleState(db, id, session, characterId) {
   const settings = await db.prepare(`SELECT quick_slots_json FROM character_settings WHERE character_id = ?`).bind(characterId).first();
   const checkpointPayload = checkpoint ? parseJsonColumn(checkpoint.payload_json, null) : null;
   const authority = checkpoint ? await db.prepare(
-    `SELECT state_rev, state_json, outcome FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`
+    `SELECT state_rev, state_json, outcome, settled_at FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`
   ).bind(checkpoint.battle_id, characterId).first() : null;
   const storedAuthorityState = authority ? parseJsonColumn(authority.state_json, null) : null;
   const authorityState = storedAuthorityState ? { ...storedAuthorityState, authorityRev: Number(authority.state_rev) || 0 } : null;
@@ -1298,7 +1298,7 @@ async function handleGetBattleState(db, id, session, characterId) {
     // An authorization row owns immutable encounter identity but is not yet a
     // resumable Battle Core checkpoint. A reconnect can safely call
     // startDungeonBattle again and receive this same authorization.
-    checkpoint: checkpoint && authorityState && !authority.outcome ? {
+    checkpoint: checkpoint && authorityState && (!authority.outcome || !authority.settled_at) ?
       battleId: checkpoint.battle_id,
       checkpointSeq: Number(authority.state_rev) || 0,
       payload: authorityState,
@@ -1884,12 +1884,25 @@ async function handleStartDungeonBattle(db, id, session, characterId, requestedF
   if (existing) {
     const payload = parseJsonColumn(existing.payload_json, null);
     const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
-    const authority = await db.prepare(`SELECT state_rev, state_json, outcome FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`)
+    const authority = await db.prepare(`SELECT state_rev, state_json, outcome, settled_at FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`)
       .bind(existing.battle_id, characterId).first();
     if (authority && !authority.outcome && context && context.floor === floor) {
       return json({ ok: true, battleId: existing.battle_id, context, state: { ...parseJsonColumn(authority.state_json, {}), authorityRev: Number(authority.state_rev) || 0 }, stateRev: Number(authority.state_rev) || 0, authoritative: true });
     }
     if (authority && !authority.outcome) return json({ error: "active_battle_conflict", battleId: existing.battle_id }, 409);
+    if (authority?.outcome && !authority.settled_at) {
+      // A terminal server result is durable, but its reward/receipt may still be
+      // awaiting completeBattle. Never abandon that settlement window by
+      // closing the checkpoint and starting another battle.
+      return json({
+        error: "battle_settlement_pending",
+        battleId: existing.battle_id,
+        outcome: authority.outcome,
+        state: { ...parseJsonColumn(authority.state_json, {}), authorityRev: Number(authority.state_rev) || 0 },
+        stateRev: Number(authority.state_rev) || 0,
+        authoritative: true
+      }, 409);
+    }
     // Legacy checkpoints have no trustworthy combat transcript. Close them
     // without reward and restart the same floor at full HP/SP.
     await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
