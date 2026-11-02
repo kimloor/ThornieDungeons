@@ -817,20 +817,14 @@ async function handleConsumePotion(db, id, session, characterId, potionId, reque
   const potion = String(potionId || "");
   const allowedPotions = new Set(["hp_small", "hp_medium", "hp_high", "hp_full", "mp_small", "mp_medium", "mp_high", "mp_full"]);
   if (!allowedPotions.has(potion) || !/^[A-Za-z0-9_-]{8,120}$/.test(key)) return json({ error: "invalid_potion_request" }, 400);
-  const payloadJson = JSON.stringify({ potionId: potion });
-  const replay = await characterOperationReplay(db, id, characterId, "consume_potion", key, payloadJson);
-  if (replay) return replay;
-  const result = { potionId: potion, reserved: true, consumed: 0 };
-  // Compatibility reservation for older clients. The Potion is NOT deducted here:
-  // submitDungeonBattleAction consumes it atomically with the authoritative battle step.
-  return runCharacterReceiptMutation(db, {
-    id, characterId, operation: "consume_potion", requestId: key, payloadJson,
-    guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ?)
-      AND (SELECT COALESCE(SUM(CAST(json_extract(extra_json, '$.quantity') AS INTEGER)), 0) FROM items WHERE character_id = ? AND player_id = ? AND slot_type = 'potion' AND json_extract(extra_json, '$.potionId') = ?) >= 1`,
-    guardBinds: [characterId, id, characterId, id, potion],
-    mutationStatements: () => [],
-    result
-  });
+  const available = await db.prepare(`SELECT COALESCE(SUM(CAST(json_extract(extra_json, '$.quantity') AS INTEGER)), 0) AS quantity
+    FROM items WHERE character_id = ? AND player_id = ? AND slot_type = 'potion' AND json_extract(extra_json, '$.potionId') = ?`)
+    .bind(characterId, id, potion).first();
+  if (Number(available?.quantity) < 1) return json({ error: "potion_not_owned" }, 409);
+  // Compatibility preflight only. No inventory or receipt mutation occurs here;
+  // submitDungeonBattleAction owns the one-time atomic Potion + Battle transition.
+  return json({ ok: true, replayed: false, result: { potionId: potion, reserved: true, consumed: 0 },
+    ...(await battleCompletionSnapshot(db, id, characterId)) });
 }
 
 function normalizeShopQuantity(rawQuantity) {
@@ -2002,6 +1996,7 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
   let potionStack = null;
   let potionNextExtra = null;
   let potionNextQuantity = 0;
+  let legacyPotionAlreadyConsumed = false;
   if (requested.type === "skip_battle") {
     if (actor.kind !== "hero" || Number(state.heroTurnCount) < 5) return json({ error: "battle_action_not_legal" }, 409);
     const next = globalThis.DUNGEON_V2.simulateDungeonV2Battle(state, globalThis.BATTLE_CORE_V1);
@@ -2027,13 +2022,23 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
       if (reservation && (reservation.result_json === "pending" || parseJsonColumn(reservation.payload_json, {})?.potionId !== potionId)) {
         return json({ error: "potion_receipt_conflict" }, 409);
       }
+      const reservation = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = 'consume_potion' AND request_id = ? LIMIT 1`)
+        .bind(characterId, potionRequestId).first();
+      if (reservation && (reservation.result_json === "pending" || parseJsonColumn(reservation.payload_json, {})?.potionId !== potionId)) {
+        return json({ error: "potion_receipt_conflict" }, 409);
+      }
       const stacks = (await db.prepare(`SELECT item_id, extra_json FROM items WHERE character_id = ? AND player_id = ? AND slot_type = 'potion' AND json_extract(extra_json, '$.potionId') = ? ORDER BY rowid`)
         .bind(characterId, id, potionId).all()).results || [];
       potionStack = stacks.find(item => Math.max(0, Math.floor(Number(parseJsonColumn(item.extra_json, {})?.quantity) || 0)) > 0) || null;
-      if (!potionStack) return json({ error: "potion_not_owned" }, 409);
-      const extra = parseJsonColumn(potionStack.extra_json, {});
-      potionNextQuantity = Math.max(0, Math.floor(Number(extra.quantity) || 0)) - 1;
-      potionNextExtra = potionNextQuantity > 0 ? JSON.stringify({ ...extra, quantity: potionNextQuantity }) : null;
+      // A completed pre-0032 receipt may represent an item consumed by the old
+      // two-request client. Honor it once, then pin it in battle_action_receipts.
+      legacyPotionAlreadyConsumed = !potionStack && !!reservation && reservation.result_json !== "pending";
+      if (!potionStack && !legacyPotionAlreadyConsumed) return json({ error: "potion_not_owned" }, 409);
+      if (potionStack) {
+        const extra = parseJsonColumn(potionStack.extra_json, {});
+        potionNextQuantity = Math.max(0, Math.floor(Number(extra.quantity) || 0)) - 1;
+        potionNextExtra = potionNextQuantity > 0 ? JSON.stringify({ ...extra, quantity: potionNextQuantity }) : null;
+      }
       command = { type: "potion", count: 1, heal: effect[0] === "hp" ? actor.maxHp * effect[1] : 0, restoreSp: effect[0] === "mp" ? actor.maxSp * effect[1] : 0 };
     }
     result = globalThis.BATTLE_CORE_V1.battleStep(state, command);
@@ -2048,15 +2053,15 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
     db.prepare(`INSERT INTO battle_action_receipts (battle_id, character_id, action_key, request_json, result_json, potion_request_id, created_at)
       SELECT ?, ?, ?, ?, 'pending', ?, ?
       WHERE EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND outcome = '')
-        AND (? = '' OR EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND slot_type = 'potion' AND extra_json = ? AND CAST(json_extract(extra_json, '$.quantity') AS INTEGER) > 0))`)
+        AND (? = 0 OR EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND slot_type = 'potion' AND extra_json = ? AND CAST(json_extract(extra_json, '$.quantity') AS INTEGER) > 0))`)
       .bind(battleKey, characterId, key, requestJson, potionRequestId, timestamp, battleKey, characterId, rev,
-        potionRequestId, potionStack?.item_id || "", id, characterId, potionStack?.extra_json || "")
+        (isPotion && !legacyPotionAlreadyConsumed) ? 1 : 0, potionStack?.item_id || "", id, characterId, potionStack?.extra_json || "")
   ];
   statements.push(db.prepare(`UPDATE battle_authority SET state_rev = ?, state_json = ?, outcome = ?, last_action_key = ?, last_action_request_json = ?, last_action_result_json = ?, updated_at = ?
     WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND outcome = ''
       AND EXISTS (SELECT 1 FROM battle_action_receipts WHERE battle_id = ? AND action_key = ?)`)
     .bind(nextRev, JSON.stringify(next), outcome, key, requestJson, JSON.stringify(response), timestamp, battleKey, characterId, rev, battleKey, key));
-  if (isPotion && potionStack) {
+  if (isPotion && potionStack && !legacyPotionAlreadyConsumed) {
     statements.push(potionNextQuantity > 0
       ? db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND slot_type = 'potion' AND extra_json = ?
           AND EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND last_action_key = ?)`)
@@ -2066,11 +2071,11 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
         .bind(potionStack.item_id, id, characterId, potionStack.extra_json, battleKey, characterId, nextRev, key));
   }
   statements.push(db.prepare(`UPDATE battle_action_receipts SET result_json = CASE
-      WHEN (? = '' OR changes() = 1)
+      WHEN (? = 0 OR changes() = 1)
         AND EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND last_action_key = ?)
       THEN ? ELSE NULL END
     WHERE battle_id = ? AND action_key = ?`)
-    .bind(potionRequestId, battleKey, characterId, nextRev, key, JSON.stringify(response), battleKey, key));
+    .bind((isPotion && !legacyPotionAlreadyConsumed) ? 1 : 0, battleKey, characterId, nextRev, key, JSON.stringify(response), battleKey, key));
   try {
     await db.batch(statements);
   } catch (error) {
