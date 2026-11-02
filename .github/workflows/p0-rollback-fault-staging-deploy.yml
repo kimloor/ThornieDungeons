@@ -45,6 +45,16 @@ jobs:
       WRANGLER_VERSION: 4.102.0
 
     steps:
+      - name: Checkout workflow contract and tests
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: tooling
+
+      - name: Run rollback deployment safety contract tests
+        shell: bash
+        run: node --test tooling/tests/p0-rollback-staging-workflow.test.js
+
       - name: Checkout exact reviewed PR #191 source
         uses: actions/checkout@v4
         with:
