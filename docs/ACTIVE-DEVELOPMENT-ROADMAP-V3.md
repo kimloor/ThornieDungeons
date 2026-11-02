@@ -432,3 +432,49 @@ Post-merge Production verification (read-only audit, 2026-11-02):
 ## Backlog (unscheduled)
 
 - Guest Login V1: design recorded in `docs/GUEST-LOGIN-V1.md` (draft, risk HIGH, awaiting Owner approval and a roadmap slot).
+
+---
+
+## 7. CURRENT PROJECT STATUS — 2026-11-02
+
+**Current release baseline:** PR #196 is merged and its post-merge Production rollout is observable. Routine real-player gameplay acceptance is still in progress; do not describe the P0 release as fully gameplay-verified until the outstanding live flow checks pass.
+
+### 7.1 P0 Dungeon Battle Authority — IMPLEMENTED / MERGED / PRODUCTION ROLLOUT OBSERVED
+
+- PR [#196](https://github.com/kimloor/ThornieDungeons/pull/196), merge commit `6f3b8333a7c8105d17d271eccb2ff8105fc5cfb9`.
+- Latest documented main before this status update: `2a5bac2a9e434e12c708332b857f66f42bd27dba`.
+- Production API Worker `thornie-dungeons-api` Version **107** and frontend Worker `thorniedungeons` Version **1962** were observed at 100% traffic.
+- Production D1 migrations 0031 and 0032 were observed applied; read-only `PRAGMA foreign_key_check` returned zero violations.
+- Battle Core parity, Admin V2 QA, and isolated Actual D1 R01–R04 security QA passed. Evidence and limitations are recorded in §14.6 of `BATTLE-RESULT-COMMIT-V1.md`.
+- Public HTTP smoke verification from the audit session remained pending due hostname resolution failure. Production rollout observation is not equivalent to complete live gameplay acceptance.
+
+### 7.2 Production QA account and environment policy — DOCUMENTED
+
+- Owner-approved routine QA policy is now recorded in `docs/PRODUCTION-QA-POLICY-V1.md`.
+- Designated Production QA identity: Player ID `chatgpt`, Character `gpt1`, Character ID `char-1793631141111-8kzn3j2j`.
+- Routine gameplay/UI/regression QA uses this account through the normal game client. Staging D1/staging Worker are no longer the default for routine gameplay QA.
+- Security fault injection, forged requests, destructive probes, direct database writes, migrations, and fixture cleanup remain separate and require specific authorization.
+- Initial account state was confirmed read-only: Level 1, XP 0, Gold 0, Floor 1, Potions 2, Diamonds 0.
+- **Seed is NOT APPLIED.** A bounded Level 10 / 20 HP Potion / 20 MP Potion / basic equipment / modest Gold plan is documented as proposed only. Do not modify Production data through ad-hoc SQL. First identify a supported, audited Admin/QA grant path; if none exists, stop for Owner decision.
+- `AGENTS.md` now points all contributors to the Production QA policy.
+
+### 7.3 Immediate active work — P0 LIVE GAMEPLAY REGRESSION
+
+**Status: OPEN / RELEASE ACCEPTANCE BLOCKER**
+
+Owner-reported Production symptom after the P0 rollout: after using a Potion, the next Attack action displays `Battle action was rejected by the server.`
+
+- This is a suspected Potion → Attack revision/sequence regression; root cause is not yet confirmed.
+- Reproduce only with the designated QA account through normal game-client actions.
+- Capture request/response and server-side diagnostics using safe, non-secret logging; do not use forged payloads, fault injection, or direct database edits.
+- Verify Potion consumption exactly once, then confirm the subsequent legal Attack is accepted and battle state/rewards remain correct.
+- Do not declare the regression fixed until the exact live flow passes and relevant automated regression is green.
+
+### 7.4 Next execution order
+
+1. Discover a supported, audited Admin/QA grant mechanism; seed the designated account only through that mechanism, then read back and verify progression, inventory, ownership/provenance, and audit evidence.
+2. Diagnose and fix the Production Potion → Attack regression using a high-risk branch and applicable QA/release gates.
+3. Complete bounded live Production gameplay acceptance with the designated QA account; record build/version and before/after state.
+4. Reconcile H01 Halloween implementation/QA status against the current PRs and contract before assigning further work; do not rely on stale H01 status text elsewhere in this roadmap.
+5. Resume approved roadmap work only after the active P0 gameplay blocker is closed.
+
