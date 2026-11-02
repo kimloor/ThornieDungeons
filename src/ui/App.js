@@ -135,7 +135,6 @@ function ThornieDungeons() {
   // Potion consumption is server-authoritative, but the battle Action itself can resolve
   // immediately. While the authenticated consume request is pending, pause the next queue
   // step; a rejected consume rolls the exact Action back to its pre-potion checkpoint.
-  const pendingPotionRef = useRef(null);
   const [battleFinishing, setBattleFinishing] = useState(false);
   const [battleFinishStatus, setBattleFinishStatus] = useState("");
   const terminalFinishRef = useRef(null);
@@ -1308,12 +1307,10 @@ function ThornieDungeons() {
       setEnemyAnims(current => Object.fromEntries(Object.keys(current).map(id => [id, next.units[id]?.dead ? "death" : ""])));
       driveCoreBattle(next);
     }, delay);
-      driveCoreBattle(next);
-    }, delay);
   }
   async function consumeBattlePotion(state, potionId) {
     const def = getPotionDef(potionId);
-    if (!def || !state?.battleId || busy || pendingPotionRef.current) return;
+    if (!def || !state?.battleId || busy) return;
     const operationKey = `${state.battleId}:${state.safeActionSeq}:${potionId}`;
     const requestId = potionRequestIdsRef.current.get(operationKey)
       || (globalThis.crypto?.randomUUID?.() || `potion-${Date.now()}-${Math.random().toString(36).slice(2)}`);
