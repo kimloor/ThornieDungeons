@@ -26,7 +26,8 @@ test("staging identity, restricted D1, and no routes or cron", () => {
   assert.match(workflow, /deployments\?per_page=20/);
   assert.match(workflow, /\.result\.resources\.script\.etag == \$etag/);
   assert.match(workflow, /max_by\(\.created_on\)/);
-  assert.match(workflow, /Worker .*already exists; refusing/);
+  assert.match(workflow, /Existing Worker is not the exact approved P0 staging deployment; refusing overwrite/);
+  assert.match(workflow, /Verified exact prior P0 QA Worker/);
   assert.match(workflow, /Verify exact QA rows and unsettled Chapter Boss victory/);
   assert.match(workflow, /JOIN players p ON p\.id = c\.player_id/);
   assert.match(workflow, /ba\.settled_at = ''/);
@@ -58,6 +59,6 @@ test("known runner and Wrangler regressions protected", () => {
   assert.match(workflow, /runtime_config="\$GITHUB_WORKSPACE\//);
   assert.match(workflow, /wrangler deploy --dry-run/);
   assert.match(workflow, /\.result\.schedules \| type == "array"/);
-  assert.match(workflow, /Expected exactly one source-tagged Worker version/);
+  assert.match(workflow, /No source-tagged Worker version found/);
   assert.match(workflow, /Active Worker version, source etag, QA binding or staging D1 mismatch/);
 });
