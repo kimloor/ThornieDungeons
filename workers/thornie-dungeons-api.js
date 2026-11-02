@@ -1298,7 +1298,7 @@ async function handleGetBattleState(db, id, session, characterId) {
     // An authorization row owns immutable encounter identity but is not yet a
     // resumable Battle Core checkpoint. A reconnect can safely call
     // startDungeonBattle again and receive this same authorization.
-    checkpoint: checkpoint && authorityState && (!authority.outcome || !authority.settled_at) ?
+    checkpoint: checkpoint && authorityState && (!authority.outcome || !authority.settled_at) ? {
       battleId: checkpoint.battle_id,
       checkpointSeq: Number(authority.state_rev) || 0,
       payload: authorityState,
