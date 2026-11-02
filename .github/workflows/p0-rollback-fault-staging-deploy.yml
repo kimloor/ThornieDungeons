@@ -45,6 +45,10 @@ jobs:
       WRANGLER_VERSION: 4.102.0
 
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Checkout workflow contract and tests
         uses: actions/checkout@v4
         with:
@@ -73,10 +77,6 @@ jobs:
             exit 1
           }
           git diff --quiet "$APPROVED_SOURCE_SHA" -- workers/qa/p0-rollback-entry.js workers/qa/p0-rollback-fault.js
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
 
       - name: Validate runtime entrypoint and binding contract
         shell: bash
