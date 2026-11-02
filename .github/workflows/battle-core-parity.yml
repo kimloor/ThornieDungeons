@@ -25,6 +25,7 @@ on:
       - "tests/battle-core.test.js"
       - "migrations/auto/0031_battle_authority_v1.sql"
       - "tests/battle-persistence.test.js"
+      - "scripts/p0-candidate-actual-d1-qa.mjs"
       - "tests/battle-end-flow-v1.test.js"
       - "tests/battle-ui-contract.test.js"
       - "tests/battle-vfx-pack01.test.js"
@@ -109,6 +110,9 @@ jobs:
 
       - name: Run W9.8/W9.9 executable Arena suite
         run: node --test --test-concurrency=1 tests/arena-v2-w98-w99.test.js
+
+      - name: Check fresh Candidate Actual D1 QA runner syntax
+        run: node --check scripts/p0-candidate-actual-d1-qa.mjs
 
       - name: Run P0 Dungeon authority and settlement regression suite
         run: >-
