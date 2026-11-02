@@ -1997,7 +1997,6 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
   let potionStack = null;
   let potionNextExtra = null;
   let potionNextQuantity = 0;
-  let legacyPotionAlreadyConsumed = false;
   if (requested.type === "skip_battle") {
     if (actor.kind !== "hero" || Number(state.heroTurnCount) < 5) return json({ error: "battle_action_not_legal" }, 409);
     const next = globalThis.DUNGEON_V2.simulateDungeonV2Battle(state, globalThis.BATTLE_CORE_V1);
@@ -2016,23 +2015,15 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
     }
     if (isPotion) {
       const effect = DUNGEON_POTION_EFFECTS[potionId];
-      // Old clients may first create a consume_potion reservation. It never deducts
-      // inventory; this action remains the only place where the item is consumed.
-      const reservation = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = 'consume_potion' AND request_id = ? LIMIT 1`)
+      // Historical consume_potion receipts represent inventory already deducted by
+      // the old two-request protocol. They must never authorize a second battle effect.
+      const legacyReceipt = await db.prepare(`SELECT result_json FROM character_operation_receipts WHERE character_id = ? AND operation = 'consume_potion' AND request_id = ? LIMIT 1`)
         .bind(characterId, potionRequestId).first();
-      if (reservation && (reservation.result_json === "pending" || parseJsonColumn(reservation.payload_json, {})?.potionId !== potionId)) {
-        return json({ error: "potion_receipt_conflict" }, 409);
-      }
-      // A completed pre-0032 receipt proves the old two-request client already
-      // deducted one Potion. Do not deduct it again; the durable action receipt below
-      // makes that legacy authorization one-time.
-      legacyPotionAlreadyConsumed = !!reservation && reservation.result_json !== "pending";
-      if (!legacyPotionAlreadyConsumed) {
-        const stacks = (await db.prepare(`SELECT item_id, extra_json FROM items WHERE character_id = ? AND player_id = ? AND slot_type = 'potion' AND json_extract(extra_json, '$.potionId') = ? ORDER BY rowid`)
-          .bind(characterId, id, potionId).all()).results || [];
-        potionStack = stacks.find(item => Math.max(0, Math.floor(Number(parseJsonColumn(item.extra_json, {})?.quantity) || 0)) > 0) || null;
-        if (!potionStack) return json({ error: "potion_not_owned" }, 409);
-      }
+      if (legacyReceipt) return json({ error: "potion_request_reused" }, 409);
+      const stacks = (await db.prepare(`SELECT item_id, extra_json FROM items WHERE character_id = ? AND player_id = ? AND slot_type = 'potion' AND json_extract(extra_json, '$.potionId') = ? ORDER BY rowid`)
+        .bind(characterId, id, potionId).all()).results || [];
+      potionStack = stacks.find(item => Math.max(0, Math.floor(Number(parseJsonColumn(item.extra_json, {})?.quantity) || 0)) > 0) || null;
+      if (!potionStack) return json({ error: "potion_not_owned" }, 409);
       if (potionStack) {
         const extra = parseJsonColumn(potionStack.extra_json, {});
         potionNextQuantity = Math.max(0, Math.floor(Number(extra.quantity) || 0)) - 1;
@@ -2054,13 +2045,13 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
       WHERE EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND outcome = '')
         AND (? = 0 OR EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND slot_type = 'potion' AND extra_json = ? AND CAST(json_extract(extra_json, '$.quantity') AS INTEGER) > 0))`)
       .bind(battleKey, characterId, key, requestJson, potionRequestId, timestamp, battleKey, characterId, rev,
-        (isPotion && !legacyPotionAlreadyConsumed) ? 1 : 0, potionStack?.item_id || "", id, characterId, potionStack?.extra_json || "")
+        (isPotion && !false) ? 1 : 0, potionStack?.item_id || "", id, characterId, potionStack?.extra_json || "")
   ];
   statements.push(db.prepare(`UPDATE battle_authority SET state_rev = ?, state_json = ?, outcome = ?, last_action_key = ?, last_action_request_json = ?, last_action_result_json = ?, updated_at = ?
     WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND outcome = ''
       AND EXISTS (SELECT 1 FROM battle_action_receipts WHERE battle_id = ? AND action_key = ?)`)
     .bind(nextRev, JSON.stringify(next), outcome, key, requestJson, JSON.stringify(response), timestamp, battleKey, characterId, rev, battleKey, key));
-  if (isPotion && potionStack && !legacyPotionAlreadyConsumed) {
+  if (isPotion && potionStack && !false) {
     statements.push(potionNextQuantity > 0
       ? db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND slot_type = 'potion' AND extra_json = ?
           AND EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND last_action_key = ?)`)
@@ -2074,7 +2065,7 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
         AND EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND last_action_key = ?)
       THEN ? ELSE NULL END
     WHERE battle_id = ? AND action_key = ?`)
-    .bind((isPotion && !legacyPotionAlreadyConsumed) ? 1 : 0, battleKey, characterId, nextRev, key, JSON.stringify(response), battleKey, key));
+    .bind((isPotion && !false) ? 1 : 0, battleKey, characterId, nextRev, key, JSON.stringify(response), battleKey, key));
   try {
     await db.batch(statements);
   } catch (error) {
