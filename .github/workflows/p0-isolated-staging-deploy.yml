@@ -60,7 +60,7 @@ jobs:
           test -f workers/thornie-dungeons-api.js
           node --check workers/thornie-dungeons-api-entry.js
           node --check workers/thornie-dungeons-api.js
-          refs="$(rg -o 'env\??\.[A-Z][A-Z0-9_]*' workers/thornie-dungeons-api-entry.js workers/thornie-dungeons-api.js workers/modules/*.js \
+          refs="$(grep -Eoh 'env\??\.[A-Z][A-Z0-9_]*' workers/thornie-dungeons-api-entry.js workers/thornie-dungeons-api.js workers/modules/*.js \
             | sed -E 's/.*env\??\.//' | sort -u)"
           unexpected="$(printf '%s\n' "$refs" | grep -Ev '^(ADMIN_API_KEY|CORS_ALLOWED_ORIGINS|DB)$' || true)"
           test -z "$unexpected" || { echo "Unexpected required environment binding(s): $unexpected"; exit 1; }
