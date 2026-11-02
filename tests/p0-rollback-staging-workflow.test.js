@@ -40,6 +40,10 @@ test("fault QA IDs and secret are mandatory; no production secrets", () => {
   assert.match(workflow, /inputs\.qa_battle_id/);
   assert.match(workflow, /secrets\.P0_ROLLBACK_TEST_KEY/);
   assert.match(workflow, /wrangler secret put P0_ROLLBACK_TEST_KEY/);
+  assert.match(workflow, /Create short-lived QA bearer session for the exact fixture player/);
+  assert.match(workflow, /openssl dgst -sha256 -binary/);
+  assert.match(workflow, /FROM characters WHERE character_id='\$QA_CHARACTER_ID' AND player_id='\$QA_PLAYER_ID'/);
+  assert.match(workflow, /expires_at > '\$created_at'/);
   assert.match(workflow, /\.result\.bindings\[\]; \.name == "P0_ROLLBACK_TEST_KEY"/);
   assert.doesNotMatch(workflow, /secrets\.CF_API_TOKEN|secrets\.CF_ACCOUNT_ID/);
 });
