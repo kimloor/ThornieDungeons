@@ -24,6 +24,7 @@ test("staging identity, restricted D1, and no routes or cron", () => {
   assert.match(workflow, /\.result\.schedules \| length == 0/);
   assert.match(workflow, /Worker .*already exists; refusing/);
   assert.match(workflow, /Verify exact QA rows and unsettled Chapter Boss victory/);
+  assert.match(workflow, /JOIN players p ON p\.id = c\.player_id/);
   assert.match(workflow, /ba\.settled_at = ''/);
   assert.match(workflow, /bc\.battle_id IS NULL/);
   assert.match(workflow, /json_extract\(ba\.initial_state_json, '\$\.floor'\) = 10/);
