@@ -228,7 +228,7 @@ jobs:
              any(.result.resources.bindings[];.name=="P0_ROLLBACK_PLAYER_ID" and .type=="plain_text" and .text==$player) and
              any(.result.resources.bindings[];.name=="P0_ROLLBACK_CHARACTER_ID" and .type=="plain_text" and .text==$character) and
              any(.result.resources.bindings[];.name=="P0_ROLLBACK_BATTLE_ID" and .type=="plain_text" and .text==$battle)'             "$RUNNER_TEMP/active-version.json" >/dev/null
-          curl --fail --silent --show-error "$api/schedules" > "$RUNNER_TEMP/schedules.json"
+          curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/schedules" > "$RUNNER_TEMP/schedules.json"
           jq -e '.success==true and (.result.schedules|length)==0' "$RUNNER_TEMP/schedules.json" >/dev/null
           curl --fail --silent --show-error --max-time 20 "${{ steps.deploy.outputs.url }}?action=getGameConfig" | jq -e 'type=="object"' >/dev/null
           echo "Candidate source SHA, active version etag, sole Staging D1 binding, QA secret, fixture vars and empty cron verified."
