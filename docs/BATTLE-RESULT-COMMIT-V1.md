@@ -550,7 +550,7 @@ This section records the implementation contract for the P0 Dungeon Battle Autho
 
 ### 14.6 Implementation and verification record (2026-11-02)
 
-**Status: MERGED TO `main`; Production rollout not yet authorized/performed.**
+**Status: MERGED TO `main`; post-merge Production rollout detected and verified by read-only Cloudflare/D1 inspection (2026-11-02).**
 
 - PR [#196](https://github.com/kimloor/ThornieDungeons/pull/196) merged by squash commit `6f3b8333a7c8105d17d271eccb2ff8105fc5cfb9`.
 - Implemented the Worker-owned battle authority, server-derived Victory, atomic/idempotent settlement, durable action receipts, Potion transaction/idempotency protections, and legacy battle recovery described above.
@@ -558,5 +558,8 @@ This section records the implementation contract for the P0 Dungeon Battle Autho
 - Battle Core parity exact-head run [#41433194956](https://github.com/kimloor/ThornieDungeons/actions/runs/41433194956) PASS; Admin V2 QA [#41433203976](https://github.com/kimloor/ThornieDungeons/actions/runs/41433203976) PASS.
 - Actual D1 QA [#41434632747](https://github.com/kimloor/ThornieDungeons/actions/runs/41434632747) PASS for R01–R04 on exact source SHA `a02f40b6edb8570bb084a737733e3e84447a43b1`, using isolated Staging D1 only. Evidence artifact ID: `13135343132`.
 - The temporary QA Worker was deleted. Run-specific staging fixtures were removed and verified absent; `PRAGMA foreign_key_check` returned zero violations. The shared QA template and unrelated data were retained.
-- Migrations `0031_battle_authority_v1.sql` and `0032_battle_action_idempotency_v1.sql` are committed in the repository. **Do not infer that they have been applied to Production D1.**
-- Production D1 migration, Production Worker/API deployment, and player-facing rollout remain separate release gates requiring explicit Owner authorization and post-deployment verification.
+- Production D1 ledger confirms migration `0031_battle_authority_v1.sql` at `2026-11-02 14:16:14 UTC` and `0032_battle_action_idempotency_v1.sql` at `14:16:15 UTC`; both tables and all four expected indexes are present.
+- Cloudflare reports API Worker `thornie-dungeons-api` Version **107** at **100%** traffic from `14:16:21 UTC`, and frontend Worker `thorniedungeons` Version **1962** at **100%** traffic from `14:17:10 UTC`.
+- Production read-only integrity checks: `PRAGMA foreign_key_check` returned zero violations. At audit time, `battle_authority` and `battle_action_receipts` each contained zero rows; 17 historical consumed Potion receipts remained in `character_operation_receipts`. The deployed action handler directly checks this legacy receipt table before accepting a Potion request, so the absence of migration-0032 backfill rows (there was no battle-authority row to associate at migration time) does not make those historical request IDs reusable.
+- The Production rollout is recorded as an observed post-merge Cloudflare state; Project Lead did not issue a Production migration/deploy command during this audit. Do not rerun migrations or redeploy.
+- Direct public HTTP smoke testing remains **pending**: public hostname resolution failed from the audit environment. Do not mark live gameplay verification as passed until an external smoke test confirms API and frontend behavior.
