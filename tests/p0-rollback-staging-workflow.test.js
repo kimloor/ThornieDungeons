@@ -26,6 +26,8 @@ test("staging identity, restricted D1, and no routes or cron", () => {
   assert.match(workflow, /Verify exact QA rows and unsettled Chapter Boss victory/);
   assert.match(workflow, /ba\.settled_at = ''/);
   assert.match(workflow, /bc\.battle_id IS NULL/);
+  assert.match(workflow, /json_extract\(ba\.initial_state_json, '\$\.serverContext\.role'\) = 'chapter_boss'/);
+  assert.match(workflow, /json_extract\(ba\.state_json, '\$\.serverContext\.role'\) = 'chapter_boss'/);
   assert.doesNotMatch(workflow, /d1 migrations apply|--keep-vars/);
 });
 
