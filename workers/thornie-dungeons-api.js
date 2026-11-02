@@ -2045,13 +2045,13 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
       WHERE EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND outcome = '')
         AND (? = 0 OR EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND slot_type = 'potion' AND extra_json = ? AND CAST(json_extract(extra_json, '$.quantity') AS INTEGER) > 0))`)
       .bind(battleKey, characterId, key, requestJson, potionRequestId, timestamp, battleKey, characterId, rev,
-        (isPotion && !false) ? 1 : 0, potionStack?.item_id || "", id, characterId, potionStack?.extra_json || "")
+        isPotion ? 1 : 0, potionStack?.item_id || "", id, characterId, potionStack?.extra_json || "")
   ];
   statements.push(db.prepare(`UPDATE battle_authority SET state_rev = ?, state_json = ?, outcome = ?, last_action_key = ?, last_action_request_json = ?, last_action_result_json = ?, updated_at = ?
     WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND outcome = ''
       AND EXISTS (SELECT 1 FROM battle_action_receipts WHERE battle_id = ? AND action_key = ?)`)
     .bind(nextRev, JSON.stringify(next), outcome, key, requestJson, JSON.stringify(response), timestamp, battleKey, characterId, rev, battleKey, key));
-  if (isPotion && potionStack && !false) {
+  if (isPotion && potionStack) {
     statements.push(potionNextQuantity > 0
       ? db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND slot_type = 'potion' AND extra_json = ?
           AND EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND last_action_key = ?)`)
@@ -2065,7 +2065,7 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
         AND EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND last_action_key = ?)
       THEN ? ELSE NULL END
     WHERE battle_id = ? AND action_key = ?`)
-    .bind((isPotion && !false) ? 1 : 0, battleKey, characterId, nextRev, key, JSON.stringify(response), battleKey, key));
+    .bind(isPotion ? 1 : 0, battleKey, characterId, nextRev, key, JSON.stringify(response), battleKey, key));
   try {
     await db.batch(statements);
   } catch (error) {
