@@ -820,34 +820,15 @@ async function handleConsumePotion(db, id, session, characterId, potionId, reque
   const payloadJson = JSON.stringify({ potionId: potion });
   const replay = await characterOperationReplay(db, id, characterId, "consume_potion", key, payloadJson);
   if (replay) return replay;
-  const rows = (await db.prepare(`SELECT item_id, extra_json FROM items WHERE character_id = ? AND player_id = ? AND slot_type = 'potion' AND json_extract(extra_json, '$.potionId') = ? ORDER BY rowid`)
-    .bind(characterId, id, potion).all()).results || [];
-  const stacks = rows.map(row => ({ ...row, extra: parseJsonColumn(row.extra_json, {}), quantity: Math.max(0, Math.floor(Number(parseJsonColumn(row.extra_json, {}).quantity) || 0)) }));
-  if (stacks.reduce((sum, row) => sum + row.quantity, 0) < 1) return json({ error: "potion_not_owned" }, 409);
-  let remaining = 1;
-  const mutations = [];
-  for (const row of stacks) {
-    if (remaining <= 0) break;
-    if (!row.quantity) continue;
-    const nextQuantity = row.quantity - 1;
-    remaining -= 1;
-    if (nextQuantity) {
-      mutations.push({ row, nextQuantity });
-    } else {
-      mutations.push({ row, nextQuantity: 0 });
-    }
-  }
-  const result = { potionId: potion, consumed: 1 };
+  const result = { potionId: potion, reserved: true, consumed: 0 };
+  // Compatibility reservation for older clients. The Potion is NOT deducted here:
+  // submitDungeonBattleAction consumes it atomically with the authoritative battle step.
   return runCharacterReceiptMutation(db, {
     id, characterId, operation: "consume_potion", requestId: key, payloadJson,
     guardSql: `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ?)
       AND (SELECT COALESCE(SUM(CAST(json_extract(extra_json, '$.quantity') AS INTEGER)), 0) FROM items WHERE character_id = ? AND player_id = ? AND slot_type = 'potion' AND json_extract(extra_json, '$.potionId') = ?) >= 1`,
     guardBinds: [characterId, id, characterId, id, potion],
-    mutationStatements: token => mutations.map(({ row, nextQuantity }) => nextQuantity > 0
-      ? db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
-        .bind(JSON.stringify({ ...row.extra, quantity: nextQuantity }), nowIso(), row.item_id, id, characterId, row.extra_json || "", token)
-      : db.prepare(`DELETE FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND extra_json = ? AND EXISTS (SELECT 1 FROM character_operation_receipts WHERE operation_token = ? AND result_json = 'pending')`)
-        .bind(row.item_id, id, characterId, row.extra_json || "", token)),
+    mutationStatements: () => [],
     result
   });
 }
@@ -1982,9 +1963,35 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
   if (!row) return json({ error: "battle_authority_upgrade_required", policy: "restart_same_floor" }, 409);
   if (row.character_id !== characterId) return json({ error: "battle_identity_conflict" }, 409);
   const requestJson = JSON.stringify(rawCommand || {});
+  const requested = rawCommand && typeof rawCommand === "object" ? rawCommand : {};
+  const isPotion = requested.type === "potion";
+  const potionId = isPotion ? String(requested.potionId || "") : "";
+  const potionRequestId = isPotion ? String(requested.requestId || "") : "";
+  if (isPotion && (!DUNGEON_POTION_EFFECTS[potionId] || !/^[A-Za-z0-9_-]{8,120}$/.test(potionRequestId))) {
+    return json({ error: "invalid_potion_request" }, 400);
+  }
+
+  // Durable idempotency: action keys survive later actions, not merely the last-action slot.
+  const priorByKey = await db.prepare(`SELECT request_json, result_json FROM battle_action_receipts WHERE battle_id = ? AND action_key = ?`)
+    .bind(battleKey, key).first();
+  if (priorByKey) {
+    if (priorByKey.request_json !== requestJson) return json({ error: "battle_action_key_conflict" }, 409);
+    if (priorByKey.result_json === "pending") return json({ error: "battle_action_in_progress", retry: true }, 409);
+    return json({ ok: true, replayed: true, ...parseJsonColumn(priorByKey.result_json, {}), ...(await battleCompletionSnapshot(db, id, characterId)) });
+  }
+  if (isPotion) {
+    const priorPotion = await db.prepare(`SELECT battle_id, action_key, request_json, result_json FROM battle_action_receipts WHERE character_id = ? AND potion_request_id = ? LIMIT 1`)
+      .bind(characterId, potionRequestId).first();
+    if (priorPotion) {
+      if (priorPotion.battle_id !== battleKey || priorPotion.request_json !== requestJson) return json({ error: "potion_request_reused" }, 409);
+      if (priorPotion.result_json === "pending") return json({ error: "battle_action_in_progress", retry: true }, 409);
+      return json({ ok: true, replayed: true, ...parseJsonColumn(priorPotion.result_json, {}), ...(await battleCompletionSnapshot(db, id, characterId)) });
+    }
+  }
+  // Preserve replay compatibility for the last action created before migration 0032.
   if (row.last_action_key === key) {
     if (row.last_action_request_json !== requestJson) return json({ error: "battle_action_key_conflict" }, 409);
-    return json({ ok: true, replayed: true, ...parseJsonColumn(row.last_action_result_json, {}) });
+    return json({ ok: true, replayed: true, ...parseJsonColumn(row.last_action_result_json, {}), ...(await battleCompletionSnapshot(db, id, characterId)) });
   }
   if (row.outcome) return json({ error: "battle_already_terminal", outcome: row.outcome, stateRev: Number(row.state_rev) || 0 }, 409);
   if (Number(row.state_rev) !== rev) return json({ error: "battle_revision_conflict", stateRev: Number(row.state_rev) || 0 }, 409);
@@ -1992,7 +1999,9 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
   const actor = state && globalThis.BATTLE_CORE_V1.currentUnit(state);
   if (!state || !actor) return json({ error: "invalid_authoritative_state" }, 500);
   let result;
-  const requested = rawCommand && typeof rawCommand === "object" ? rawCommand : {};
+  let potionStack = null;
+  let potionNextExtra = null;
+  let potionNextQuantity = 0;
   if (requested.type === "skip_battle") {
     if (actor.kind !== "hero" || Number(state.heroTurnCount) < 5) return json({ error: "battle_action_not_legal" }, 409);
     const next = globalThis.DUNGEON_V2.simulateDungeonV2Battle(state, globalThis.BATTLE_CORE_V1);
@@ -2009,14 +2018,22 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
       const metadata = globalThis.BATTLE_CORE_V1.getActionMetadata(state, actor, command);
       if (!metadata.usable || (metadata.requiresEnemyTarget && !metadata.targetLegal)) return json({ error: "battle_action_not_legal", reason: metadata.reason || "invalid_target" }, 409);
     }
-    if (requested.type === "potion") {
-      const potionId = String(requested.potionId || "");
-      const requestId = String(requested.requestId || "");
-      const receipt = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = 'consume_potion' AND request_id = ? LIMIT 1`)
-        .bind(characterId, requestId).first();
-      if (!receipt || receipt.result_json === "pending" || parseJsonColumn(receipt.payload_json, {})?.potionId !== potionId) return json({ error: "potion_receipt_required" }, 409);
+    if (isPotion) {
       const effect = DUNGEON_POTION_EFFECTS[potionId];
-      if (!effect) return json({ error: "battle_action_not_legal" }, 409);
+      // Old clients may first create a consume_potion reservation. It never deducts
+      // inventory; this action remains the only place where the item is consumed.
+      const reservation = await db.prepare(`SELECT payload_json, result_json FROM character_operation_receipts WHERE character_id = ? AND operation = 'consume_potion' AND request_id = ? LIMIT 1`)
+        .bind(characterId, potionRequestId).first();
+      if (reservation && (reservation.result_json === "pending" || parseJsonColumn(reservation.payload_json, {})?.potionId !== potionId)) {
+        return json({ error: "potion_receipt_conflict" }, 409);
+      }
+      const stacks = (await db.prepare(`SELECT item_id, extra_json FROM items WHERE character_id = ? AND player_id = ? AND slot_type = 'potion' AND json_extract(extra_json, '$.potionId') = ? ORDER BY rowid`)
+        .bind(characterId, id, potionId).all()).results || [];
+      potionStack = stacks.find(item => Math.max(0, Math.floor(Number(parseJsonColumn(item.extra_json, {})?.quantity) || 0)) > 0) || null;
+      if (!potionStack) return json({ error: "potion_not_owned" }, 409);
+      const extra = parseJsonColumn(potionStack.extra_json, {});
+      potionNextQuantity = Math.max(0, Math.floor(Number(extra.quantity) || 0)) - 1;
+      potionNextExtra = potionNextQuantity > 0 ? JSON.stringify({ ...extra, quantity: potionNextQuantity }) : null;
       command = { type: "potion", count: 1, heal: effect[0] === "hp" ? actor.maxHp * effect[1] : 0, restoreSp: effect[0] === "mp" ? actor.maxSp * effect[1] : 0 };
     }
     result = globalThis.BATTLE_CORE_V1.battleStep(state, command);
@@ -2026,15 +2043,57 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
   const nextRev = rev + 1;
   const outcome = ["victory", "defeat", "fled"].includes(next.result) ? next.result : "";
   const response = { state: { ...next, authorityRev: nextRev }, stateRev: nextRev, outcome: outcome || null, completedAction: !!result.completedAction };
-  const updated = await db.prepare(`UPDATE battle_authority SET state_rev = ?, state_json = ?, outcome = ?, last_action_key = ?, last_action_request_json = ?, last_action_result_json = ?, updated_at = ? WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND outcome = ''`)
-    .bind(nextRev, JSON.stringify(next), outcome, key, requestJson, JSON.stringify(response), nowIso(), battleKey, characterId, rev).run();
-  if (!updated?.meta?.changes) {
-    const raced = await db.prepare(`SELECT state_rev, last_action_key, last_action_request_json, last_action_result_json FROM battle_authority WHERE battle_id = ?`).bind(battleKey).first();
-    if (raced?.last_action_key === key && raced.last_action_request_json === requestJson) return json({ ok: true, replayed: true, ...parseJsonColumn(raced.last_action_result_json, {}) });
-    return json({ error: "battle_revision_conflict", stateRev: Number(raced?.state_rev) || 0 }, 409);
+  const timestamp = nowIso();
+  const statements = [
+    db.prepare(`INSERT INTO battle_action_receipts (battle_id, character_id, action_key, request_json, result_json, potion_request_id, created_at)
+      SELECT ?, ?, ?, ?, 'pending', ?, ?
+      WHERE EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND outcome = '')
+        AND (? = '' OR EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND slot_type = 'potion' AND extra_json = ? AND CAST(json_extract(extra_json, '$.quantity') AS INTEGER) > 0))`)
+      .bind(battleKey, characterId, key, requestJson, potionRequestId, timestamp, battleKey, characterId, rev,
+        potionRequestId, potionStack?.item_id || "", id, characterId, potionStack?.extra_json || "")
+  ];
+  statements.push(db.prepare(`UPDATE battle_authority SET state_rev = ?, state_json = ?, outcome = ?, last_action_key = ?, last_action_request_json = ?, last_action_result_json = ?, updated_at = ?
+    WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND outcome = ''
+      AND EXISTS (SELECT 1 FROM battle_action_receipts WHERE battle_id = ? AND action_key = ?)`)
+    .bind(nextRev, JSON.stringify(next), outcome, key, requestJson, JSON.stringify(response), timestamp, battleKey, characterId, rev, battleKey, key));
+  if (isPotion && potionStack) {
+    statements.push(potionNextQuantity > 0
+      ? db.prepare(`UPDATE items SET extra_json = ?, updated_at = ? WHERE item_id = ? AND player_id = ? AND character_id = ? AND slot_type = 'potion' AND extra_json = ?
+          AND EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND last_action_key = ?)`)
+        .bind(potionNextExtra, timestamp, potionStack.item_id, id, characterId, potionStack.extra_json, battleKey, characterId, nextRev, key)
+      : db.prepare(`DELETE FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND slot_type = 'potion' AND extra_json = ?
+          AND EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND last_action_key = ?)`)
+        .bind(potionStack.item_id, id, characterId, potionStack.extra_json, battleKey, characterId, nextRev, key));
   }
-  return json({ ok: true, replayed: false, ...response });
+  statements.push(db.prepare(`UPDATE battle_action_receipts SET result_json = CASE
+      WHEN (? = '' OR changes() = 1)
+        AND EXISTS (SELECT 1 FROM battle_authority WHERE battle_id = ? AND character_id = ? AND state_rev = ? AND last_action_key = ?)
+      THEN ? ELSE NULL END
+    WHERE battle_id = ? AND action_key = ?`)
+    .bind(potionRequestId, battleKey, characterId, nextRev, key, JSON.stringify(response), battleKey, key));
+  try {
+    await db.batch(statements);
+  } catch (error) {
+    const racedByKey = await db.prepare(`SELECT request_json, result_json FROM battle_action_receipts WHERE battle_id = ? AND action_key = ?`).bind(battleKey, key).first();
+    if (racedByKey) {
+      if (racedByKey.request_json !== requestJson) return json({ error: "battle_action_key_conflict" }, 409);
+      if (racedByKey.result_json === "pending") return json({ error: "battle_action_in_progress", retry: true }, 409);
+      return json({ ok: true, replayed: true, ...parseJsonColumn(racedByKey.result_json, {}), ...(await battleCompletionSnapshot(db, id, characterId)) });
+    }
+    if (isPotion) {
+      const racedPotion = await db.prepare(`SELECT battle_id, request_json FROM battle_action_receipts WHERE character_id = ? AND potion_request_id = ? LIMIT 1`).bind(characterId, potionRequestId).first();
+      if (racedPotion) return json({ error: racedPotion.battle_id === battleKey && racedPotion.request_json === requestJson ? "battle_action_in_progress" : "potion_request_reused", retry: racedPotion.battle_id === battleKey && racedPotion.request_json === requestJson }, 409);
+    }
+    throw error;
+  }
+  const committed = await db.prepare(`SELECT result_json FROM battle_action_receipts WHERE battle_id = ? AND action_key = ?`).bind(battleKey, key).first();
+  if (!committed || committed.result_json === "pending") {
+    const latest = await db.prepare(`SELECT state_rev FROM battle_authority WHERE battle_id = ? AND character_id = ?`).bind(battleKey, characterId).first();
+    return json({ error: Number(latest?.state_rev) !== rev ? "battle_revision_conflict" : (isPotion ? "potion_not_owned" : "battle_action_conflict"), stateRev: Number(latest?.state_rev) || 0 }, 409);
+  }
+  return json({ ok: true, replayed: false, ...parseJsonColumn(committed.result_json, response), ...(await battleCompletionSnapshot(db, id, characterId)) });
 }
+
 function dungeonV2ServerRollRarity(floor, rng, rarityBoost = false) {
   const roll = Math.max(0, Math.min(0.999999999, Number(rng()) || 0));
   if (rarityBoost) return roll < 0.5 ? "unique" : "rare";
