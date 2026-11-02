@@ -70,6 +70,11 @@ This file defines the default operating rules for all contributors and AI agents
 - For any user-visible staging/preview fix that the user must reopen in a browser, bump the visible preview patch version before deployment so stale-cache reports can be distinguished from the new build.
 - After merge/deploy, verify the live result when the deployment path is available: page/endpoint loads, changed feature works, obvious errors are absent, and critical asset paths are not 404.
 
+## 9.1 Production QA environment (Owner-approved, 2026-11-02)
+- Routine post-deploy gameplay, UI, and regression QA must use the designated Production QA account and normal game client flows described in `docs/PRODUCTION-QA-POLICY-V1.md`; do not use Staging D1/staging Worker for routine gameplay QA.
+- This does not authorize direct Production D1 writes, fixture seeding/cleanup, fault injection, forged requests, destructive probes, migrations, or security testing. Security QA remains separately scoped and requires specific Owner authorization.
+- Never store credentials, password hashes, session tokens, or recovery codes in repository documentation. If a supported audited Admin/QA grant path is unavailable, stop rather than using ad-hoc SQL to seed Production.
+
 ## 10. Documentation
 - Keep current system contracts in `docs/*.md`; remove or update obsolete documents instead of leaving conflicting specifications.
 - Update docs when an approved rule, architecture, or production contract changes.
