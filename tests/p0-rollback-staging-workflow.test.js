@@ -59,6 +59,8 @@ test("known runner and Wrangler regressions protected", () => {
   assert.match(workflow, /runtime_config="\$GITHUB_WORKSPACE\//);
   assert.match(workflow, /wrangler deploy --dry-run/);
   assert.match(workflow, /\.result\.schedules \| type == "array"/);
+  assert.match(workflow, /jq -e 'type == "object"' "\$game_config"/);
+  assert.doesNotMatch(workflow, /\.ok == true/);
   assert.match(workflow, /No source-tagged Worker version found/);
   assert.match(workflow, /Active Worker version, source etag, QA binding or staging D1 mismatch/);
 });
