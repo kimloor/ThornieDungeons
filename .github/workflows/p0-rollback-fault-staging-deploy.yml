@@ -288,26 +288,70 @@ jobs:
           jq -e '.[0].success == true and .[0].results[0].n == 1' "$RUNNER_TEMP/qa-session-check.json" >/dev/null
           echo "Short-lived QA bearer session installed for exact fixture player; bearer token is the QA secret and is never logged."
 
-      - name: Verify deployed identity, sole D1 binding, source tag and no cron
+      - name: Verify deployed identity, source version, sole D1 binding and no cron
         shell: bash
         run: |
           set -euo pipefail
-          settings="$RUNNER_TEMP/settings.json"
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME"
+          versions="$RUNNER_TEMP/versions.json"
+          deployments="$RUNNER_TEMP/deployments.json"
+          source_version="$RUNNER_TEMP/source-version.json"
+          active_version="$RUNNER_TEMP/active-version.json"
+
+          # --tag is stored on the uploaded source version. Adding a Worker secret
+          # creates a new active version and does not copy that annotation, so
+          # verify the active version by matching its immutable script etag.
+          curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$api/versions?per_page=20" > "$versions"
+          curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$api/deployments?per_page=20" > "$deployments"
+
+          source_version_id="$(jq -er --arg sha "$APPROVED_SOURCE_SHA" '
+            .success == true |
+            [.result.items[] | select(.annotations["workers/tag"] == $sha)] as $matches |
+            if ($matches | length) == 1 then $matches[0].id else error("Expected exactly one source-tagged Worker version") end
+          ' "$versions")"
+          active_version_id="$(jq -er '
+            .success == true |
+            (.result.deployments | max_by(.created_on)) as $deployment |
+            if ($deployment.versions | length) == 1 and $deployment.versions[0].percentage == 100
+            then $deployment.versions[0].version_id
+            else error("Expected one active Worker version at 100 percent")
+            end
+          ' "$deployments")"
+
+          curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$api/versions/$source_version_id" > "$source_version"
+          curl --fail --silent --show-error -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$api/versions/$active_version_id" > "$active_version"
+
+          jq -e --arg sha "$APPROVED_SOURCE_SHA" --arg id "$source_version_id" '
+            .success == true and .result.id == $id and
+            .result.annotations["workers/tag"] == $sha and
+            (.result.resources.script.etag | type == "string" and length > 0)
+          ' "$source_version" >/dev/null || {
+            echo "Pinned source Worker version or tag mismatch."
+            exit 1
+          }
+          source_etag="$(jq -er '.result.resources.script.etag' "$source_version")"
+          jq -e --arg db "$STAGING_DB_ID" --arg etag "$source_etag" --arg id "$active_version_id" \
+            --arg player "$QA_PLAYER_ID" --arg character "$QA_CHARACTER_ID" --arg battle "$QA_BATTLE_ID" '
+            .success == true and .result.id == $id and
+            .result.resources.script.etag == $etag and
+            (.result.resources.bindings | map(select(.type == "d1")) | length == 1) and
+            any(.result.resources.bindings[]; .name == "DB" and .type == "d1" and ((.database_id // .id // "") == $db)) and
+            any(.result.resources.bindings[]; .name == "P0_ROLLBACK_TEST_KEY" and .type == "secret_text") and
+            any(.result.resources.bindings[]; .name == "P0_ROLLBACK_PLAYER_ID" and .type == "plain_text" and .text == $player) and
+            any(.result.resources.bindings[]; .name == "P0_ROLLBACK_CHARACTER_ID" and .type == "plain_text" and .text == $character) and
+            any(.result.resources.bindings[]; .name == "P0_ROLLBACK_BATTLE_ID" and .type == "plain_text" and .text == $battle)
+          ' "$active_version" >/dev/null || {
+            echo "Active Worker version, source etag, QA binding or staging D1 mismatch."
+            exit 1
+          }
+
           curl --fail --silent --show-error \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/settings" \
-            > "$settings"
-          jq -e --arg db "$STAGING_DB_ID" --arg sha "$APPROVED_SOURCE_SHA" '
-            .success == true and
-            (.result.bindings | map(select(.type == "d1")) | length == 1) and
-            any(.result.bindings[]; .name == "DB" and .type == "d1" and ((.database_id // .id // "") == $db)) and
-            (.result.annotations["workers/tag"] == $sha) and
-            any(.result.bindings[]; .name == "P0_ROLLBACK_TEST_KEY" and .type == "secret_text")
-          ' "$settings" >/dev/null || { echo "Deployed Worker identity, binding or source tag mismatch"; exit 1; }
-          curl --fail --silent --show-error \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/schedules" \
-            > "$RUNNER_TEMP/schedules.json"
+            "$api/schedules" > "$RUNNER_TEMP/schedules.json"
           jq -e '.success == true and (.result.schedules | type == "array") and (.result.schedules | length == 0)' "$RUNNER_TEMP/schedules.json" >/dev/null || {
             echo "Unexpected cron schedule found; refusing handoff."
             exit 1
