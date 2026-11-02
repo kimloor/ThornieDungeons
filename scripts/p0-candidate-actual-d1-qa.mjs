@@ -21,7 +21,9 @@ const required = ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "P0_ROLLBACK_
 for (const key of required) {
   if (!process.env[key]) throw new Error("Missing required environment variable: " + key);
 }
-const token = process.env.P0_ROLLBACK_TEST_KEY;
+const faultKey = process.env.P0_ROLLBACK_TEST_KEY;
+// auth_sessions.token_hash is globally unique; use a fresh bearer per QA run.
+const sessionToken = crypto.randomBytes(32).toString("base64url");
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 const apiBase = "https://api.cloudflare.com/client/v4";
 const evidence = {
@@ -198,7 +200,7 @@ async function refreshFixtureSession() {
   const now = new Date();
   const createdAt = now.toISOString();
   const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
-  const tokenHash = crypto.createHash("sha256").update(token).digest("base64url");
+  const tokenHash = crypto.createHash("sha256").update(sessionToken).digest("base64url");
   const sql = "INSERT INTO auth_sessions (session_id, player_id, token_hash, created_at, expires_at, revoked_at, revoke_reason, remember_login) VALUES (" +
     [CFG.sessionId, CFG.playerId, tokenHash, createdAt, expiresAt].map(quote).join(", ") +
     ", NULL, NULL, 0) ON CONFLICT(session_id) DO UPDATE SET token_hash=excluded.token_hash, created_at=excluded.created_at, expires_at=excluded.expires_at, revoked_at=NULL, revoke_reason=NULL, remember_login=0 WHERE auth_sessions.player_id=excluded.player_id";
@@ -242,7 +244,7 @@ async function workerPost(body, extraHeaders = {}) {
   const response = await fetch(CFG.workerUrl, {
     method: "POST",
     headers: {
-      Authorization: "Bearer " + token,
+      Authorization: "Bearer " + sessionToken,
       "Content-Type": "application/json",
       ...extraHeaders
     },
@@ -319,7 +321,7 @@ async function main() {
     result: { result: "victory", reward: { gold: 999999, diamonds: 999999 } }
   }, {
     "X-P0-Rollback-Fault": "reward-settlement-batch",
-    "X-P0-Rollback-Key": token,
+    "X-P0-Rollback-Key": faultKey,
     "X-P0-Rollback-Nonce": nonce
   });
   const injectedAfter = Number(faultResponse.headers["x-p0-rollback-injected-after"] || 0);
