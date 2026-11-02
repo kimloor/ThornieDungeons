@@ -205,7 +205,7 @@ jobs:
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/schedules" \
             > "$RUNNER_TEMP/schedules.json"
-          jq -e '.success == true and (.result | length == 0)' "$RUNNER_TEMP/schedules.json" >/dev/null || {
+          jq -e '.success == true and (.result.schedules | type == "array") and (.result.schedules | length == 0)' "$RUNNER_TEMP/schedules.json" >/dev/null || {
             echo "Unexpected cron schedule found; refusing handoff."
             exit 1
           }
