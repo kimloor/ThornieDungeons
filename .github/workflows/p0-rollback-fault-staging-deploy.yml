@@ -426,9 +426,14 @@ jobs:
             echo "Unexpected cron schedule found; refusing handoff."
             exit 1
           }
+          game_config="$RUNNER_TEMP/game-config.json"
           curl --fail --silent --show-error --max-time 20 \
-            "${{ steps.deploy.outputs.url }}?action=getGameConfig" \
-            | jq -e '.ok == true' >/dev/null
+            "${{ steps.deploy.outputs.url }}?action=getGameConfig" > "$game_config"
+          jq -e 'type == "object"' "$game_config" >/dev/null || {
+            echo "Staging Worker getGameConfig smoke test did not return a JSON object."
+            exit 1
+          }
+          echo "Staging Worker getGameConfig endpoint returned valid JSON object."
 
       - name: Deployment summary
         shell: bash
