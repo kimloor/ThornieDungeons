@@ -6,6 +6,7 @@ on:
       - "experiment/**"
       - "feat/**"
       - "fix/**"
+      - "ops/p0-rollback-*"
       - "refactor/**"
     paths:
       - "src/**"
@@ -15,6 +16,8 @@ on:
       - "wrangler.jsonc"
       - "tests/dungeon-v2-event-floor.test.js"
       - "tests/raid-wings-v2.test.js"
+      - "tests/p0-rollback-staging-workflow.test.js"
+      - ".github/workflows/p0-rollback-fault-staging-deploy.yml"
       - ".github/workflows/build-branch.yml"
   workflow_dispatch:
 
@@ -26,8 +29,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  p0-rollback-contract:
+    if: startsWith(github.ref, 'refs/heads/ops/p0-rollback-')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout rollback tooling branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run P0 rollback deployment safety contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/p0-rollback-staging-workflow.test.js
+          git diff --check
+
   build:
-    if: github.ref != 'refs/heads/main'
+    if: github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/ops/p0-rollback-')
     runs-on: ubuntu-latest
 
     steps:
