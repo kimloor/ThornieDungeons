@@ -1,0 +1,64 @@
+name: P0 Actual D1 Atomic Rollback QA
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Confirm exclusive Staging D1 R01-R04 execution"
+        required: true
+        type: choice
+        options:
+          - DO_NOT_RUN
+          - RUN_P0_R01_R04
+        default: DO_NOT_RUN
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0-actual-d1-rollback-exclusive
+  cancel-in-progress: false
+
+jobs:
+  actual-d1-qa:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      P0_ROLLBACK_TEST_KEY: ${{ secrets.P0_ROLLBACK_TEST_KEY }}
+    steps:
+      - name: Require explicit confirmation and exact main branch
+        shell: bash
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$CONFIRM" = "RUN_P0_R01_R04"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$P0_ROLLBACK_TEST_KEY"
+          echo "Explicit confirmation accepted. Actual D1 test scope is the dedicated QA fixture only."
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run R01-R04 against the isolated Staging Worker and D1
+        run: node scripts/p0-rollback-actual-d1-qa.mjs
+
+      - name: Upload immutable QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-rollback-actual-d1-evidence-${{ github.run_id }}
+          path: artifacts/p0-rollback-actual-d1-evidence.json
+          if-no-files-found: warn
+          retention-days: 30
