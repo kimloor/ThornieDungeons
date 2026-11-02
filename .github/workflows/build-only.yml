@@ -1,0 +1,34 @@
+name: P0 PR #196 Build Only
+
+on:
+  push:
+    branches:
+      - fix/p0-battle-victory-authority-rebased-20261102
+    paths:
+      - .github/workflows/build-only.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build-only:
+    if: github.ref == 'refs/heads/fix/p0-battle-victory-authority-rebased-20261102'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build generated frontend
+        run: node build.js
+      - name: Verify generated output
+        run: test -s index.html
+      - name: Upload generated frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-196-generated-index
+          path: index.html
+          if-no-files-found: error
