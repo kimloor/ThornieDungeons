@@ -1,6 +1,6 @@
 # W2-H — Admin QA Seed (DRAFT design, not implemented)
 
-**Status:** DRAFT, Owner-approved as a starting point on 2026-11-02; Owner will review the real page and adjust. **Not started.** Implementation waits until the implementing agent is available. **Risk: VERY HIGH** (grants gold/items/pets on Production). Branch + explicit Owner approval before every merge; ships DISABLED.
+**Status:** DRAFT, spec AGREED with the Owner 2026-11-03 (see §9, which supersedes §3-§4 and §8 where they differ); Owner will review the real page and adjust. **Not started.** Implementation waits until the implementing agent is available. **Risk: VERY HIGH** (grants gold/items/pets on Production). Branch + explicit Owner approval before every merge; ships DISABLED.
 
 ## 1. Why
 `docs/PRODUCTION-QA-POLICY-V1.md` forbids direct SQL/seed writes on Production and requires a supported server-side Admin/QA operation that records an audit event and preserves item ownership/provenance. This slice is that operation. Designated QA identities: `chatgpt`/`gpt1`, `claude`/`claude1`.
@@ -78,3 +78,35 @@ Level 10 (consistent stats), 20 HP + 20 MP potions, basic non-overpowered equipm
 **Engineering notes**
 - Bump the visible version on shipped H1/H2/H3 (project rule); tests must create `item_provenance` / `item_ownership_events` tables in the test DB.
 - Register new error codes where the admin client maps them (check `admin-app.js`, not only the game error catalog).
+
+## 9. Agreed spec (Owner, 2026-11-03) — supersedes earlier sections where different
+Design mockup: Claude Design canvas "Admin QA Seed (W2-H) — Page Design" (3 boards: character picker, seed cards, preview/confirm).
+
+**Flow and confirmation**
+- Pages: (1) username search + character list, (2) seed cards, (3) preview + confirm.
+- Page 2 has ONE bottom bar: summary of included cards, reason field, and a single "Preview all" button. No per-card preview/confirm buttons, no confirm button on page 2.
+- Page 3 shows the server preview (before/after for every included item), checks, a reason field, a **Back** button (returns to page 2 with values kept) and **Confirm seed**.
+- Confirmation needs the **reason only** (trimmed 5-300). No typing of username/character name. Remaining guards: PRODUCTION banner, target chip, mandatory preview, optional yellow warning when the character was active in the last 24 h or is above Level 15 (never blocks).
+- One request seeds all included cards atomically: one `db.batch`, one audit row whose metadata lists every sub-change (before/after), one `requestId` (replay -> `already_applied`). If anything is invalid or does not fit, the whole request is rejected.
+
+**Cards (final list)**
+- Level (increase only, max 99, xp 0, stat_points += 5 per level gained), Gold (cap 100,000 per request), Unlocked floor (increase only), Diamond (account level, shared by all characters of the username).
+- **Removed:** Protection Stone, Raid stamina / PvP tickets.
+- **Potion:** dropdown of the 8 game potions (hp|mp x small|medium|high|full), "+ add row", no duplicate type, max 99 per row, max 8 rows.
+- **Materials:** dropdown from live `junk_info` (13 rows on 2026-11-03, including Azure `recipe_*` blueprints), same row pattern, max 99 per row, max 8 rows.
+- **Pet:** dropdown of the 8 pet defIds (sprout, flamekit, sparkpup, ember_fox, moon_hare, hell_wolf, inferno_drake, storm_phoenix), star 1, "+ add row", max 5 rows, active pet auto-set only if empty. Seeding does not touch the `dup` counters.
+- **Equipment** (max 10 items per request, goes to inventory unequipped, enhance level always +0):
+  - Search box with English **prefix** search (no Thai search). Catalog: 30 base names (weapon/helmet/chest/gloves/boots/accessory x tier 1-5, tier derived from the name), Wings (azure/robot/skeleton, tierless), 18 Mythic set items (azure/robot/skeleton x weapon/helmet/chest/gloves/boots/accessory(ring)), 3 boss weapons (Spirit Greatsword, Lavalon Sword, Icicle Longsword).
+  - Rarity: rare / unique / elite for base gear (1/2/3 option slots); **mythic** (4 option slots) is locked on for Set items and boss weapons. Plain base gear cannot be mythic (a mythic item must carry a `setId` or boss weapon id to be valid in-game).
+  - Tier: from the name for base gear; **Set items and boss weapons have no tier in the name** (tier comes from the floor at craft time) so the UI shows a Tier 1-5 dropdown for them.
+  - Options: per slot choose the option from `SLOT_POOLS[type]` and the value from `OPTION_DEFS[key].values` (or "random"); duplicates allowed (game rolls slots independently); server validates with `isValidEmpowerOption`. Base stats are computed by the server from tier x rarity (not editable). Boss weapon signature fixed by its definition.
+
+**Caps / inventory rule**
+- Rows: potion <= 8, materials <= 8, pets <= 5, equipment <= 10.
+- The preview shows "slots used X / free Y" (capacity 30; each potion/material stack and each item uses a slot). If free slots are not enough, or an overflow already exists, the whole request is rejected (`inventory_full` / `inventory_overflow_pending`); never silently overflow.
+
+**Implementation notes / still to verify while coding**
+- Wings generator reuse (raid wing path) and mythic generator availability in the Worker (`createMythicItem` / `MYTHIC_V2` global, same global-name risk as the earlier Raid Wing bug) — add tests that empower slots are really filled and `setId`/`bossWeaponId` are set.
+- Catalog endpoint should be server-driven so the dropdown/search never drifts from game data.
+- Version bump on shipped H1/H2/H3; tests need `item_provenance` / `item_ownership_events` tables; register new error codes in the admin client.
+- Provenance origin type `admin_seed`, ownership event type `admin_seeded`.
