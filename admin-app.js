@@ -874,7 +874,7 @@ function seedWithTimeout(promise) {
 function seedNonQaWarning(playerId) {
   return SEED_QA_PLAYERS.includes(String(playerId).toLowerCase()) ? "" : `คำเตือน: "${playerId}" ไม่ใช่บัญชี QA (${SEED_QA_PLAYERS.join(", ")}) การ seed จะเปลี่ยนข้อมูลบน Production จริง ตรวจ username ให้แน่ใจก่อนกดยืนยัน`;
 }
-function seedErrorText(code) { return SEED_ERRORS[code] || ("เกิดข้อผิดพลาด: " + code); }
+function seedErrorText(code) { return SEED_ERRORS[code] || ("เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ" + (typeof code === "string" && /^[a-z0-9_]{1,60}$/.test(code) ? " (" + code + ")" : "")); }
 function seedShow(id, visible) { document.getElementById(id).style.display = visible ? "" : "none"; }
 function seedSay(id, text, kind) { const m = document.getElementById(id); m.textContent = text || ""; m.className = "msg" + (kind ? " " + kind : ""); }
 function seedDate(v) { return v ? new Date(v).toLocaleString() : "—"; }

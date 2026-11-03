@@ -8664,17 +8664,8 @@ const ADMIN_SEED_OPS = Object.freeze({
   },
 });
 
-// Machine-readable reason a character cannot be seeded right now, or null.
-async function adminSeedBlockedReason(db, characterId) {
-  const pending = await db.prepare(`SELECT 1 AS x FROM character_operation_receipts WHERE character_id = ? AND result_json = 'pending' LIMIT 1`).bind(characterId).first();
-  if (pending) return "operation_pending";
-  const run = await db.prepare(`SELECT updated_at FROM character_run_state WHERE character_id = ?`).bind(characterId).first();
-  if (run) {
-    const age = Date.now() - Date.parse(run.updated_at);
-    if (!Number.isFinite(age) || age < ADMIN_ITEM_RUN_ACTIVE_WINDOW_MS) return "character_in_run";
-  }
-  return null;
-}
+// Machine-readable reason a character cannot be seeded right now, or null. Same implementation as W2-F/W2-G.
+const adminSeedBlockedReason = adminCharacterActivityBlock;
 
 function adminSeedWarnings(character) {
   const warnings = [];
@@ -8809,11 +8800,10 @@ async function handleAdminSeedApply(db, adminAuth, body) {
   const guardColumns = Object.keys(guard);
   const guardSql = ["character_id = ?", "player_id = ?", "updated_at = ?", ...guardColumns.map((column) => `${column} = ?`)].join(" AND ");
   const guardBinds = [ctx.characterId, ctx.playerId, character.updated_at || "", ...guardColumns.map((column) => guard[column])];
-  const cutoff = new Date(Date.now() - ADMIN_ITEM_RUN_ACTIVE_WINDOW_MS).toISOString();
   const assertion = (expected) => db.prepare(`SELECT CASE WHEN NOT (${gateSql}) THEN 1 WHEN changes() = ? THEN 1 ELSE json('seed_mutation_rows_mismatch') END`).bind(...gateBinds, expected);
   const statements = [
-    db.prepare(`INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) SELECT ?, ?, 'ADMIN_SEED', 'character', ?, ?, ? WHERE EXISTS (SELECT 1 FROM characters WHERE ${guardSql}) AND NOT EXISTS (SELECT 1 FROM character_operation_receipts WHERE character_id = ? AND result_json = 'pending') AND NOT EXISTS (SELECT 1 FROM character_run_state WHERE character_id = ? AND (updated_at > ? OR updated_at NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T*'))`)
-      .bind(auditId, adminAuth.playerId, ctx.characterId, JSON.stringify(metadata), now, ...guardBinds, ctx.characterId, ctx.characterId, cutoff),
+    db.prepare(`INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) SELECT ?, ?, 'ADMIN_SEED', 'character', ?, ?, ? WHERE EXISTS (SELECT 1 FROM characters WHERE ${guardSql}) AND ${adminItemActivityGuardSql()}`)
+      .bind(auditId, adminAuth.playerId, ctx.characterId, JSON.stringify(metadata), now, ...guardBinds, ...adminItemActivityGuardBinds(ctx.characterId)),
   ];
   for (const { mutate, expectedChanges } of mutations) { statements.push(mutate(db, ctx)); statements.push(assertion(expectedChanges)); }
   let results;

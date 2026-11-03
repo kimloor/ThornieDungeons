@@ -439,3 +439,62 @@ test("P2-A: order of checks is documented behaviour: invalid admin -> 401 even w
   assert.equal((await lookup(db)).status, 403);
   assert.equal((await preview(db)).status, 403);
 });
+
+// ---------------------------------------------------------------------------------------------
+// P2-C: error catalog completeness and admin UI reliability (static checks; not a browser run)
+// ---------------------------------------------------------------------------------------------
+const ROOT = path.resolve(__dirname, "..");
+const workerSrc = fs.readFileSync(path.join(ROOT, "workers/thornie-dungeons-api.js"), "utf8");
+const clientSrc = fs.readFileSync(path.join(ROOT, "admin-app.js"), "utf8");
+const catalogSrc = fs.readFileSync(path.join(ROOT, "src/state/errorCatalog.js"), "utf8");
+const seedSection = workerSrc.slice(workerSrc.indexOf("// ---------- admin: QA seed"), workerSrc.indexOf("// ---------- request boundary hardening"));
+const clientSeed = clientSrc.slice(clientSrc.indexOf("// SEED (QA)"), clientSrc.indexOf("// Restore a still-valid Admin session"));
+
+test("P2-C: every error code the Seed endpoints can return has a specific Thai message and a catalog entry", () => {
+  const codes = new Set([...seedSection.matchAll(/error:\s*"([a-z_]+)"/g)].map((m) => m[1]));
+  ["operation_pending", "character_in_run"].forEach((c) => codes.add(c)); // returned via the shared adminCharacterActivityBlock
+  assert.ok(codes.size >= 15, `found ${[...codes].join(",")}`);
+  const authCodes = /^admin_(session|auth|key)/; // generic session handling in apiGet/apiPost
+  const missingText = [], missingCatalog = [];
+  for (const code of codes) {
+    if (authCodes.test(code)) continue;
+    if (!new RegExp(`\\b${code}:\\s*"`).test(clientSrc.slice(clientSrc.indexOf("const SEED_ERRORS"), clientSrc.indexOf("const SEED_WARNINGS")))) missingText.push(code);
+    if (!new RegExp(`\\b${code}:\\s*"`).test(catalogSrc)) missingCatalog.push(code);
+  }
+  assert.deepEqual(missingText, []);
+  assert.deepEqual(missingCatalog, []);
+  assert.ok(codes.has("seed_mutation_failed"));
+});
+
+test("P2-C: unknown error codes fall back to a safe Thai message that never echoes odd server strings", () => {
+  const sandbox = { SEED_ERRORS: {} };
+  const fnSrc = clientSrc.match(/function seedErrorText\(code\) \{[^\n]*\}/)[0];
+  vm.runInNewContext(`${fnSrc}; globalThis.f = seedErrorText;`, sandbox);
+  assert.match(sandbox.f("totally_new_code"), /^เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ \(totally_new_code\)$/);
+  assert.equal(sandbox.f("<img src=x onerror=alert(1)>"), "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+  assert.equal(sandbox.f(undefined), "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+});
+
+test("P2-C: Seed UI never uses innerHTML-style sinks; requests have a 30 s timeout; retry keeps the requestId", () => {
+  assert.doesNotMatch(clientSeed, /innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(|new Function/);
+  assert.match(clientSrc, /SEED_TIMEOUT_MS = 30000/);
+  assert.equal((clientSeed.match(/crypto\.randomUUID\(\)/g) || []).length, 1, "requestId is created once, at preview time");
+  const confirmFn = clientSeed.slice(clientSeed.indexOf("async function seedConfirm"));
+  assert.doesNotMatch(confirmFn.slice(0, confirmFn.indexOf("\n}\n")), /randomUUID/);
+  assert.match(confirmFn, /requestId: seedState\.requestId/);
+  assert.match(confirmFn, /seedWithTimeout\(apiPost\(/);
+});
+
+test("P2-C: Preview and Confirm are disabled while a request is in flight (double-submit guard)", () => {
+  assert.match(clientSeed, /async function seedPreview\(\) \{\s*if \(seedState\.busy\) return;/);
+  assert.match(clientSeed, /getElementById\("seedPreviewBtn"\)\.disabled = true/);
+  assert.match(clientSeed, /async function seedConfirm\(\) \{\s*if \(seedState\.busy \|\| !seedState\.previewHash\) return;/);
+  assert.match(clientSeed, /getElementById\("seedConfirmBtn"\)\.disabled = true/);
+  assert.match(clientSeed, /disabled = seedState\.busy \|\| len < 5 \|\| len > 300/);
+});
+
+test("P2-C: Seed pipeline shares the W2-F/W2-G activity implementation (single source of truth)", () => {
+  assert.match(seedSection, /const adminSeedBlockedReason = adminCharacterActivityBlock;/);
+  assert.match(seedSection, /adminItemActivityGuardSql\(\)/);
+  assert.match(seedSection, /adminItemActivityGuardBinds\(/);
+});
