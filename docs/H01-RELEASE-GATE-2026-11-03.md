@@ -6,7 +6,7 @@
 **H01 PR:** [#201](https://github.com/kimloor/ThornieDungeons/pull/201)  
 **Merge commit:** `0f75886652be3a8cbbc5c369e8036f8ea915365b`  
 **PR head commit:** `f55d7c6d68d7bff488a6af1896554e68ab55766d`  
-**Release Gate:** **BLOCKED — DO NOT ACTIVATE H01**
+**Release Gate:** **CLOSED — PASS (Owner accepted untested edge-case risk; 2026-11-03)**
 
 ## 1. Scope and safety
 
@@ -134,3 +134,22 @@ The source is merged and FE/API deployment workflows succeeded. R2 upload count 
 - No schema migration or D1 schema change. Runtime D1 writes occur only through normal authenticated Event Entry; no direct Production data manipulation.
 - Automated branch QA: **PASS** — Build Branch run `41626269156` on source commit `7e6864553507106e5b2ee2838c93679f56bae945`; focused regression **89/89 PASS**, including H01 handler tests 74–78 (new atomic start, legacy checkpoint recovery, existing authority retry, simultaneous-entry race, inactive-event guard) and Inventory version contract. `node --check workers/thornie-dungeons-api.js`, `git diff --check`, `node build.js`, and generated-output scope verification passed. Workflow generated `index.html` commit `6a62023a518f1165fd4bccf5b13f3e56d592e64a`. Initial parity run `41626269092` started before generated output was published and failed at the generated-index check; the re-run on the generated-index head passed: Battle Core parity PR run `41626508990` **SUCCESS**, Admin V2 QA PR run `41626508958` **SUCCESS**. Production manual Event Entry/Battle QA remains pending and must not be represented as PASS before live gameplay verification.
 - Event activation remains separately gated; this hotfix does not authorize activating the H01 event.
+
+
+## 12. Final Owner Production QA and H01 closeout — 2026-11-03
+
+**Decision: H01 CLOSED — RELEASE GATE PASS.** Owner explicitly accepted the two remaining untested edge cases as follow-up risks; if a defect appears, address it through a hotfix. This decision closes H01 and does not claim those edge cases were tested.
+
+Owner-reported Production gameplay QA (normal game client):
+- Event Preview → Enter Event → Battle UI: **PASS** (entry-flow hotfix verified).
+- Complete the Event Battle: **PASS**.
+- Receive the eligible reward: **PASS**.
+- Reward persistence / post-battle state / no stuck battle / retry flow: **PASS**, as confirmed by Owner.
+
+Accepted follow-up risks (NOT TESTED; not release blockers by Owner decision):
+- Rapid repeated taps on the Event entry button and duplicate-entry/reward protection.
+- Attempting to enter after the Event has expired or become inactive.
+
+If either case exposes a defect, create and release a scoped hotfix following the current risk-routing, QA, version-bump, documentation, and deployment rules. No claim is made that these cases passed. Event activation is governed by the separate Owner event-configuration decision; closing this QA record does not itself change activation state.
+
+Final assessment: implementation/CI/deployment evidence from §11 plus Owner-confirmed Production entry, battle completion, reward, and persistence close H01. Remaining rapid-click and inactive/expired checks are explicitly accepted as deferred risks.
