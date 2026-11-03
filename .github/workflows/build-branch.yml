@@ -1,8 +1,9 @@
-name: Build frontend branch
+name: Build frontend and sync generated output
 
 on:
   push:
     branches:
+      - main
       - "experiment/**"
       - "feat/**"
       - "fix/**"
@@ -58,7 +59,7 @@ jobs:
           git diff --check
 
   build:
-    if: github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/ops/p0-rollback-')
+    if: !startsWith(github.ref, 'refs/heads/ops/p0-rollback-')
     runs-on: ubuntu-latest
 
     steps:
