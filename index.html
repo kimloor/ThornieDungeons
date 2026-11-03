@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.37" />
+<meta name="application-version" content="1.1.38" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.37";
+  content: "Ver 1.1.38";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -16730,12 +16730,6 @@ function ThornieDungeons() {
       clearInterval(timer);
     };
   }, [cred.url, phase]);
-  useEffect(() => {
-    if (phase === "map" && resumeBattle?.battleId) {
-      setCheckpointPromptError("");
-      setCheckpointPromptOpen(true);
-    }
-  }, [phase, resumeBattle?.battleId]);
   const refreshGuildChatStatus = useCallback((characterId) => cloudGetGuildChatStatus(cred.url, characterId).then((res) => {
     if (activeCharacterIdRef.current === characterId && res?.ok) setGuildUnreadState({ characterId, unread: !!res.guild?.unread });
   }).catch(() => {}), [cred.url]);
@@ -16783,6 +16777,12 @@ function ThornieDungeons() {
   const [resumeBattle, setResumeBattle] = useState(null); // Battle V1 safe Action-boundary checkpoint
   const [checkpointPromptOpen, setCheckpointPromptOpen] = useState(false);
   const [checkpointPromptError, setCheckpointPromptError] = useState("");
+  useEffect(() => {
+    if (phase === "map" && resumeBattle?.battleId) {
+      setCheckpointPromptError("");
+      setCheckpointPromptOpen(true);
+    }
+  }, [phase, resumeBattle?.battleId]);
   const [battleState, setBattleState] = useState(null);
   const battleStateRef = useRef(null);
   const battlePresentationRef = useRef(null);
