@@ -331,3 +331,13 @@ test("Checkpoint recovery effect declares its state before evaluating hook depen
   assert.ok(stateDeclaration >= 0, "resumeBattle state declaration exists");
   assert.ok(recoveryEffect > stateDeclaration, "resumeBattle must be initialized before the effect dependency array is evaluated");
 });
+
+
+test("Dungeon single-target actions retarget a dead selection to the living enemy with lowest HP", () => {
+  const action = app.slice(app.indexOf("async function driveCoreBattle"), app.indexOf("function resetTerminalPresentation"));
+  assert.match(action, /BATTLE_CORE_V1\.getActionMetadata\(state, actor, command\)/);
+  assert.match(action, /targeting\.requiresEnemyTarget && !targeting\.legalTargetIds\.includes\(String\(command\.targetId \|\| ""\)\)/);
+  assert.match(action, /\.sort\(\(a, b\) => Number\(a\.hp\) - Number\(b\.hp\) \|\| Number\(a\.tieOrder\) - Number\(b\.tieOrder\)\)/);
+  assert.match(action, /command = \{ \.\.\.command, targetId: nextTarget\.id \}/);
+  assert.match(action, /setTargetUid\(nextTarget\.id\)/);
+});

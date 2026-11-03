@@ -1276,7 +1276,23 @@ function ThornieDungeons() {
     if (actor.kind === "hero" && ["basic", "active"].includes(heroCommand?.type)) setHeroAnim("attack");
     else if (actor.kind === "pet") setPetAnim("attack");
     else if (actor.side === "enemy") setEnemyAnims(current => ({ ...current, [actor.id]: "attack" }));
-    const command = actor.kind === "hero" ? heroCommand : { type: "advance" };
+    let command = actor.kind === "hero" ? heroCommand : { type: "advance" };
+    // A prior action may have defeated the selected enemy before the Hero acts.
+    // Match the Arena target-cursor behavior, but preserve Dungeon's locked rule:
+    // single-target actions fall back to the living enemy with the lowest HP.
+    if (actor.kind === "hero" && ["basic", "active"].includes(command?.type)) {
+      const targeting = BATTLE_CORE_V1.getActionMetadata(state, actor, command);
+      if (targeting.requiresEnemyTarget && !targeting.legalTargetIds.includes(String(command.targetId || ""))) {
+        const nextTarget = targeting.legalTargetIds
+          .map(id => state.units[id])
+          .filter(unit => unit && Number(unit.hp) > 0 && !unit.dead)
+          .sort((a, b) => Number(a.hp) - Number(b.hp) || Number(a.tieOrder) - Number(b.tieOrder))[0];
+        if (nextTarget) {
+          command = { ...command, targetId: nextTarget.id };
+          setTargetUid(nextTarget.id);
+        }
+      }
+    }
     const actionKey = globalThis.crypto?.randomUUID?.() || `battle-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     let receipt;
     let requestError = null;
