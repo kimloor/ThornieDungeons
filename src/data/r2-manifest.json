@@ -1,7 +1,7 @@
 {
   "bucket": "assets",
-  "generatedAt": "2026-11-02T23:35:52Z",
-  "count": 808,
+  "generatedAt": "2026-11-03T06:53:32Z",
+  "count": 825,
   "objects": [
     {
       "key": "audio/bgm/main_theme.mp3",
@@ -3007,6 +3007,94 @@
       "storage_class": "Standard"
     },
     {
+      "key": "hero/v5/g2/weapons/excaliburnt/attack_01/sword.png",
+      "etag": "6db7df80864ec9287d038585e0b77f95",
+      "last_modified": "2026-11-03T04:04:06.336Z",
+      "size": 55959,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/excaliburnt/attack_02/sword.png",
+      "etag": "f6e1c0d07f4947fa778635e20b2a737f",
+      "last_modified": "2026-11-03T04:04:09.111Z",
+      "size": 55969,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/excaliburnt/attack_03/sword.png",
+      "etag": "e184568124daa094e29c28d0f921db90",
+      "last_modified": "2026-11-03T04:04:11.986Z",
+      "size": 55648,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/excaliburnt/death_01/sword.png",
+      "etag": "d2f96fb87cbe40ee6e95b2f4142e43f6",
+      "last_modified": "2026-11-03T04:04:14.589Z",
+      "size": 2429,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/excaliburnt/death_02/sword.png",
+      "etag": "d2f96fb87cbe40ee6e95b2f4142e43f6",
+      "last_modified": "2026-11-03T04:04:17.295Z",
+      "size": 2429,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/excaliburnt/idle_01/sword.png",
+      "etag": "ee9701bd9269f8e75b3defe51392ab9c",
+      "last_modified": "2026-11-03T04:04:20.080Z",
+      "size": 56067,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/excaliburnt/idle_02/sword.png",
+      "etag": "26b493486997bfe0d63f2c00241de65e",
+      "last_modified": "2026-11-03T04:04:22.910Z",
+      "size": 56047,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "hero/v5/g2/weapons/excaliburnt/idle_03/sword.png",
+      "etag": "783f529741b8894b8d5222aaa1c72a07",
+      "last_modified": "2026-11-03T04:04:25.975Z",
+      "size": 56066,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "hero/v5/g2/weapons/icicle_longsword/FRAME_CONTRACT.json",
       "etag": "52512e3068a017a46748248bbef5aeb5",
       "last_modified": "2026-10-01T15:06:48.731Z",
@@ -3943,9 +4031,9 @@
     },
     {
       "key": "manifest.json",
-      "etag": "d2834731dd01ff8a7302cda9d094fc3d",
-      "last_modified": "2026-10-29T06:34:44.493Z",
-      "size": 66499,
+      "etag": "8872fe27af22a869a0451abefc45e14d",
+      "last_modified": "2026-11-03T04:04:28.348Z",
+      "size": 68909,
       "http_metadata": {
         "contentType": "application/json"
       },
@@ -4694,6 +4782,83 @@
       "etag": "f032dec737a1e5c9b6207ab2bbb29fd6",
       "last_modified": "2026-09-07T04:54:56.166Z",
       "size": 293864,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/haloween_nightmare/animations/haloween_nightmare_attack_0.png",
+      "etag": "d66a2cdc418a6f203b88a4c724d8f24f",
+      "last_modified": "2026-11-03T04:04:31.556Z",
+      "size": 621539,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/haloween_nightmare/animations/haloween_nightmare_attack_1.png",
+      "etag": "fc801e09f84715db6b2a2c68e3fcfc3c",
+      "last_modified": "2026-11-03T04:04:34.258Z",
+      "size": 667446,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/haloween_nightmare/animations/haloween_nightmare_attack_2.png",
+      "etag": "5d2f45b2b9761bd7f4b821a285d9afa9",
+      "last_modified": "2026-11-03T04:04:37.043Z",
+      "size": 623180,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/haloween_nightmare/animations/haloween_nightmare_death_0.png",
+      "etag": "930d51ab210629b0e5c94f4eb9192af4",
+      "last_modified": "2026-11-03T04:04:40.416Z",
+      "size": 447184,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/haloween_nightmare/animations/haloween_nightmare_idle_0.png",
+      "etag": "e9eeb77f114a53e119ddfc593e13db62",
+      "last_modified": "2026-11-03T04:04:43.642Z",
+      "size": 606280,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/haloween_nightmare/animations/haloween_nightmare_idle_1.png",
+      "etag": "ab415220b6c5b9b9c2d4b3782d9160fa",
+      "last_modified": "2026-11-03T04:04:46.600Z",
+      "size": 613572,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "sprite/enemy/haloween_nightmare/animations/haloween_nightmare_idle_2.png",
+      "etag": "1e6d0d33d8be92f5c70cfe95e11d57fc",
+      "last_modified": "2026-11-03T04:04:49.585Z",
+      "size": 612163,
       "http_metadata": {
         "contentType": "image/png"
       },
@@ -6879,6 +7044,17 @@
       "storage_class": "Standard"
     },
     {
+      "key": "ui/dungeon-select/dungeon-gate-halloween-v1.webp",
+      "etag": "f8d681d75d594367e362e11f1c469a6a",
+      "last_modified": "2026-11-03T04:04:54.037Z",
+      "size": 1825940,
+      "http_metadata": {
+        "contentType": "image/webp"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
       "key": "ui/dungeon-select/dungeon-gate-normal-v2.webp",
       "etag": "2af2f36fab992e711a636cafcb17e68a",
       "last_modified": "2026-09-08T11:03:11.504Z",
@@ -6982,6 +7158,17 @@
       "etag": "a166a9e82d3d16a01f28130a44802307",
       "last_modified": "2026-10-03T14:22:25.928Z",
       "size": 170952,
+      "http_metadata": {
+        "contentType": "image/png"
+      },
+      "custom_metadata": {},
+      "storage_class": "Standard"
+    },
+    {
+      "key": "ui/equipment-icons/event/excaliburnt.png",
+      "etag": "a8ecb8b26a9906e54bc39c482038209a",
+      "last_modified": "2026-11-03T04:04:56.658Z",
+      "size": 94721,
       "http_metadata": {
         "contentType": "image/png"
       },
