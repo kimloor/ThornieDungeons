@@ -215,6 +215,9 @@ checkpoint objects, account identifiers, credentials, or authorization headers. 
 presentation recovery and Cloud persistence failures use this same presentation path; detailed
 unsafe evidence remains server-side and successful flows stay quiet.
 
+Dungeon Potion / Basic Attack rejections use the shared `BATTLE_ERROR_CATCHER` client boundary.
+Toggle it with `BATTLE_ERROR_CATCHER.setEnabled(false)` or re-enable with `setEnabled(true)`. It emits only sanitized stable codes, HTTP status, action type, Battle ID, revision and sequence correlation; raw response bodies and exception messages are never emitted. Disabled mode retains the generic player error.
+
 ## 9. Temporary diagnostic investigations
 
 A temporary Production diagnostic is allowed when a Production-only issue cannot be reproduced safely elsewhere, provided that:

@@ -741,7 +741,11 @@ When player closes during normal Battle or Auto:
 
 On return:
 
-- Resume the battle from the safe checkpoint
+- Entering the Dungeon Hub with an active Checkpoint opens one shared Resume / Discard prompt for Normal and Halloween battles.
+- Resume refreshes `getBattleState` and restores the latest server-authoritative Battle state/revision; character entry supplies the latest server-owned inventory/Potion stacks.
+- Resume reopens the same `battleId`; it must not create a new encounter or replay action/reward receipts.
+- Discard calls authenticated server-side cancellation for that character + `battleId`; it closes the Checkpoint and marks non-terminal Battle Authority abandoned. Pending terminal settlement remains recoverable and cannot be discarded.
+- Normal and Halloween use this same recovery path; event type affects encounter context, not recovery mechanics.
 - Auto resumes **OFF**
 
 If a checkpoint is invalid/corrupt, fail safely without duplicating rewards. Prefer a safe restart of the battle/session over granting an unverified result.

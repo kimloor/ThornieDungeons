@@ -82,7 +82,7 @@ async function cloudPost(url, body, { retries, baseDelayMs = 300, headers = {}, 
       if (controller) init.signal = controller.signal;
       const res = await fetch(url, init);
       const data = await res.json();
-      if (res.status >= 500) return { ...data, error: data.error || "server_error", status: res.status };
+      if (!res.ok) return { ...data, error: data.error || (res.status >= 500 ? "server_error" : "request_failed"), status: res.status };
       return data;
     } catch (e) {
       return timedOut ? { error: "network_error", timedOut: true } : { error: "network_error" };

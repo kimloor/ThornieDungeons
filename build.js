@@ -37,6 +37,7 @@ const MODULE_ORDER = [
   "systems/pets.js",
   "systems/battleMigration.js",
   "systems/battleCore.js",
+  "systems/battleErrorCatcher.js",
   "systems/enhancement.js",
   "systems/rewardV2.js",
   "systems/enhancementV2.js",

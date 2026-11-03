@@ -65,7 +65,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.35";
+  content: "Ver 1.1.36";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -3273,4 +3273,16 @@ body > .md-inv2-detail-layer .md-inv2-detail {
   .md-login-brand p { margin-top:3px; }
   .md-character-select-title { padding-bottom:4px; }
 }
+
+.md-checkpoint-recovery-layer { position:absolute; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; padding:calc(18px + var(--safe-top)) calc(18px + var(--safe-right)) calc(18px + var(--safe-bottom)) calc(18px + var(--safe-left)); background:rgba(3,7,20,.78); backdrop-filter:blur(5px); }
+.md-checkpoint-recovery-card { width:min(100%,350px); padding:22px 18px 18px; border:1.5px solid rgba(255,209,102,.72); border-radius:20px; background:linear-gradient(160deg,rgba(38,27,66,.98),rgba(12,9,28,.99)); box-shadow:0 18px 48px rgba(0,0,0,.55); text-align:center; }
+.md-checkpoint-recovery-eyebrow { color:#FFD166; font-size:10px; font-weight:800; letter-spacing:1.6px; }
+.md-checkpoint-recovery-card h2 { margin:8px 0 6px; color:#FFF2C2; font-size:21px; line-height:1.25; }
+.md-checkpoint-recovery-card p { margin:0; color:#D8D0EA; font-size:14px; line-height:1.5; }
+.md-checkpoint-recovery-error { margin-top:12px; padding:8px 10px; border-radius:10px; background:rgba(225,79,79,.14); color:#FFB5B5; font-size:12px; }
+.md-checkpoint-recovery-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; }
+.md-checkpoint-recovery-actions button { min-height:46px; border-radius:12px; font:800 14px 'Baloo 2',sans-serif; cursor:pointer; }
+.md-checkpoint-recovery-resume { border:1px solid #E5B94F; background:linear-gradient(180deg,#FFE49A,#D69B31); color:#2A1A08; }
+.md-checkpoint-recovery-discard { border:1px solid rgba(207,194,231,.55); background:rgba(255,255,255,.08); color:#E5DDF4; }
+
 `;

@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
 const components = read("src/ui/components.js");
@@ -288,4 +289,38 @@ test("Battle Potion submits one atomic authoritative action without a separate p
   assert.match(drive, /heroCommand\?\.type === "potion"/);
   assert.match(drive, /hydrateAuthoritativeBlacksmithSnapshot\(receipt, save\.characterId\)/);
   assert.match(drive, /potionRequestIdsRef\.current\.delete/);
+});
+
+test("Potion and Attack use the shared switchable Battle error catcher with safe diagnostics", () => {
+  const catcherSource = read("src/systems/battleErrorCatcher.js");
+  assert.match(read("build.js"), /systems\/battleErrorCatcher\.js/);
+  assert.match(app, /BATTLE_ERROR_CATCHER\?\.capture/);
+  assert.match(app, /\["potion", "basic"\]\.includes\(command\?\.type\)/);
+  const warnings = [];
+  const sandbox = { console: { warn: (...args) => warnings.push(args) } };
+  vm.createContext(sandbox);
+  vm.runInContext(catcherSource, sandbox);
+  const captured = sandbox.BATTLE_ERROR_CATCHER.capture({
+    response: { error: "battle_revision_conflict", status: 409, message: "do-not-log-this" },
+    action: "basic", battleId: "battle-123", authorityRev: 4, safeActionSeq: 3, requestId: "request-123"
+  });
+  assert.equal(captured.reason, "battle_revision_conflict");
+  assert.equal(captured.status, 409);
+  assert.doesNotMatch(JSON.stringify(warnings), /do-not-log-this/);
+  sandbox.BATTLE_ERROR_CATCHER.setEnabled(false);
+  assert.equal(sandbox.BATTLE_ERROR_CATCHER.capture({ response: { error: "potion_not_owned" } }), null);
+  sandbox.BATTLE_ERROR_CATCHER.setEnabled(true);
+  assert.equal(sandbox.BATTLE_ERROR_CATCHER.isEnabled(), true);
+});
+
+test("Dungeon Hub presents one shared Resume/Discard checkpoint recovery flow", () => {
+  assert.match(app, /phase === "map" && checkpointPromptOpen && resumeBattle\?\.battleId/);
+  assert.match(app, /async function resumePendingBattle/);
+  assert.match(app, /cloudGetBattleState\(cred\.url, save\.characterId\)/);
+  assert.match(app, /checkpointOverride: payload/);
+  assert.match(app, /async function discardPendingBattle/);
+  assert.match(app, /cloudClearBattleCheckpoint\(cred\.url, save\.characterId, resumeBattle\.battleId\)/);
+  assert.match(app, /md-checkpoint-recovery-resume/);
+  assert.match(app, /md-checkpoint-recovery-discard/);
+  assert.match(app, /checkpointCandidate = options\.checkpointOverride \|\| resumeBattle/);
 });
