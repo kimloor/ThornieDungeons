@@ -1,6 +1,6 @@
 # H01 — Halloween Event V1: Contract and Execution Plan
 
-Status: **IMPLEMENTED / MERGED / DEPLOYED (FE + API) / R2 UPLOAD VERIFIED; INDEPENDENT QA RELEASE GATE BLOCKED — EVENT NOT ACTIVATED**
+Status: **H01 CLOSED — PRODUCTION QA PASS (2026-11-03); two edge cases accepted as untested follow-up risks**
 
 > Current release evidence: `docs/H01-RELEASE-GATE-2026-11-03.md`. The dated checkpoints below remain historical context; current deployment does not authorize Event activation.
 Date: 2026-10-29 (Asia/Bangkok)
@@ -242,3 +242,18 @@ No Production R2 upload/SHA read-back, production D1 write, event-config activat
 - Active normal battles and pending settlements remain protected; completed/settled checkpoints may be closed before a new Event run. Duplicate entry races converge on the already-active Halloween battle.
 - No D1 schema change, migration, direct Production D1 write, reward odds, reward settlement, or Event eligibility change.
 - App version: **1.1.41 → 1.1.42**. Automated handler-level regression and GitHub Actions evidence are recorded in `H01-RELEASE-GATE-2026-11-03.md` after CI.
+
+
+## 13. H01 final closeout — Owner decision (2026-11-03)
+
+H01 is **CLOSED** following Owner-confirmed Production QA of the entry-flow hotfix:
+- Halloween Event Preview entry leads into the Battle UI: PASS.
+- Battle can be completed: PASS.
+- Reward is granted: PASS.
+- Owner additionally confirmed persistence/recovery and post-battle checks from the final QA checklist passed.
+
+Owner accepted the following as untested follow-up risks, not blockers to H01 closure:
+1. Rapid repeated taps on Event entry / duplicate-entry behavior.
+2. Attempting to enter an Event Battle after the event is expired or inactive.
+
+These are recorded as **NOT TESTED**, not PASS. If a defect is reported, fix it as a hotfix with required QA, version bump, and documentation. Closing H01 does not by itself activate the Event; activation remains governed by the separate event configuration/Owner release decision.
