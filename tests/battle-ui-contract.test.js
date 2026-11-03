@@ -333,6 +333,7 @@ test("Checkpoint recovery effect declares its state before evaluating hook depen
 });
 
 
+// Regression guard for the production invalid_target case after an enemy dies mid-queue.
 test("Dungeon single-target actions retarget a dead selection to the living enemy with lowest HP", () => {
   const action = app.slice(app.indexOf("async function driveCoreBattle"));
   assert.match(action, /BATTLE_CORE_V1\.getActionMetadata\(state, actor, command\)/);
