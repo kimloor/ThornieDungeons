@@ -487,3 +487,10 @@ Owner-reported Production symptom after the P0 rollout: after using a Potion, th
 - **H01-08/09/10:** Independent staging QA, explicit Owner release authorization and closure; **NOT STARTED**.
 
 **Boundary:** H01-05–07 source implementation is now prepared only on a separate DEV branch for Draft PR review. This does not approve Production D1 modification, R2 publication, merge, deploy, event activation or final H01 release. H01-08 independent staging QA and H01-09 explicit Owner authorization remain mandatory.
+
+
+## 8. Latest status reconciliation — H01 (2026-11-03)
+
+**H01 Halloween Event V1: CLOSED — Owner-confirmed Production QA PASS.** This status supersedes older H01-08/09/10 “not started,” “QA pending,” “release blocked,” and “do not activate” notes above where they conflict with the final closeout records in `docs/H01-RELEASE-GATE-2026-11-03.md` and `docs/H01-HALLOWEEN-EVENT-V1.md`.
+
+Owner confirmed that Event Preview entry, battle completion, reward grant, persistence, and post-battle state passed in Production. Owner explicitly accepted two untested edge cases as deferred risk: (1) rapid repeated entry taps / duplicate protection, and (2) attempting entry after Event expiry/inactivation. They are NOT TESTED, not PASS; if issues arise, deliver a hotfix. H01 closure does not itself activate the Event; activation remains controlled separately.
