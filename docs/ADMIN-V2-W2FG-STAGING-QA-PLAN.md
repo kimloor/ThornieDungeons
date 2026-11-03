@@ -101,3 +101,8 @@ All 19 scenarios behave as listed, no scenario leaves a partial write, and no pr
 - Controls: a settled receipt and a stale run injected at the same boundary do not block (200, mutation happens) — the hook is live and the guard is selective.
 - Sensitivity: the same late pending operation against a worker whose in-statement guard is neutralised (`adminItemActivityGuardSql` → `1 = 1`) mutates (200), so the suite fails if the in-statement guard is removed.
 - Scope: test-only; no runtime file changed (`workers/` and the wrangler template are identical to `46ee2b2`).
+
+## 8. Applicability of the 2026-11-01 evidence (checked 2026-11-03, read-only)
+- The W2-F/W2-G Worker region (`adminCharacterActivityBlock` through `handleAdminRestoreItem`) is **byte-identical** between `46ee2b2` (the commit that was QA'd) and `origin/main` at `0563403`; no helper it relies on (`loadAdminItemTriple`, `sanitizeAdminItemRow`, `buildAdminAuditMetadata`, `validateAdminDestructive`, audit/receipt/run-state SQL) changed in that range. So the 19/19 handler QA still describes the code that is on main.
+- That is evidence about the code, not a re-test: it was run once on staging, the staging path is retired (Owner decision 2026-11-02) and PR #185 was closed without merge. Nothing here marks the release gate as passed.
+- Release gate (unchanged): independent re-review of #182 = APPROVE (2026-11-03); D1 restore point, Owner-supervised first delete/restore on a QA account, QA evidence and the Owner's explicit OK to enable `admin_item_delete_enabled` are all still outstanding.

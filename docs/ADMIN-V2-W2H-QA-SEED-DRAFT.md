@@ -111,7 +111,7 @@ Design mockup: Claude Design canvas "Admin QA Seed (W2-H) — Page Design" (3 bo
 - Version bump on shipped H1/H2/H3; tests need `item_provenance` / `item_ownership_events` tables; register new error codes in the admin client.
 - Provenance origin type `admin_seed`, ownership event type `admin_seeded`.
 
-## 10. H1 implementation record (Ver 1.1.42, PR #202, branch `feat/w2h-h1-admin-seed-shell`)
+## 10. H1 implementation record (Ver 1.1.43, PR #202, branch `feat/w2h-h1-admin-seed-shell`)
 Shipped DISABLED (`game_config.admin_seed_enabled` absent = off). Scope: framework + `gold` canary only. Independent review (2026-11-03) found P1-A..D and P2-A..C; all addressed below and awaiting independent re-review.
 
 **API**
@@ -139,3 +139,26 @@ Shipped DISABLED (`game_config.admin_seed_enabled` absent = off). Scope: framewo
 **Tests** — `tests/admin-v2-seed-h1.test.js` (31): flag/auth, lookup, preview read-only, amount validation, activity race (pending, run, unparseable run), field-level guard, writer coverage, requestId binding (amount/player/character), concurrent duplicates, retry after failed batch, attempt-token gating, mutation row-count mismatch (0 rows, too many rows, expected 2, failing SQL), guard-column allowlist, kill-switch variants.
 
 **Audit** — `ADMIN_SEED` row: actor (`player_id` = Admin), target character, metadata {before{playerId, characterId, characterName, ...}, after, changedKeys, reason, requestHash, attemptToken}.
+
+## 11. Review status and evidence (2026-11-03)
+| Finding | Status | Evidence |
+|---|---|---|
+| P1-A activity race | FIXED (regression-verified) | in-batch guard shares `adminItemActivityGuardSql/Binds` with W2-F/G; tests "P1-A ..." |
+| P1-B requestId binding | FIXED (regression-verified) | `requestHash` + `attemptToken`; tests "P1-B ..." |
+| P1-C mutation row-count assertion | **PARTIAL** | tested on node:sqlite only; NOT proven on real Cloudflare D1 (see below) |
+| P1-D state guard | FIXED for Gold | field-level guard + static writer-coverage test |
+| P2-A kill switch | FIXED | 10 stored values x 3 endpoints |
+| P2-B UI per §9 | FIXED | mocked-API browser run + static UI tests |
+| P2-C error catalog / UI reliability | FIXED | static tests: every Worker code has a Thai text and a catalog entry; safe fallback; no innerHTML sinks; 30 s timeout; requestId reuse on retry; double-submit guards |
+| New P2 PR metadata | FIXED | PR description rewritten (version, tests, CI, evidence labels) |
+
+**Evidence by kind** (never mix): (a) Unit/integration tests on node:sqlite: `tests/admin-v2-seed-h1.test.js` (36). (b) Static source tests: part of (a). (c) Browser run: headless Chromium against a MOCKED API only, not the real Worker. (d) D1 SQL-level test: none for H1. (e) Full handler through `D1Database.batch()` on real D1: none for H1. Production QA: none (flag OFF).
+
+**P1-C blocker:** proving `changes()` and `json()` behaviour and rollback inside `D1Database.batch()` needs a real D1. Only the production D1 and the retired staging D1 (`thornie-dungeons-staging`, c16e0b11-...) are reachable from the current tooling; the Owner has retired the staging path, and Production writes are forbidden. No D1 test was run. Needs an Owner decision (see the report). Fail-closed design: if D1 rejected the assertion, the batch errors and nothing is written.
+
+### W2-F / W2-G re-review notes (read-only, current main; no code changed)
+- Identity, ownership, equipped/pending/run/unparseable-timestamp guards, stale snapshot hash, stack quantity handling, per-statement guards, audit+event+mutation in one batch: consistent with §22.7 as reviewed in #182.
+- **W2F-1 (P2, not changed):** `handleAdminDeleteItem` treats any existing `adm-del-<requestId>` as `already_applied` without checking that the new request targets the same item/quantity. Reusing a requestId for a different item returns a false success (no mutation happens). The UI creates a fresh requestId per attempt, so practical risk is low. Suggested fix: compare `target_id` (and quantity) with the stored audit row, as H1 does with `requestHash`.
+- **W2FG-2 (P3, not changed):** the item statement's row count (`results[2].meta.changes`) is checked after the batch but a mismatch cannot roll back the already-inserted audit/event rows. The three statements carry textually identical guards inside one serialized transaction, so the mismatch should not be reachable; adopting H1's in-batch assertion would make it impossible by construction, but only after P1-C is proven on D1.
+- **W2G-3 (P3, limitation):** a restore that has to use a new item id (original id taken) writes no `item_provenance` row; only the admin viewers read provenance (game logic does not), and the ownership event and audit record exist.
+- Cross-scope: audit ids are namespaced (`adm-del-`, `adm-res-`, `adm-seed-`) on one primary key; flags are independent (`admin_item_delete_enabled`, `admin_seed_enabled`); all entry points check the Admin bearer session before the flag; H1 now reuses the W2-F/G activity helpers (single implementation).
