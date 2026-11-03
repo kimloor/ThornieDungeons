@@ -36,7 +36,7 @@ No decrease/delete operations; removal stays with W2-F.
 - Kill switch `game_config.admin_seed_enabled` (absent or not JSON `true` = off).
 - Audit event `ADMIN_SEED_<TYPE>` with before/after; `requestId` idempotency (repeat → `already_applied`).
 - One guarded `db.batch` (audit + ownership event + mutation) with observed-state guard; 409 `item_state_changed` if state moved.
-- Items and pets also write `item_ownership_events` (`admin_granted`) and `item_provenance`.
+- Items and pets also write `item_ownership_events` (`admin_seeded`) and `item_provenance`.
 - Block when the character has a pending operation or a run updated within 30 minutes (same rule as W2-F).
 - Carried items beyond 30 slots go to overflow (as W2-G restore).
 - Read back and verify progression, inventory, provenance/ownership and audit after each QA seed; record in the QA log.
@@ -49,8 +49,32 @@ No decrease/delete operations; removal stays with W2-F.
 ## 7. Proposed QA baseline to seed after H2/H3
 Level 10 (consistent stats), 20 HP + 20 MP potions, basic non-overpowered equipment, modest gold only if a test needs it, no Diamonds, no extra floor unlock.
 
-## 8. Open items before implementation
-- Potion storage location (see §4).
-- Exact level/stat-point formula source in code.
-- Error codes to register in the error catalog.
-- Confirm the final caps after the Owner reviews the page.
+## 8. Code audit findings (main d1e0fd5, 2026-11-02, read-only)
+**Where data lives**
+- **Potions** are `items` rows: `slot_type='potion'`, `extra_json={potionId, quantity}`, potionId in `hp|mp_small|medium|high|full`. `characters.potions` is a legacy/run counter — do NOT seed it.
+- **Materials** are `items` rows: `slot_type='junk'`, `extra_json={junkId, quantity}` (shop sells `iron`, `manaOre`; other ids come from junk info).
+- **Diamonds are account-level** (`players.diamonds`, shared by every character of the username). **Protection stones** are per character (`characters.protection_stones`). The UI must label this.
+- **Gold, level, xp, stat_points, unlocked_floor, raid_stamina, pvp_tickets** are columns on `characters`.
+- **Pets**: `characters.pets_json` envelope `{list, dup, skills, skillVersion}`; instance `{instId, defId, level, xp, star, stats}` built by `w45NewPetInstance(defId, instId)`; `active_pet_id` auto-set only when empty. Existing pet writes guard on `pets_json = <observed>`; reuse that guard. Pet ids: sprout, flamekit, sparkpup, ember_fox, moon_hare, hell_wolf, inferno_drake, storm_phoenix. Max star not found in worker code (open).
+**Formulas**
+- XP to next level = `level*22 + 18`; +5 stat points per level gained; max level 99 (`dungeonV2ApplyCharacterXp`). Seeding Level L from level N: set `level=L`, `xp=0`, `stat_points += 5*(L-N)` (only increase). Level 1→10 = +45 points. No hard coupling between level and floor found (not exhaustively verified).
+- `unlocked_floor` drives the shop tier and dungeon tier (`dungeonV2ServerTierForFloor`), so seeding a floor also changes shop stock tier.
+**Items / provenance**
+- Inventory capacity 30, stack max 99 (`MAIL_INVENTORY_CAPACITY`, `MAIL_STACK_MAX`). `inventoryPlanAddRow` + `mailPlanPersistenceStatements(db, plan, id, characterId, ts, gate, gateBinds)` already handle merge-into-stack, overflow split, `item_provenance` and ownership events; reuse them with `originType: "admin_seed"` and gate on the audit row.
+- Equipment: `dungeonV2ServerCanonicalEquipment` (tier comes from a floor; rng required) and, for accessories, `DUNGEON_REWARD_V2.dungeonV2EquipmentItem`; then `dungeonV2ServerRewardItem` builds the `items` row. Empower slots depend on `globalThis.ENHANCEMENT_V2` — must be covered by a test that slots are actually filled (the Raid Wing bug came from a wrong global name).
+**Admin infrastructure to reuse**
+- Audit: `admin_audit_log` row inserted in the same `db.batch` with guard `INSERT ... SELECT ... WHERE guard`; `buildAdminAuditMetadata({before, after, changedKeys, reason})`; idempotency by deterministic `audit_id` (e.g. `adm-seed-<requestId>`).
+- Kill switch pattern: `game_config` key holding JSON `true` (see `adminItemDeleteEnabled`); new key `admin_seed_enabled`.
+- Block reasons reusable from `adminItemBlockedReason`: pending `character_operation_receipts`, `character_run_state.updated_at` within 30 min.
+- Lookup: `adminSearchPlayers` and `adminGetPlayer` exist, but `adminGetPlayer` returns all characters + all items and writes an `ADMIN_PLAYER_VIEW` audit each call; H1 should add a lighter `adminSeedPreview` instead.
+- Admin write actions are registered in the list near `adminDeleteItem` / `adminRestoreItem`; client is `admin-app.js` (`.tab` / `tab-<name>`).
+- `validateAdminDestructive` confirms by id; seed needs its own validator (username + character name, reason 5-300).
+**Decisions still needed from the Owner**
+1. Potion baseline: assume 20 `hp_small` + 20 `mp_small`? (policy baseline says only "HP/MP potion 20+20").
+2. Equipment "refine": the code has `enhance_level` (server-authoritative Enhance V2) and empower slots; propose H3 seeds base items only (enhance_level 0, slots as generated) and never seeds enhance levels.
+3. Wings: include or exclude from H3.
+4. Overflow: the shop blocks purchases while overflow items exist; propose seed does the same (reject `inventory_overflow_pending`) instead of silently overflowing.
+5. Pet star: seed star 1 only unless a max-star rule is confirmed.
+**Engineering notes**
+- Bump the visible version on shipped H1/H2/H3 (project rule); tests must create `item_provenance` / `item_ownership_events` tables in the test DB.
+- Register new error codes where the admin client maps them (check `admin-app.js`, not only the game error catalog).
