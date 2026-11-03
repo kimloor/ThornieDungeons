@@ -1278,7 +1278,7 @@ function ThornieDungeons() {
     else if (actor.side === "enemy") setEnemyAnims(current => ({ ...current, [actor.id]: "attack" }));
     let command = actor.kind === "hero" ? heroCommand : { type: "advance" };
     // A prior action may have defeated the selected enemy before the Hero acts.
-    // Match the Arena target-cursor behavior, but preserve Dungeon's locked rule:
+    // Match the Arena target-cursor behavior at the final client boundary, preserving Dungeon's locked rule:
     // single-target actions fall back to the living enemy with the lowest HP.
     if (actor.kind === "hero" && ["basic", "active"].includes(command?.type)) {
       const targeting = BATTLE_CORE_V1.getActionMetadata(state, actor, command);
