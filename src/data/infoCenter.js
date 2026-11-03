@@ -119,8 +119,8 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.34", date: "2026-10-29", title: "แก้ส่วนเอวกางเกง Azure ในชุดผสม",
-      items: ["ประกอบส่วนกางเกง Azure ด้านบนเมื่อสวมกับเสื้อชุดอื่น ให้ครอบคลุมต้นขาและเอว"]
+      version: "1.1.35", date: "2026-11-03", title: "เตรียมกิจกรรม Halloween H01",
+      items: ["เพิ่มเนื้อหากิจกรรม Halloween พร้อมบอส Haloween nightmare และอาวุธ Excaliburnt"]
     },
     history: [
       { version: "1.1.33", date: "2026-10-29", title: "อัปเดตการโหลดภาพอุปกรณ์ Idle", items: ["เพิ่ม Revision ให้ภาพ Leather และกางเกง Azure"] },

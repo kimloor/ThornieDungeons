@@ -37,6 +37,7 @@ function ThornieDungeons() {
   const [gachaReturnPhase, setGachaReturnPhase] = useState("pets");
   const [utilityReturnPhase, setUtilityReturnPhase] = useState("menu");
   const [arenaHud, setArenaHud] = useState(null);
+  const [halloweenEvent, setHalloweenEvent] = useState({ active: false, state: "inactive" });
   const [arenaFatal, setArenaFatal] = useState(null);
   // One-shot deep link set only by Friend's "Chat" action, consumed once by ChatScreen on
   // mount to open straight into that DM thread. Every other way of opening Chat clears
@@ -80,6 +81,19 @@ function ThornieDungeons() {
       clearInterval(timer);
     };
   }, [cred.url, save?.characterId, save?.character?.level]);
+  useEffect(() => {
+    if (!cred.url || !["menu", "map"].includes(phase)) return undefined;
+    let cancelled = false;
+    const refresh = () => cloudGetHalloweenEventStatus(cred.url).then(status => {
+      if (!cancelled && status && !status.error) setHalloweenEvent(status);
+    }).catch(() => {});
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [cred.url, phase]);
   const refreshGuildChatStatus = useCallback((characterId) => cloudGetGuildChatStatus(cred.url, characterId).then((res) => {
     if (activeCharacterIdRef.current === characterId && res?.ok) setGuildUnreadState({ characterId, unread: !!res.guild?.unread });
   }).catch(() => {}), [cred.url]);
@@ -1344,7 +1358,10 @@ function ThornieDungeons() {
     const stageLoading = GLOBAL_LOADING.begin({ key: "dungeon.enter", label: "กำลังเข้าดันเจี้ยน…", maxMs: 45000 });
     void (async () => {
     const allowResume = options.allowResume !== false;
-    const resumableCheckpoint = allowResume && resumeBattle?.serverContext && Number(resumeBattle.floor) === Number(floorNum)
+    const resumeMatches = options.halloween
+      ? resumeBattle?.serverContext?.eventId === "halloween_v1"
+      : Number(resumeBattle?.floor) === Number(floorNum);
+    const resumableCheckpoint = allowResume && resumeBattle?.serverContext && resumeMatches
       ? resumeBattle
       : null;
     let battleAuthorization = null;
@@ -1356,8 +1373,10 @@ function ThornieDungeons() {
         if (!cleared?.ok) throw new Error("checkpoint_reset_failed");
         setResumeBattle(null);
       }
-      let started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, options.previewContext || null, options.previousBattleId || null);
-      if (!started?.ok && started?.error === "dungeon_preview_stale" && started?.context) {
+      let started = options.halloween
+        ? await cloudStartHalloweenBattle(cred.url, save.characterId)
+        : await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, options.previewContext || null, options.previousBattleId || null);
+      if (!options.halloween && !started?.ok && started?.error === "dungeon_preview_stale" && started?.context) {
         started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, started.context, options.previousBattleId || null);
       }
       if (!started?.ok || !started?.battleId || !started?.context) throw new Error(started?.error || "dungeon_start_failed");
@@ -1371,6 +1390,8 @@ function ThornieDungeons() {
     setLogState([]);
     setBattleVfx([]);
     setFinishedBattleLog([]);
+    const serverContext = resumableCheckpoint?.serverContext || battleAuthorization?.context;
+    floorNum = Math.max(1, Number(serverContext?.floor) || Number(floorNum) || 1);
     setSelectedFloor(floorNum);
     const resumeCarry = allowResume && !carryPlayer && resumeRun && Number(resumeRun.floor) === Number(floorNum) ? resumeRun : null;
     const nextPlayer = freshPlayerFromSave(save, carryPlayer || resumeCarry);
@@ -1386,7 +1407,6 @@ function ThornieDungeons() {
     if (resumeRun) setResumeRun(null);
     // The map may preview a local encounter, but combat identity is established by
     // the Worker before Battle Core starts. Resume uses the same persisted context.
-    const serverContext = resumableCheckpoint?.serverContext || battleAuthorization?.context;
     const spawned = makeEncounter(floorNum, { serverContext });
     setMonsters(spawned);
     monstersRef.current = spawned;
@@ -2659,6 +2679,7 @@ function ThornieDungeons() {
     save: save,
     cp: cp,
     arenaHud: arenaHud,
+    halloweenEvent: halloweenEvent,
     onTown: () => setPhase("town"),
     onCharacter: () => {
       setCharacterReturnPhase("menu");
@@ -2681,6 +2702,7 @@ function ThornieDungeons() {
       setUtilityReturnPhase("menu");
       setPhase("raid");
     },
+    onHalloween: () => setPhase("map"),
     onArena: () => {
       setUtilityReturnPhase("menu");
       setPhase("arena");
@@ -2829,6 +2851,7 @@ function ThornieDungeons() {
     save: save,
     serverUrl: cred.url,
     arenaHud: arenaHud,
+    halloweenEvent: halloweenEvent,
     unlockedFloor: save.unlockedFloor,
     onCharacter: () => {
       setCharacterReturnPhase("map");
@@ -2847,6 +2870,11 @@ function ThornieDungeons() {
       floorNum,
       player && player.hp > 0 ? player : null,
       { encounter, previewContext }
+    ),
+    onSelectHalloween: () => enterStage(
+      null,
+      player && player.hp > 0 ? player : null,
+      { halloween: true }
     ),
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),

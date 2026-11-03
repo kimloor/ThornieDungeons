@@ -215,7 +215,7 @@ function resolveItemIconPath(item) {
     return icons.wings?.angel || "";
   }
   const bossWeaponId = String(item.bossWeaponId || item.specialSource || item.sourceIdentity || "").toLowerCase().replace(/^boss_weapon:/, "");
-  const bossWeaponIcons = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword" };
+  const bossWeaponIcons = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword", excaliburnt: "excaliburnt" };
   if (bossWeaponIcons[bossWeaponId]) return icons.bossWeapons?.[bossWeaponIcons[bossWeaponId]] || "";
   // G11 set families share one slot contract; never infer a path outside the manifest.
   const setFamily = String(item.setId || "").trim().toLowerCase();
