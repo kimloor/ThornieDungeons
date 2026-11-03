@@ -26,10 +26,13 @@ This file defines the default operating rules for all contributors and AI agents
 
 ## 4. Risk, release, merge, and deploy
 - Assess every task as LOW, MEDIUM, HIGH, or VERY HIGH before implementation.
-- LOW, MEDIUM, and ordinary HIGH risk changes that do **not** modify the production API/Worker, database/schema/migrations, or authoritative/player data may be committed/published directly to `main` after the required checks pass, unless the task explicitly requires a branch.
-- HIGH risk changes that modify the production API/Worker, database/schema/migrations, or authoritative/player data must use a feature/hotfix branch and the applicable QA/release gate before merge/deploy.
-- VERY HIGH risk changes must use a feature/hotfix branch and QA/release gate. If they also touch API/DB/data, apply the stricter backend/data checks as well.
-- Branch routing does not waive testing, QA, migration, or deploy gates that apply to the task.
+- **Every change to the game itself must ultimately be published to `main`, regardless of risk level, after the applicable approval and QA gates pass.** Do not leave an approved, completed game fix or feature only on a working branch.
+- **Every game change published to `main` must bump the app/game version** using the project's established versioning mechanism. This applies to every change, not only user-visible preview fixes.
+- **Every game change published to `main` must update the relevant documentation** with what changed. Record the behavior/rule change and relevant verification; update existing source-of-truth docs rather than creating unnecessary temporary documents.
+- For changes that touch the production API/Worker, database/schema/migrations, or important/authoritative player data, first report the affected systems, risk, expected impact, and proposed implementation/QA approach. Then stop and ask the Owner whether the work should proceed through a feature/hotfix branch, a pull request, or another explicitly chosen route. **Do not begin those changes until the Owner decides the route and approves proceeding.**
+- After that approval, follow the Owner-selected branch/PR route and applicable backend/data QA gates; the final approved game change must still be integrated into `main` before it is considered released.
+- Changes that do not touch the production API/Worker, database/schema/migrations, or important/authoritative player data may be committed/published directly to `main` after the required checks pass, unless the Owner explicitly requests a branch or PR.
+- Branch routing does not waive testing, QA, migration, version-bump, documentation, or deploy gates that apply to the task.
 - If the requirement is unclear or confirmation is needed, stop and ask before making the uncertain change.
 - After assessing and fixing the task, merge/deploy when appropriate and verify the result; then report a short, clear summary.
 - Always ask before changes that can permanently delete player data, perform irreversible migrations, or make major economy-wide changes.
@@ -49,11 +52,11 @@ This file defines the default operating rules for all contributors and AI agents
 - Treat authentication, player inventory, currencies, progression, rewards, and transaction logic as high-impact areas requiring targeted regression checks.
 
 ## 7. UI and UX
-- Design and implementation are mobile-first.
+- Design and implementation are **mobile-first, web-second**.
 - Preserve the established ThornieDungeons visual language unless the task explicitly requests a redesign.
 - Reuse existing components and interaction patterns before creating parallel systems.
 - Keep artwork/backgrounds separate from text, hit targets, and interactive UI where practical.
-- Verify safe areas, overflow, touch targets, and responsive behavior on mobile layouts.
+- Verify safe areas, overflow, touch targets, and responsive behavior on mobile layouts, then verify the web/desktop layout.
 
 ## 8. Assets, R2, and manifest
 - Follow `r2-upload/README.md` for R2 staging and path rules.
@@ -65,9 +68,11 @@ This file defines the default operating rules for all contributors and AI agents
 ## 9. Testing and verification
 - Test the changed behavior and relevant regressions; do not run unrelated broad checks without reason.
 - Combat changes should verify turn flow, damage, status effects, cooldowns, animation triggers, and save/reload where relevant.
-- UI changes should verify mobile layout, safe area, overflow, interaction, and asset loading.
+- UI changes should verify mobile layout, safe area, overflow, interaction, and asset loading; then verify web/desktop behavior.
 - Backend/save changes should verify existing-player compatibility and transaction/data integrity.
-- For any user-visible staging/preview fix that the user must reopen in a browser, bump the visible preview patch version before deployment so stale-cache reports can be distinguished from the new build.
+- Before planning or performing routine gameplay, UI, or regression QA, read `docs/PRODUCTION-QA-POLICY-V1.md` and use its designated QA Player IDs, Character IDs, and intended account separation. Do not guess, reuse, or substitute a test identity from chat history. Use the identity assigned to the agent/test purpose; never use or request credentials in repository docs or chat.
+- The Production QA policy identifies the approved QA accounts and characters. It does not authorize direct Production D1 writes, fixture seeding/cleanup, fault injection, forged requests, destructive probes, migrations, or security testing.
+- For any user-visible staging/preview fix that the user must reopen in a browser, bump the visible preview patch version before deployment so stale-cache reports can be distinguished from the new build. The general game-version bump rule in section 4 applies in addition to this cache-verification requirement.
 - After merge/deploy, verify the live result when the deployment path is available: page/endpoint loads, changed feature works, obvious errors are absent, and critical asset paths are not 404.
 
 ## 9.1 Production QA environment (Owner-approved, 2026-11-02)
@@ -78,6 +83,7 @@ This file defines the default operating rules for all contributors and AI agents
 ## 10. Documentation
 - Keep current system contracts in `docs/*.md`; remove or update obsolete documents instead of leaving conflicting specifications.
 - Update docs when an approved rule, architecture, or production contract changes.
+- For every game change published to `main`, update the relevant documentation to state what changed and record applicable QA/verification. This is mandatory regardless of risk level.
 - Task-specific temporary notes should not become permanent source-of-truth files unless they contain reusable contracts.
 
 ## 11. GitHub commit and publish protocol
@@ -115,11 +121,12 @@ A task is complete when the relevant steps are satisfied:
 3. Only related changes made.
 4. Required tests pass.
 5. Build passes when source changed.
-6. Merge/deploy completed when appropriate.
-7. Live result verified when deployment is available.
-8. Relevant docs/comments updated.
-9. Short copy-ready handoff provided.
-10. For branch-based work, merged remote branches are cleaned up after release verification, or explicitly reported as `BRANCH_CLEANUP_PENDING` when the available tools cannot safely perform the cleanup.
+6. Game version bumped for every game change published to `main`.
+7. Relevant documentation updated with the change and QA evidence for every game change published to `main`.
+8. Merge/deploy completed when appropriate.
+9. Live result verified when deployment is available.
+10. Short copy-ready handoff provided.
+11. For branch-based work, merged remote branches are cleaned up after release verification, or explicitly reported as `BRANCH_CLEANUP_PENDING` when the available tools cannot safely perform the cleanup.
 
 ## 13. Equipment sprite mandatory preflight (Owner approved, 2026-10-27)
 Before **every** equipment sprite creation, edit, replacement, or reuse (G16–G20 and Skeleton revisions), read `docs/EQUIPMENT-SPRITE-MASTER-TEMPLATE-V1.md` and `docs/EQUIPMENT-SPRITE-PIPELINE-V1.md`. Reuse locked Gate 0 references; run scoped integrity/compatibility checks, not full analysis again, unless Base/manifest/runtime changes. Gate 0 original PNG SHA-256 and raw-alpha bounds are verified, but visual anatomical landmarks are approximate and are NOT pixel-exact rig coordinates; actual armor fit requires G2/G4 Owner/art QA. Respect Owner concept/Idle_01 approval gates and DEV helmet-hair compatibility gate. Never silently generate or publish replacement art.
