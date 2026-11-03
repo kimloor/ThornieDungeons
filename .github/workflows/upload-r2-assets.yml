@@ -164,9 +164,9 @@ jobs:
           {
             echo "## R2 asset upload"
             echo ""
-            echo "- Bucket: `$R2_BUCKET`"
+            echo "- Bucket: \`$R2_BUCKET\`"
             echo "- Uploaded and verified: **$uploaded** object(s)"
-            echo "- Mapping: `r2-upload/<key>` -> `R2 <key>`"
+            echo "- Mapping: \`r2-upload/<key>\` -> \`R2 <key>\`"
             echo "- R2 deletions: **disabled**"
           } >> "$GITHUB_STEP_SUMMARY"
 
