@@ -5045,7 +5045,7 @@ function MapScreen({
     setDetail({ kind: "halloween", floor, monsters, previewContext: null, loading: false });
   };
   const enterSelectedFloor = () => {
-    if (!detail || detail.loading || detail.error || detail.floor > unlockedFloor) return;
+    if (!detail || detail.loading || detail.error || (detail.kind !== "halloween" && detail.floor > unlockedFloor)) return;
     if (detail.kind === "halloween") {
       onSelectHalloween();
       return;
@@ -5177,8 +5177,8 @@ function MapScreen({
         e("div", { className: "md-floor-rewards" },
           detail.kind === "halloween"
             ? e(React.Fragment, null,
-              e("div", null, e("b", null, "5%"), e("small", null, "Excaliburnt · Mythic")),
-              e("div", null, e("b", null, "95%"), e("small", null, "Gold ตาม Chapter Boss ของความคืบหน้าปัจจุบัน"))
+              e("div", null, e(GameIcon, { item: { type: "weapon", rarity: "mythic", bossWeaponId: "excaliburnt", specialSource: "excaliburnt" }, fallback: "⚔️", className: "md-game-icon md-floor-reward-icon", alt: "Excaliburnt" }), e("b", null, "5%"), e("small", null, "Excaliburnt · Mythic")),
+              e("div", null, e(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-floor-reward-icon", alt: "Gold" }), e("b", null, "95%"), e("small", null, "Gold ตาม Chapter Boss ของความคืบหน้าปัจจุบัน"))
             )
             : floorRewardPreview(detail.floor, detail.monsters || []).map(reward => e("div", { key: reward.hint },
             e("span", null, reward.category ? e(GameIcon, { category: reward.category, iconKey: reward.iconKey, fallback: reward.icon, className: "md-game-icon md-floor-reward-icon", alt: reward.hint }) : reward.icon), e("b", null, reward.label), e("small", null, reward.hint)

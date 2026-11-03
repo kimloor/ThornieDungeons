@@ -113,3 +113,12 @@ The source is merged and FE/API deployment workflows succeeded. R2 upload count 
 - Code changes: workers/thornie-dungeons-api.js and src/ui/components.js; version 1.1.40; source-contract regression in tests/h01-halloween-event.test.js.
 - No database schema, migration, D1 row, or reward/settlement logic was changed.
 - QA status at documentation update: PENDING GitHub Actions build/tests and Production live UI verification. This hotfix does not complete the broader H01 Independent QA Release Gate.
+
+
+## 10. Owner-reported Event Preview follow-up — 2026-11-03
+
+- Owner supplied a Production mobile screenshot showing the reward tiles without icons and the Event Preview entry button not entering combat.
+- Root cause for the blocked button: the shared preview-entry guard rejected the Halloween reference floor whenever it was above the character's unlocked normal Dungeon floor. The Halloween event is separately authorized by its server start endpoint and bypasses only this normal-floor unlock comparison; normal floor previews retain the existing guard.
+- Reward tiles now use the existing GameIcon resolver for the Excaliburnt Mythic weapon identity and Gold currency icon.
+- App version and visible badge are advanced to 1.1.41; the inventory-order version contract is kept aligned. No API/Worker, D1, schema, reward odds, or settlement behavior is changed.
+- QA status: automated tests/build and frontend deployment pending; live Production interaction must be confirmed by Owner using the normal game client. The broader H01 Release Gate remains BLOCKED and Event activation is not authorized by this fix.
