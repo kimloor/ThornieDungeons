@@ -232,3 +232,13 @@ No Production R2 upload/SHA read-back, production D1 write, event-config activat
 - The Halloween gate on Dungeon Floor Select opens a pre-entry Event Preview sheet instead of immediately entering combat. The sheet previews the event boss, progression-scaled boss direction, approved alternating attack/skill and Rage behavior, and the 5% Excaliburnt / 95% chapter-boss Gold reward split. Its entry action still uses the existing Halloween start flow.
 - No D1 schema/data or event reward logic is changed. Existing Halloween checkpoint resume remains on the event flow; normal Dungeon previews fall back to the normal server-generated floor context.
 - Automated source-contract regression added in tests/h01-halloween-event.test.js. Build, focused test execution, and Production UI verification must be recorded from GitHub Actions/live release evidence before this hotfix is considered QA-complete.
+
+
+## 1C. Production hotfix — Halloween Battle Authority entry (2026-11-03)
+
+- Root cause: `handleStartHalloweenBattle()` created an active `battle_checkpoints` row without a matching `battle_authority` row and returned no `state`. The Frontend `enterStage()` requires the server-issued `state`; otherwise it throws `dungeon_authority_state_missing` and returns to the map/Preview.
+- The same contract defect affected retry: an existing Halloween checkpoint was returned immediately without reading or reconstructing its authority state.
+- Fix: create the checkpoint and initial Battle Authority state together in one D1 `batch()`; return the same authoritative response contract as Normal Dungeon (`state`, `stateRev`, `authoritative`). Existing legacy Halloween checkpoints missing authority are repaired from their stored immutable server context using `INSERT OR IGNORE`, preserving the existing battle ID and encounter.
+- Active normal battles and pending settlements remain protected; completed/settled checkpoints may be closed before a new Event run. Duplicate entry races converge on the already-active Halloween battle.
+- No D1 schema change, migration, direct Production D1 write, reward odds, reward settlement, or Event eligibility change.
+- App version: **1.1.41 → 1.1.42**. Automated handler-level regression and GitHub Actions evidence are recorded in `H01-RELEASE-GATE-2026-11-03.md` after CI.

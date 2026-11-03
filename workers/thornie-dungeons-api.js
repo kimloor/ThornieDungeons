@@ -2196,6 +2196,47 @@ async function handleSubmitDungeonBattleAction(db, id, session, characterId, bat
   }
   return json({ ok: true, replayed: false, ...parseJsonColumn(committed.result_json, response), ...(await battleCompletionSnapshot(db, id, characterId)) });
 }
+async function halloweenAuthorityStartResult(db, character, battleId, context) {
+  let authority = await db.prepare(
+    `SELECT state_rev, state_json, outcome, settled_at FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`
+  ).bind(battleId, character.character_id).first();
+
+  // Older H01 builds created only an authorization checkpoint. Reconstruct the
+  // initial Battle Core state from its immutable stored context, then insert it
+  // once. INSERT OR IGNORE makes concurrent retries converge on one authority row.
+  if (!authority) {
+    const state = await dungeonAuthorityInitialState(db, character, context, battleId, null);
+    const now = nowIso();
+    await db.prepare(`INSERT OR IGNORE INTO battle_authority
+      (battle_id, character_id, state_rev, initial_state_json, state_json, outcome, last_action_key, last_action_request_json, last_action_result_json, settled_at, created_at, updated_at)
+      VALUES (?, ?, 0, ?, ?, '', '', '', '', '', ?, ?)`)
+      .bind(battleId, character.character_id, JSON.stringify(state), JSON.stringify(state), now, now).run();
+    authority = await db.prepare(
+      `SELECT state_rev, state_json, outcome, settled_at FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`
+    ).bind(battleId, character.character_id).first();
+  }
+
+  if (!authority) return { error: "battle_authority_initialization_failed", status: 500 };
+  if (authority.outcome && !authority.settled_at) {
+    return { error: "battle_settlement_pending", status: 409, outcome: authority.outcome };
+  }
+  if (authority.outcome && authority.settled_at) return { settled: true };
+
+  const state = parseJsonColumn(authority.state_json, null);
+  if (!state || typeof state !== "object") {
+    return { error: "battle_authority_state_invalid", status: 500 };
+  }
+  const stateRev = Number(authority.state_rev) || 0;
+  return {
+    body: {
+      ok: true, battleId, context,
+      state: { ...state, authorityRev: stateRev },
+      stateRev,
+      authoritative: true
+    }
+  };
+}
+
 async function handleStartHalloweenBattle(db, id, session, characterId) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error }, 401);
@@ -2203,6 +2244,7 @@ async function handleStartHalloweenBattle(db, id, session, characterId) {
   if (owned.error) return json({ error: owned.error }, 403);
   const window = await halloweenEventWindow(db);
   if (!window.active) return json({ error: "halloween_event_inactive", event: window }, 403);
+
   const existing = await db.prepare(
     `SELECT battle_id, payload_json FROM battle_checkpoints WHERE character_id = ? AND state = 'active' LIMIT 1`
   ).bind(characterId).first();
@@ -2210,11 +2252,30 @@ async function handleStartHalloweenBattle(db, id, session, characterId) {
     const payload = parseJsonColumn(existing.payload_json, null);
     const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
     if (context?.eventId === HALLOWEEN_EVENT_ID) {
-      return json({ ok: true, battleId: existing.battle_id, context });
+      const current = await halloweenAuthorityStartResult(db, owned.row, existing.battle_id, context);
+      if (current.body) return json(current.body);
+      if (current.settled) {
+        await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
+          .bind(nowIso(), existing.battle_id, characterId).run();
+      } else {
+        return json({ error: current.error, ...(current.outcome ? { outcome: current.outcome } : {}) }, current.status || 500);
+      }
+    } else {
+      const authority = await db.prepare(
+        `SELECT state_rev, state_json, outcome, settled_at FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`
+      ).bind(existing.battle_id, characterId).first();
+      if (authority && !authority.outcome) {
+        return json({ error: "active_battle_conflict", battleId: existing.battle_id }, 409);
+      }
+      if (authority?.outcome && !authority.settled_at) {
+        return json({ error: "battle_settlement_pending", battleId: existing.battle_id, outcome: authority.outcome }, 409);
+      }
+      if (!payload?.authorizationOnly && !authority?.settled_at) {
+        return json({ error: "active_battle_conflict", battleId: existing.battle_id }, 409);
+      }
+      await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
+        .bind(nowIso(), existing.battle_id, characterId).run();
     }
-    if (!payload?.authorizationOnly) return json({ error: "active_battle_conflict", battleId: existing.battle_id }, 409);
-    await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
-      .bind(nowIso(), existing.battle_id, characterId).run();
   }
 
   const progressFloor = Math.max(1, Math.floor(Number(owned.row.unlocked_floor) || 1));
@@ -2248,6 +2309,7 @@ async function handleStartHalloweenBattle(db, id, session, characterId) {
 
   const battleId = `halloween-${randomToken(16)}`;
   const now = nowIso();
+  const state = await dungeonAuthorityInitialState(db, owned.row, context, battleId, null);
   const authorization = JSON.stringify({
     version: 1,
     battleId,
@@ -2259,14 +2321,32 @@ async function handleStartHalloweenBattle(db, id, session, characterId) {
     serverContext: context
   });
   try {
-    await db.prepare(
+    // The authorization checkpoint and initial authoritative state must commit
+    // together. A visible active checkpoint without battle_authority cannot run.
+    await db.batch([db.prepare(
       `INSERT INTO battle_checkpoints (battle_id, character_id, checkpoint_seq, payload_json, state, created_at, updated_at)
        VALUES (?, ?, -1, ?, 'active', ?, ?)`
-    ).bind(battleId, characterId, authorization, now, now).run();
+    ).bind(battleId, characterId, authorization, now, now),
+    db.prepare(`INSERT INTO battle_authority
+      (battle_id, character_id, state_rev, initial_state_json, state_json, outcome, last_action_key, last_action_request_json, last_action_result_json, settled_at, created_at, updated_at)
+      VALUES (?, ?, 0, ?, ?, '', '', '', '', '', ?, ?)`)
+      .bind(battleId, characterId, JSON.stringify(state), JSON.stringify(state), now, now)]);
   } catch (_) {
+    // A simultaneous entry may have won the active-checkpoint race. Reuse its
+    // immutable encounter and authoritative state instead of creating a second.
+    const raced = await db.prepare(
+      `SELECT battle_id, payload_json FROM battle_checkpoints WHERE character_id = ? AND state = 'active' LIMIT 1`
+    ).bind(characterId).first();
+    const racedPayload = parseJsonColumn(raced?.payload_json, null);
+    const racedContext = dungeonV2ServerContextFromStoredCheckpoint(racedPayload);
+    if (raced && racedContext?.eventId === HALLOWEEN_EVENT_ID) {
+      const current = await halloweenAuthorityStartResult(db, owned.row, raced.battle_id, racedContext);
+      if (current.body) return json(current.body);
+      return json({ error: current.error || "active_battle_conflict", ...(current.outcome ? { outcome: current.outcome } : {}) }, current.status || 409);
+    }
     return json({ error: "active_battle_conflict" }, 409);
   }
-  return json({ ok: true, battleId, context });
+  return json({ ok: true, battleId, context, state: { ...state, authorityRev: 0 }, stateRev: 0, authoritative: true });
 }
 function dungeonV2ServerRollRarity(floor, rng, rarityBoost = false) {
   const roll = Math.max(0, Math.min(0.999999999, Number(rng()) || 0));
