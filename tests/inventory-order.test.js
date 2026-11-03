@@ -60,5 +60,6 @@ test("Ver 1.1.36: visible badge, meta and roadmap are in sync", () => {
   assert.match(read("src/data/styles.js"), /content: "Ver 1\.1\.36"/);
   assert.match(read("head.html"), /name="application-version" content="1\.1\.36"/);
   // Generated index.html is checked after node build.js by the Frontend Production workflow.
+  // The main-branch build job commits that generated output before Battle Core parity runs.
   assert.match(read("docs/ACTIVE-DEVELOPMENT-ROADMAP-V3.md"), /Visible game version\s+Ver 1\.1\.36/);
 });
