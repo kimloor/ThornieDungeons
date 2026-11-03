@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.40" />
+<meta name="application-version" content="1.1.41" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.39";
+  content: "Ver 1.1.41";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -25167,7 +25167,7 @@ function MapScreen({
     setDetail({ kind: "halloween", floor, monsters, previewContext: null, loading: false });
   };
   const enterSelectedFloor = () => {
-    if (!detail || detail.loading || detail.error || detail.floor > unlockedFloor) return;
+    if (!detail || detail.loading || detail.error || (detail.kind !== "halloween" && detail.floor > unlockedFloor)) return;
     if (detail.kind === "halloween") {
       onSelectHalloween();
       return;
@@ -25299,8 +25299,8 @@ function MapScreen({
         e("div", { className: "md-floor-rewards" },
           detail.kind === "halloween"
             ? e(React.Fragment, null,
-              e("div", null, e("b", null, "5%"), e("small", null, "Excaliburnt · Mythic")),
-              e("div", null, e("b", null, "95%"), e("small", null, "Gold ตาม Chapter Boss ของความคืบหน้าปัจจุบัน"))
+              e("div", null, e(GameIcon, { item: { type: "weapon", rarity: "mythic", bossWeaponId: "excaliburnt", specialSource: "excaliburnt" }, fallback: "⚔️", className: "md-game-icon md-floor-reward-icon", alt: "Excaliburnt" }), e("b", null, "5%"), e("small", null, "Excaliburnt · Mythic")),
+              e("div", null, e(GameIcon, { category: "currency", iconKey: "gold", fallback: "🪙", className: "md-game-icon md-floor-reward-icon", alt: "Gold" }), e("b", null, "95%"), e("small", null, "Gold ตาม Chapter Boss ของความคืบหน้าปัจจุบัน"))
             )
             : floorRewardPreview(detail.floor, detail.monsters || []).map(reward => e("div", { key: reward.hint },
             e("span", null, reward.category ? e(GameIcon, { category: reward.category, iconKey: reward.iconKey, fallback: reward.icon, className: "md-game-icon md-floor-reward-icon", alt: reward.hint }) : reward.icon), e("b", null, reward.label), e("small", null, reward.hint)
