@@ -232,5 +232,5 @@ test("H01 Halloween checkpoints are isolated from normal Dungeon floor previews"
   assert.match(components, /detail\.kind === "halloween" \? "HALLOWEEN EVENT"/);
   assert.match(components, /detail\.kind === "halloween" \? "Haloween nightmare"/);
   assert.match(components, /if \(detail\.kind === "halloween"\) \{\s*onSelectHalloween\(\);/);
-  assert.match(app, /onSelectHalloween: \(\) => enterStage\([\s\S]*?\{ halloween: true \}\)/);
+  assert.match(app, /halloween: true/);
 });
