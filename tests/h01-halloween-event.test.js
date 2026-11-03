@@ -219,3 +219,18 @@ test("H01 UI polling is cleaned up and event placement is scoped", () => {
   assert.match(styles, /\.md-dungeon-floor-node\.md-halloween-gate/);
   assert.doesNotMatch(styles, /\.md-dungeon-floor-node\s*\{[^}]*left\s*:/s);
 });
+
+
+test("H01 Halloween checkpoints are isolated from normal Dungeon floor previews", () => {
+  const api = source("workers/thornie-dungeons-api.js");
+  const components = source("src/ui/components.js");
+  const app = source("src/ui/App.js");
+  assert.match(api, /context\.mode === "dungeon" && context\.eventId !== HALLOWEEN_EVENT_ID/);
+  assert.match(api, /!context\.enemies\.some\(enemy => enemy\.id === "haloween_nightmare"\)/);
+  assert.match(components, /const openHalloweenPreview = \(\) =>/);
+  assert.match(components, /onClick: openHalloweenPreview/);
+  assert.match(components, /detail\.kind === "halloween" \? "HALLOWEEN EVENT"/);
+  assert.match(components, /detail\.kind === "halloween" \? "Haloween nightmare"/);
+  assert.match(components, /if \(detail\.kind === "halloween"\) \{\s*onSelectHalloween\(\);/);
+  assert.match(app, /onSelectHalloween: \(\) => enterStage\([\s\S]*?\{ halloween: true \}\)/);
+});

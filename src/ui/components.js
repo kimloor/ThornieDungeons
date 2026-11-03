@@ -5032,8 +5032,24 @@ function MapScreen({
     encounterCache.current.set(floor, { monsters, previewContext: preview.context });
     setDetail({ floor, monsters, previewContext: preview.context, loading: false });
   };
+  const openHalloweenPreview = () => {
+    if (!halloweenEvent?.active) return;
+    const floor = Math.max(10, Math.ceil(Math.max(1, unlockedFloor) / 10) * 10);
+    const monsters = makeEncounter(floor, {
+      serverContext: {
+        floor,
+        packCount: 1,
+        enemies: [{ id: "haloween_nightmare", instanceId: "halloween-preview" }]
+      }
+    });
+    setDetail({ kind: "halloween", floor, monsters, previewContext: null, loading: false });
+  };
   const enterSelectedFloor = () => {
     if (!detail || detail.loading || detail.error || detail.floor > unlockedFloor) return;
+    if (detail.kind === "halloween") {
+      onSelectHalloween();
+      return;
+    }
     onSelectFloor(detail.floor, detail.monsters, detail.previewContext);
   };
   return e("main", { className: `md-dungeon-map-page${detail ? " detail-open" : ""}` },
@@ -5049,8 +5065,8 @@ function MapScreen({
         type: "button",
         className: "md-dungeon-floor-node md-halloween-gate current",
         style: { left: "31%", top: "13%", "--md-gate-scale": .72 },
-        onClick: onSelectHalloween,
-        "aria-label": "เข้าสู่ดันเจี้ยน Halloween"
+        onClick: openHalloweenPreview,
+        "aria-label": "ดูตัวอย่างดันเจี้ยน Halloween"
       },
         e("span", { className: "md-dungeon-floor-number" }, "EVENT"),
         e("span", { className: "md-dungeon-boss-label" }, "HALLOWEEN"),
@@ -5118,8 +5134,8 @@ function MapScreen({
         e("button", { type: "button", className: "md-floor-detail-x", onClick: () => setDetail(null), "aria-label": "ปิด" }, "✕"),
         e("div", { className: `md-floor-detail-heading${DUNGEON_V2.classifyDungeonEncounter(detail.floor) !== DUNGEON_V2.ENCOUNTER_TYPES.NORMAL ? " boss" : ""}` },
           e("div", { className: "md-floor-title" },
-            e("small", null, DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS ? "CHAPTER BOSS" : DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.ELITE ? "ELITE ENCOUNTER" : "DUNGEON FLOOR"),
-            e("h2", { id: "md-floor-detail-title" }, "ชั้น ", detail.floor)
+            e("small", null, detail.kind === "halloween" ? "HALLOWEEN EVENT" : DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS ? "CHAPTER BOSS" : DUNGEON_V2.classifyDungeonEncounter(detail.floor) === DUNGEON_V2.ENCOUNTER_TYPES.ELITE ? "ELITE ENCOUNTER" : "DUNGEON FLOOR"),
+            e("h2", { id: "md-floor-detail-title" }, detail.kind === "halloween" ? "Haloween nightmare" : "ชั้น ", detail.kind === "halloween" ? "" : detail.floor)
           ),
           e("div", { className: "md-floor-cp" }, e("span", null, "⚔ พลังต่อสู้แนะนำ"), e("strong", null, detail.loading || detail.error ? "—" : formatNumber(recommendedFloorCp(detail.monsters))))
         ),
@@ -5133,9 +5149,18 @@ function MapScreen({
                 e("span", null, monster.name.replace(/\s*\((?:Elite\s+)?Boss\)\s*/gi, ""))
               ))
             ),
-        e("h3", null, "อีเวนต์ชั้นนี้"),
+        e("h3", null, detail.kind === "halloween" ? "อีเวนต์ Halloween" : "อีเวนต์ชั้นนี้"),
         e("div", { className: "md-floor-events" },
-          (detail.monsters || []).length ? floorEventPreview(detail.monsters).map(event => e("div", {
+          detail.kind === "halloween"
+            ? e("div", { className: "md-floor-event", style: { "--md-event-color": "#a855f7" } },
+              e("span", { className: "md-floor-event-icon", "aria-hidden": "true" }, "🎃"),
+              e("div", { className: "md-floor-event-copy" },
+                e("b", null, "Haloween nightmare"),
+                e("p", null, "บอสกิจกรรมที่ปรับพลังตามความคืบหน้าดันเจี้ยนของตัวละคร"),
+                e("small", null, "Normal Attack สลับ Skill · Rage เมื่อ HP ต่ำกว่า 50%")
+              )
+            )
+            : (detail.monsters || []).length ? floorEventPreview(detail.monsters).map(event => e("div", {
             key: event.id,
             className: "md-floor-event",
             style: { "--md-event-color": event.color }
@@ -5148,9 +5173,14 @@ function MapScreen({
             )
           )) : []
         ),
-        e("h3", null, "รางวัลที่อาจได้รับ"),
+        e("h3", null, detail.kind === "halloween" ? "รางวัลกิจกรรม" : "รางวัลที่อาจได้รับ"),
         e("div", { className: "md-floor-rewards" },
-          floorRewardPreview(detail.floor, detail.monsters || []).map(reward => e("div", { key: reward.hint },
+          detail.kind === "halloween"
+            ? e(React.Fragment, null,
+              e("div", null, e("b", null, "5%"), e("small", null, "Excaliburnt · Mythic")),
+              e("div", null, e("b", null, "95%"), e("small", null, "Gold ตาม Chapter Boss ของความคืบหน้าปัจจุบัน"))
+            )
+            : floorRewardPreview(detail.floor, detail.monsters || []).map(reward => e("div", { key: reward.hint },
             e("span", null, reward.category ? e(GameIcon, { category: reward.category, iconKey: reward.iconKey, fallback: reward.icon, className: "md-game-icon md-floor-reward-icon", alt: reward.hint }) : reward.icon), e("b", null, reward.label), e("small", null, reward.hint)
           ))
         ),

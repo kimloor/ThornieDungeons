@@ -1940,7 +1940,9 @@ async function handleGetDungeonEncounterPreview(db, id, session, characterId, re
   if (existing) {
     const payload = parseJsonColumn(existing.payload_json, null);
     const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
-    if (payload?.authorizationOnly && context && context.floor === floor) {
+    if (payload?.authorizationOnly && context && context.floor === floor
+        && context.mode === "dungeon" && context.eventId !== HALLOWEEN_EVENT_ID
+        && !context.enemies.some(enemy => enemy.id === "haloween_nightmare")) {
       return json({ ok: true, context });
     }
     // Preview is read-only: an in-progress battle must not make the floor preview

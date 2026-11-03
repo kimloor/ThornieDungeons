@@ -104,3 +104,12 @@ This record preserves attribution and does not claim this audit independently re
 
 **H01 is NOT READY TO ACTIVATE. Release Gate = BLOCKED.**  
 The source is merged and FE/API deployment workflows succeeded. R2 upload count is reconciled as 17 image assets plus the manifest; remote read-back/SHA verification is present in the successful workflow log, with a separate summary-formatting shell bug after the upload loop. Independent gameplay, settlement, inactive-config verification and production acceptance remain incomplete. No Event activation is authorized by this audit.
+
+
+## 9. Hotfix follow-up — Dungeon preview isolation (2026-11-03)
+
+- Owner-reported defect: while an active Halloween checkpoint existed, opening a normal chapter-boss gate at the same reference floor could display Haloween nightmare instead of the fixed chapter boss. The API preview handler now reuses authorization-only checkpoints only for normal Dungeon contexts and explicitly excludes the Halloween event context/enemy.
+- Owner-reported defect: the Halloween gate started the event immediately and bypassed the normal Dungeon preview interaction. It now opens an Event Preview sheet first; the sheet's entry action invokes the existing Halloween start handler.
+- Code changes: workers/thornie-dungeons-api.js and src/ui/components.js; version 1.1.40; source-contract regression in tests/h01-halloween-event.test.js.
+- No database schema, migration, D1 row, or reward/settlement logic was changed.
+- QA status at documentation update: PENDING GitHub Actions build/tests and Production live UI verification. This hotfix does not complete the broader H01 Independent QA Release Gate.

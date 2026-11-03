@@ -224,3 +224,11 @@ Status: **IMPLEMENTED ON ISOLATED DEV BRANCH / DRAFT REVIEW ONLY / NOT RELEASED*
 - Automated H01 checks cover Bangkok month-end and cutoff inclusivity, exact/no-repeat skill cycle, tamper rejection, exclusive reward contract, byte identity/path resolution and 56 equipment/frame contracts. The actual Phaser Canvas fixture also passes 56/56 with no asset-load, layer-order or grip failures. The repository-wide suite retains five failures reproduced unchanged on the H01-04 base commit; they are pre-existing version/layout assertions outside H01.
 
 No Production R2 upload/SHA read-back, production D1 write, event-config activation, version bump, merge or deploy was performed. Real staging D1 race/rollback/expiry QA, independent mobile/device review and publication verification remain H01-08 work; the completed Phaser Canvas browser evidence is recorded in `docs/h01-halloween-production/DEV-HANDOFF.md`.
+
+
+## 1B. Production hotfix — Dungeon preview isolation (2026-11-03)
+
+- Normal Dungeon Floor Preview may reuse an authorization-only checkpoint only when its server context is a normal Dungeon context. Halloween event contexts are excluded by event ID, mode, and enemy identity, even when the event's reference floor matches a normal chapter-boss floor.
+- The Halloween gate on Dungeon Floor Select opens a pre-entry Event Preview sheet instead of immediately entering combat. The sheet previews the event boss, progression-scaled boss direction, approved alternating attack/skill and Rage behavior, and the 5% Excaliburnt / 95% chapter-boss Gold reward split. Its entry action still uses the existing Halloween start flow.
+- No D1 schema/data or event reward logic is changed. Existing Halloween checkpoint resume remains on the event flow; normal Dungeon previews fall back to the normal server-generated floor context.
+- Automated source-contract regression added in tests/h01-halloween-event.test.js. Build, focused test execution, and Production UI verification must be recorded from GitHub Actions/live release evidence before this hotfix is considered QA-complete.
