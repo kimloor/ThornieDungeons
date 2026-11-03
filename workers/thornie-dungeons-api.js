@@ -34,6 +34,7 @@
  *   GET  ?action=adminGetItemDetail|adminPreviewItemDelete&playerId&characterId&itemId[&quantity]  (Admin Bearer; W2-F)
  *   POST { action: "adminDeleteItem", playerId, characterId, itemId, quantity, reason, confirmText, snapshotHash, requestId } (Admin Bearer; W2-F, disabled unless game_config admin_item_delete_enabled=true)
  *   GET  ?action=adminPreviewItemRestore&auditId  /  POST { action: "adminRestoreItem", auditId, reason, confirmText } (Admin Bearer; W2-G, same kill switch as W2-F)
+ *   GET  ?action=adminSeedLookup&username  /  POST { action: "adminSeedPreview", playerId, characterId, ops } / { action: "adminSeedApply", playerId, characterId, ops, previewHash, reason, requestId } (Admin Bearer; W2-H H1, disabled unless game_config admin_seed_enabled=true)
  *   POST { action: "adminDeleteJunkInfo", junkId, reason, confirmId }                            (NEW, Admin Bearer)
  *   GET  ?action=getLeaderboard&board=floor|cp|pet_cp|raid|pvp            (pvp = NEW)
  *   GET  ?action=getLeaderboardHistory&board=&date=YYYY-MM-DD             (NEW, Phase 2.1, last 7 days)
@@ -8619,6 +8620,162 @@ async function handleAdminRestoreItem(db, adminAuth, body) {
   return json({ ok: true, restoreAuditId, ...adminRestoreSummary(plan) });
 }
 
+// ---------- admin: QA seed (W2-H, docs/ADMIN-V2-W2H-QA-SEED-DRAFT.md §9) ----------
+// VERY HIGH risk. Ships DISABLED: enabled only when game_config key `admin_seed_enabled`
+// holds JSON true (absent = off). H1 = framework (lookup, preview, atomic apply, audit,
+// kill switch) plus the `gold` canary operation; H2/H3 register more operations in
+// ADMIN_SEED_OPS. One request seeds every included operation atomically: one db.batch,
+// one audit row, one requestId. Nothing here ever decreases or deletes player data.
+const ADMIN_SEED_FLAG = "admin_seed_enabled";
+const ADMIN_SEED_LIMITS = Object.freeze({ gold: 100000 });
+const ADMIN_SEED_REQUEST_ID_RE = /^[A-Za-z0-9_-]{8,120}$/;
+const ADMIN_SEED_RECENT_ACTIVE_MS = 24 * 60 * 60 * 1000;
+const ADMIN_SEED_HIGH_LEVEL = 15;
+
+async function adminSeedEnabled(db) {
+  const row = await db.prepare(`SELECT value_json FROM game_config WHERE key = ?`).bind(ADMIN_SEED_FLAG).first();
+  return !!row && row.value_json === "true";
+}
+
+// Each operation: plan(character, input) -> { error } | { change: {op, label, before, after, ...}, mutate(db, ctx) -> statement }.
+// mutate() statements MUST be gated on the audit row (ctx.auditId) so they only apply when the
+// observed-state guard on the audit INSERT held; that keeps several operations composable.
+const ADMIN_SEED_OPS = Object.freeze({
+  gold: {
+    plan(character, input) {
+      const amount = input && typeof input === "object" ? input.amount : undefined;
+      if (!Number.isInteger(amount) || amount < 1 || amount > ADMIN_SEED_LIMITS.gold) return { error: "invalid_seed_amount" };
+      const before = Number(character.gold) || 0;
+      return {
+        change: { op: "gold", label: "Gold", before, after: before + amount, amount },
+        mutate: (db, ctx) => db.prepare(`UPDATE characters SET gold = gold + ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND EXISTS (SELECT 1 FROM admin_audit_log WHERE audit_id = ?)`)
+          .bind(amount, ctx.now, ctx.characterId, ctx.playerId, ctx.auditId),
+      };
+    },
+  },
+});
+
+// Machine-readable reason a character cannot be seeded right now, or null.
+async function adminSeedBlockedReason(db, characterId) {
+  const pending = await db.prepare(`SELECT 1 AS x FROM character_operation_receipts WHERE character_id = ? AND result_json = 'pending' LIMIT 1`).bind(characterId).first();
+  if (pending) return "operation_pending";
+  const run = await db.prepare(`SELECT updated_at FROM character_run_state WHERE character_id = ?`).bind(characterId).first();
+  if (run) {
+    const age = Date.now() - Date.parse(run.updated_at);
+    if (!Number.isFinite(age) || age < ADMIN_ITEM_RUN_ACTIVE_WINDOW_MS) return "character_in_run";
+  }
+  return null;
+}
+
+function adminSeedWarnings(character) {
+  const warnings = [];
+  const active = Date.parse(character.last_active_at || "");
+  if (Number.isFinite(active) && Date.now() - active < ADMIN_SEED_RECENT_ACTIVE_MS) warnings.push("recently_active");
+  if ((Number(character.level) || 0) > ADMIN_SEED_HIGH_LEVEL) warnings.push("high_level");
+  return warnings;
+}
+
+const ADMIN_SEED_CHARACTER_COLUMNS = `character_id, player_id, slot_index, name, level, xp, stat_points, gold, unlocked_floor, created_at, updated_at, last_active_at`;
+
+async function handleAdminSeedLookup(db, adminAuth, params) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
+  if (!(await adminSeedEnabled(db))) return json({ error: "feature_disabled" }, 403);
+  const username = String(params.get("username") || "").trim();
+  if (!username || username.length > 64) return json({ error: "missing_fields" }, 400);
+  const player = await db.prepare(`SELECT id, diamonds FROM players WHERE id = ?`).bind(username).first();
+  if (!player) return json({ error: "player_not_found" }, 404);
+  const rows = (await db.prepare(`SELECT ${ADMIN_SEED_CHARACTER_COLUMNS} FROM characters WHERE player_id = ? ORDER BY slot_index, created_at`).bind(player.id).all()).results || [];
+  const characters = [];
+  for (const row of rows) {
+    characters.push({
+      characterId: row.character_id, name: row.name, level: Number(row.level) || 1, gold: Number(row.gold) || 0,
+      unlockedFloor: Number(row.unlocked_floor) || 1, statPoints: Number(row.stat_points) || 0,
+      createdAt: row.created_at || null, lastActiveAt: row.last_active_at || null,
+      blocked: await adminSeedBlockedReason(db, row.character_id), warnings: adminSeedWarnings(row),
+    });
+  }
+  return json({ ok: true, account: { playerId: player.id, diamonds: Number(player.diamonds) || 0 }, characters, limits: ADMIN_SEED_LIMITS, operations: Object.keys(ADMIN_SEED_OPS) });
+}
+
+// Shared by preview and apply so both see exactly the same plan. Returns { response } or the plan.
+async function planAdminSeed(db, body) {
+  const { playerId, characterId, ops } = body || {};
+  if (typeof playerId !== "string" || !playerId || typeof characterId !== "string" || !characterId) return { response: json({ error: "missing_fields" }, 400) };
+  if (!ops || typeof ops !== "object" || Array.isArray(ops)) return { response: json({ error: "no_seed_ops" }, 400) };
+  const keys = Object.keys(ops);
+  if (!keys.length) return { response: json({ error: "no_seed_ops" }, 400) };
+  if (keys.some((key) => !Object.prototype.hasOwnProperty.call(ADMIN_SEED_OPS, key))) return { response: json({ error: "unknown_seed_op" }, 400) };
+  const character = await db.prepare(`SELECT ${ADMIN_SEED_CHARACTER_COLUMNS} FROM characters WHERE character_id = ? AND player_id = ?`).bind(characterId, playerId).first();
+  if (!character) return { response: json({ error: "character_not_found" }, 404) };
+  const blocked = await adminSeedBlockedReason(db, characterId);
+  if (blocked) return { response: json({ error: blocked }, 409) };
+  const changes = [];
+  const mutations = [];
+  for (const key of keys) {
+    const planned = ADMIN_SEED_OPS[key].plan(character, ops[key]);
+    if (planned.error) return { response: json({ error: planned.error, op: key }, 400) };
+    changes.push(planned.change);
+    mutations.push(planned.mutate);
+  }
+  const previewHash = await adminItemSnapshotHash({ playerId, characterId, updatedAt: character.updated_at || "", changes: JSON.stringify(changes) });
+  return { character, changes, mutations, previewHash };
+}
+
+async function handleAdminSeedPreview(db, adminAuth, body) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
+  if (!(await adminSeedEnabled(db))) return json({ error: "feature_disabled" }, 403);
+  const planned = await planAdminSeed(db, body);
+  if (planned.response) return planned.response;
+  return json({
+    ok: true,
+    target: { playerId: planned.character.player_id, characterId: planned.character.character_id, name: planned.character.name },
+    changes: planned.changes,
+    checks: { noPendingOperation: true, noActiveRun: true },
+    warnings: adminSeedWarnings(planned.character),
+    previewHash: planned.previewHash,
+  });
+}
+
+async function handleAdminSeedApply(db, adminAuth, body) {
+  if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
+  if (!(await adminSeedEnabled(db))) return json({ error: "feature_disabled" }, 403);
+  const { requestId, previewHash, reason } = body || {};
+  if (typeof requestId !== "string" || !ADMIN_SEED_REQUEST_ID_RE.test(requestId)) return json({ error: "invalid_request_id" }, 400);
+  const trimmed = typeof reason === "string" ? reason.trim() : "";
+  if (!trimmed) return json({ error: "reason_required" }, 400);
+  if (trimmed.length < ADMIN_DELETE_REASON_MIN || trimmed.length > ADMIN_DELETE_REASON_MAX) return json({ error: "invalid_reason", min: ADMIN_DELETE_REASON_MIN, max: ADMIN_DELETE_REASON_MAX }, 400);
+  if (typeof previewHash !== "string" || !/^[0-9a-f]{64}$/.test(previewHash)) return json({ error: "preview_required" }, 400);
+  const auditId = `adm-seed-${requestId}`;
+  const prior = await db.prepare(`SELECT target_id FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
+  if (prior) return prior.target_id === String(body.characterId) ? json({ ok: true, already_applied: true }) : json({ error: "request_id_conflict" }, 409);
+  const planned = await planAdminSeed(db, body);
+  if (planned.response) return planned.response;
+  if (planned.previewHash !== previewHash) return json({ error: "preview_changed" }, 409);
+
+  const { character, changes, mutations } = planned;
+  const now = nowIso();
+  const ctx = { characterId: character.character_id, playerId: character.player_id, now, auditId };
+  const before = { playerId: ctx.playerId, characterId: ctx.characterId, characterName: character.name };
+  const after = {};
+  for (const change of changes) { before[change.op] = change.before; after[change.op] = change.after; }
+  const metadata = buildAdminAuditMetadata({ before, after, changedKeys: changes.map((change) => change.op), reason: trimmed });
+  const guard = `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND updated_at = ?)`;
+  let results;
+  try {
+    results = await db.batch([
+      db.prepare(`INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) SELECT ?, ?, 'ADMIN_SEED', 'character', ?, ?, ? WHERE ${guard}`)
+        .bind(auditId, adminAuth.playerId, ctx.characterId, JSON.stringify(metadata), now, ctx.characterId, ctx.playerId, character.updated_at || ""),
+      ...mutations.map((mutate) => mutate(db, ctx)),
+    ]);
+  } catch (error) {
+    if (await db.prepare(`SELECT 1 AS x FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first().catch(() => null)) return json({ ok: true, already_applied: true });
+    console.error("admin_audit_failed", "ADMIN_SEED", error && error.message);
+    return json({ error: "admin_audit_failed" }, 500);
+  }
+  if (Number(results?.[0]?.meta?.changes) !== 1) return json({ error: "character_state_changed" }, 409);
+  return json({ ok: true, auditId, target: { playerId: ctx.playerId, characterId: ctx.characterId, name: character.name }, changes });
+}
+
 // ---------- request boundary hardening ----------
 const MAX_REQUEST_BODY_BYTES = 512 * 1024;
 const DEFAULT_CORS_ORIGINS = Object.freeze([
@@ -8695,7 +8852,7 @@ async function apiFetch(request, env) {
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           return await handleAdminValidateSession(db, adminAuth);
         }
-        if (["runLeaderboardSnapshot", "getPlayer", "getAllPlayers", "getPlayerItems", "getGameStats", "getSheet", "adminSearchPlayers", "adminListAuditLog", "adminGetItemDetail", "adminPreviewItemDelete", "adminPreviewItemRestore"].includes(action)) {
+        if (["runLeaderboardSnapshot", "getPlayer", "getAllPlayers", "getPlayerItems", "getGameStats", "getSheet", "adminSearchPlayers", "adminListAuditLog", "adminGetItemDetail", "adminPreviewItemDelete", "adminPreviewItemRestore", "adminSeedLookup"].includes(action)) {
           const adminAuth = await verifyAdminAccess(db, env, request);
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           if (action === "runLeaderboardSnapshot") return json({ ok: true, ...(await runLeaderboardSnapshot(db)) });
@@ -8705,6 +8862,7 @@ async function apiFetch(request, env) {
           if (action === "adminGetItemDetail") return await handleAdminGetItemDetail(db, adminAuth, p);
           if (action === "adminPreviewItemDelete") return await handleAdminPreviewItemDelete(db, adminAuth, p);
           if (action === "adminPreviewItemRestore") return await handleAdminPreviewItemRestore(db, adminAuth, p);
+          if (action === "adminSeedLookup") return await handleAdminSeedLookup(db, adminAuth, p);
           if (action === "getAllPlayers") return await handleAdminGetAllPlayers(db, adminAuth);
           if (action === "getPlayerItems") return await handleAdminGetPlayerItems(db, adminAuth, p.get("id"));
           if (action === "getGameStats") return await handleAdminGetGameStats(db, adminAuth);
@@ -8768,7 +8926,7 @@ async function apiFetch(request, env) {
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           return await handleAdminLogout(db, adminAuth);
         }
-        if (["saveGameConfig", "setGameConfigItem", "adminUpsertRecipe", "adminDeleteRecipe", "adminUpsertMonsterLootEntry", "adminDeleteMonsterLootEntry", "adminUpsertJunkInfo", "adminDeleteJunkInfo", "adminDeleteItem", "adminRestoreItem"].includes(body.action)) {
+        if (["saveGameConfig", "setGameConfigItem", "adminUpsertRecipe", "adminDeleteRecipe", "adminUpsertMonsterLootEntry", "adminDeleteMonsterLootEntry", "adminUpsertJunkInfo", "adminDeleteJunkInfo", "adminDeleteItem", "adminRestoreItem", "adminSeedPreview", "adminSeedApply"].includes(body.action)) {
           const adminAuth = await verifyAdminAccess(db, env, request);
           if (adminAuth.error) return json({ error: adminAuth.error }, 401);
           switch (body.action) {
@@ -8782,6 +8940,8 @@ async function apiFetch(request, env) {
             case "adminDeleteJunkInfo": return await handleAdminDeleteJunkInfo(db, adminAuth, body.junkId, body.reason, body.confirmId);
             case "adminDeleteItem": return await handleAdminDeleteItem(db, adminAuth, body);
             case "adminRestoreItem": return await handleAdminRestoreItem(db, adminAuth, body);
+            case "adminSeedPreview": return await handleAdminSeedPreview(db, adminAuth, body);
+            case "adminSeedApply": return await handleAdminSeedApply(db, adminAuth, body);
           }
         }
         const token = bearerToken(request);

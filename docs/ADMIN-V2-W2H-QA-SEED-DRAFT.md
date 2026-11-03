@@ -1,6 +1,6 @@
 # W2-H — Admin QA Seed (DRAFT design, not implemented)
 
-**Status:** DRAFT, spec AGREED with the Owner 2026-11-03 (see §9, which supersedes §3-§4 and §8 where they differ); Owner will review the real page and adjust. **Not started.** Implementation waits until the implementing agent is available. **Risk: VERY HIGH** (grants gold/items/pets on Production). Branch + explicit Owner approval before every merge; ships DISABLED.
+**Status:** DRAFT, spec AGREED with the Owner 2026-11-03 (see §9, which supersedes §3-§4 and §8 where they differ); Owner will review the real page and adjust. **Not started.** H1 is implemented on branch `feat/w2h-h1-admin-seed-shell` (see §10); H2/H3 not started. **Risk: VERY HIGH** (grants gold/items/pets on Production). Branch + explicit Owner approval before every merge; ships DISABLED.
 
 ## 1. Why
 `docs/PRODUCTION-QA-POLICY-V1.md` forbids direct SQL/seed writes on Production and requires a supported server-side Admin/QA operation that records an audit event and preserves item ownership/provenance. This slice is that operation. Designated QA identities: `chatgpt`/`gpt1`, `claude`/`claude1`.
@@ -110,3 +110,14 @@ Design mockup: Claude Design canvas "Admin QA Seed (W2-H) — Page Design" (3 bo
 - Catalog endpoint should be server-driven so the dropdown/search never drifts from game data.
 - Version bump on shipped H1/H2/H3; tests need `item_provenance` / `item_ownership_events` tables; register new error codes in the admin client.
 - Provenance origin type `admin_seed`, ownership event type `admin_seeded`.
+
+## 10. H1 implementation record (Ver 1.1.35, branch `feat/w2h-h1-admin-seed-shell`)
+Shipped DISABLED (`game_config.admin_seed_enabled` absent = off). Scope: framework + `gold` canary only.
+- `GET ?action=adminSeedLookup&username=` -> account (diamonds), all characters (level, gold, floor, created, last active, `blocked`, `warnings`), `limits`, `operations`. Exact username match; read-only, no audit row.
+- `POST adminSeedPreview {playerId, characterId, ops}` -> read-only; returns `changes` (before/after), `warnings`, `previewHash` (SHA-256 over player, character, character `updated_at` and the planned changes).
+- `POST adminSeedApply {playerId, characterId, ops, previewHash, reason, requestId}` -> recomputes the plan, requires the same `previewHash` (`preview_changed` otherwise), reason 5-300 trimmed, `requestId` `[A-Za-z0-9_-]{8,120}`; one `db.batch`: guarded audit INSERT (`ADMIN_SEED`, target `character`, audit id `adm-seed-<requestId>`, observed-state guard on `characters.updated_at`) followed by operation statements gated on that audit row; zero rows inserted -> 409 `character_state_changed`; replay -> `already_applied`; same requestId for another character -> 409 `request_id_conflict`.
+- Operation registry `ADMIN_SEED_OPS` (`plan` + `mutate`); H1 registers `gold` (integer 1..100,000). H2/H3 add operations without touching the pipeline.
+- Blocks: pending `character_operation_receipts`, run updated within 30 minutes. Warnings (never block): active within 24 h, level above 15.
+- Client: admin.html "Seed (QA)" tab, flow lookup -> character -> Gold card -> preview (Back / Confirm, reason only) -> apply. The reason is entered on the preview step (not on the card page).
+- Error codes registered in `src/state/errorCatalog.js`; Thai text in `admin-app.js` `SEED_ERRORS`.
+- Tests: `tests/admin-v2-seed-h1.test.js` (12), wired into `admin-v2-branch-qa.yml`.
