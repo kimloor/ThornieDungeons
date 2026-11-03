@@ -855,11 +855,25 @@ const SEED_ERRORS = {
   preview_changed: "ข้อมูลตัวละครเปลี่ยนไปหลังพรีวิว กด Back แล้วพรีวิวใหม่",
   character_state_changed: "ตัวละครถูกแก้ไขระหว่างยืนยัน ยังไม่มีอะไรถูก seed กด Back แล้วพรีวิวใหม่",
   request_id_conflict: "requestId ซ้ำกับรายการอื่น กด Back แล้วพรีวิวใหม่",
-  admin_audit_failed: "บันทึก audit ไม่สำเร็จ จึงไม่มีอะไรถูก seed"
+  admin_audit_failed: "บันทึก audit ไม่สำเร็จ จึงไม่มีอะไรถูก seed",
+  seed_mutation_failed: "ผลการ seed ไม่ครบตามที่คาด ระบบยกเลิกทั้งชุดแล้ว ไม่มีข้อมูลถูกเปลี่ยน",
+  invalid_request_id: "requestId ไม่ถูกต้อง กด Back แล้วพรีวิวใหม่",
+  preview_required: "ต้องพรีวิวก่อนยืนยัน กด Back แล้วพรีวิวใหม่",
+  missing_fields: "ข้อมูลไม่ครบ"
 };
+const SEED_QA_PLAYERS = ["chatgpt", "claude"];
+const SEED_TIMEOUT_MS = 30000;
 const SEED_WARNINGS = { recently_active: "ตัวละครนี้ active ภายใน 24 ชม.", high_level: "ตัวละครนี้เลเวลเกิน 15" };
 const seedState = { account: null, character: null, ops: null, previewHash: null, requestId: null, busy: false };
 
+function seedWithTimeout(promise) {
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("seed_timeout")), SEED_TIMEOUT_MS); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+function seedNonQaWarning(playerId) {
+  return SEED_QA_PLAYERS.includes(String(playerId).toLowerCase()) ? "" : `คำเตือน: "${playerId}" ไม่ใช่บัญชี QA (${SEED_QA_PLAYERS.join(", ")}) การ seed จะเปลี่ยนข้อมูลบน Production จริง ตรวจ username ให้แน่ใจก่อนกดยืนยัน`;
+}
 function seedErrorText(code) { return SEED_ERRORS[code] || ("เกิดข้อผิดพลาด: " + code); }
 function seedShow(id, visible) { document.getElementById(id).style.display = visible ? "" : "none"; }
 function seedSay(id, text, kind) { const m = document.getElementById(id); m.textContent = text || ""; m.className = "msg" + (kind ? " " + kind : ""); }
@@ -886,7 +900,7 @@ async function seedSearch() {
   if (!username) { seedSay("seedMsg", "กรอก username ก่อน", "err"); return; }
   seedSay("seedMsg", "กำลังค้นหา...");
   try {
-    const res = await apiGet({ action: "adminSeedLookup", username });
+    const res = await seedWithTimeout(apiGet({ action: "adminSeedLookup", username }));
     if (res.error) { seedShow("seedCharsCard", false); seedShow("seedFormCard", false); seedShow("seedPreviewCard", false); seedSay("seedMsg", seedErrorText(res.error), "err"); return; }
     seedSay("seedMsg", `พบ ${res.characters.length} ตัวละคร`, "ok");
     renderSeedCharacters(res);
@@ -898,9 +912,20 @@ function selectSeedCharacter(c) {
   document.getElementById("seedTargetName").textContent = `${c.name} (${seedState.account.playerId})`;
   document.getElementById("seedTargetMeta").textContent = `Lv ${c.level} · Gold ${c.gold} · ชั้นที่ปลดล็อก ${c.unlockedFloor} · Stat points ${c.statPoints}`;
   seedSay("seedFormMsg", "");
+  const notes = [seedNonQaWarning(seedState.account.playerId)].concat(c.warnings.map(w => SEED_WARNINGS[w] || w)).filter(Boolean);
+  seedSay("seedTargetWarn", notes.join(" · "), notes.length ? "err" : "");
+  document.getElementById("seedFormReason").value = "";
+  updateSeedSummary();
   seedShow("seedCharsCard", false);
   seedShow("seedFormCard", true);
   seedShow("seedPreviewCard", false);
+}
+
+function updateSeedSummary() {
+  const parts = [];
+  if (document.getElementById("seedGoldOn").checked) parts.push(`Gold +${document.getElementById("seedGoldAmount").value || 0}`);
+  const c = seedState.character;
+  document.getElementById("seedSummary").textContent = c ? `จะ seed ให้ ${c.name} (${seedState.account.playerId}): ${parts.join(" · ") || "ยังไม่ได้เลือกรายการ"}` : "";
 }
 
 function collectSeedOps() {
@@ -913,9 +938,9 @@ async function seedPreview() {
   if (seedState.busy) return;
   const ops = collectSeedOps();
   if (!Object.keys(ops).length) { seedSay("seedFormMsg", seedErrorText("no_seed_ops"), "err"); return; }
-  seedState.busy = true; seedSay("seedFormMsg", "กำลังพรีวิว...");
+  seedState.busy = true; document.getElementById("seedPreviewBtn").disabled = true; seedSay("seedFormMsg", "กำลังพรีวิว...");
   try {
-    const res = await apiPost({ action: "adminSeedPreview", playerId: seedState.account.playerId, characterId: seedState.character.characterId, ops });
+    const res = await seedWithTimeout(apiPost({ action: "adminSeedPreview", playerId: seedState.account.playerId, characterId: seedState.character.characterId, ops }));
     if (res.error) { seedSay("seedFormMsg", seedErrorText(res.error), "err"); return; }
     seedState.ops = ops; seedState.previewHash = res.previewHash; seedState.requestId = crypto.randomUUID();
     document.getElementById("seedPreviewTarget").textContent = `เป้าหมาย: ${res.target.playerId} / ${res.target.name}`;
@@ -923,14 +948,16 @@ async function seedPreview() {
     const tbody = document.querySelector("#seedPreviewTable tbody");
     tbody.replaceChildren();
     res.changes.forEach(ch => tbody.appendChild(el("tr", null, cell(ch.label), cell(String(ch.before)), cell(String(ch.after), "ok"))));
-    document.getElementById("seedReason").value = "";
-    document.getElementById("seedConfirmBtn").disabled = true;
+    document.getElementById("seedPreviewIds").textContent = `Player ID: ${res.target.playerId} · Character ID: ${res.target.characterId} · ชื่อ: ${res.target.name}`;
+    document.getElementById("seedPreviewNonQa").textContent = seedNonQaWarning(res.target.playerId);
+    document.getElementById("seedReason").value = document.getElementById("seedFormReason").value;
+    updateSeedConfirmState();
     seedSay("seedPreviewMsg", "");
     seedSay("seedFormMsg", "");
     seedShow("seedFormCard", false);
     seedShow("seedPreviewCard", true);
-  } catch (_) { seedSay("seedFormMsg", "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้", "err"); }
-  finally { seedState.busy = false; }
+  } catch (err) { seedSay("seedFormMsg", err && err.message === "seed_timeout" ? "เซิร์ฟเวอร์ตอบช้าเกินไป ยังไม่มีอะไรถูกเปลี่ยน ลองพรีวิวใหม่" : "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้", "err"); }
+  finally { seedState.busy = false; document.getElementById("seedPreviewBtn").disabled = false; updateSeedConfirmState(); }
 }
 
 function updateSeedConfirmState() {
@@ -942,15 +969,15 @@ async function seedConfirm() {
   if (seedState.busy || !seedState.previewHash) return;
   seedState.busy = true; document.getElementById("seedConfirmBtn").disabled = true; seedSay("seedPreviewMsg", "กำลังบันทึก...");
   try {
-    const res = await apiPost({
+    const res = await seedWithTimeout(apiPost({
       action: "adminSeedApply", playerId: seedState.account.playerId, characterId: seedState.character.characterId, ops: seedState.ops,
       previewHash: seedState.previewHash, reason: document.getElementById("seedReason").value.trim(), requestId: seedState.requestId
-    });
+    }));
     if (res.error) { seedSay("seedPreviewMsg", seedErrorText(res.error), "err"); return; }
     seedState.previewHash = null;
     await seedSearch();
     seedSay("seedMsg", res.already_applied ? "คำขอนี้ถูกบันทึกไปแล้ว ✓" : "Seed สำเร็จ ✓ บันทึกใน Audit Log แล้ว ตรวจค่าใหม่ในตารางด้านล่าง", "ok");
-  } catch (_) { seedSay("seedPreviewMsg", "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ถ้ากดซ้ำจะไม่ทำซ้ำ (requestId เดิม)", "err"); }
+  } catch (_) { seedSay("seedPreviewMsg", "ไม่ทราบผลการบันทึก (เครือข่ายหรือเวลารอเกิน) กดยืนยันอีกครั้งได้ ระบบจะไม่ทำซ้ำเพราะใช้ requestId เดิม หรือตรวจ Audit Log ก่อน", "err"); }
   finally { seedState.busy = false; updateSeedConfirmState(); }
 }
 
@@ -958,7 +985,9 @@ document.getElementById("seedSearchBtn").onclick = () => void seedSearch();
 document.getElementById("seedUsername").onkeydown = (e) => { if (e.key === "Enter") void seedSearch(); };
 document.getElementById("seedBackToCharsBtn").onclick = () => { seedShow("seedFormCard", false); seedShow("seedCharsCard", true); };
 document.getElementById("seedPreviewBtn").onclick = () => void seedPreview();
-document.getElementById("seedBackBtn").onclick = () => { seedShow("seedPreviewCard", false); seedShow("seedFormCard", true); };
+document.getElementById("seedBackBtn").onclick = () => { document.getElementById("seedFormReason").value = document.getElementById("seedReason").value; seedShow("seedPreviewCard", false); seedShow("seedFormCard", true); };
+document.getElementById("seedGoldOn").onchange = updateSeedSummary;
+document.getElementById("seedGoldAmount").oninput = updateSeedSummary;
 document.getElementById("seedReason").oninput = updateSeedConfirmState;
 document.getElementById("seedConfirmBtn").onclick = () => void seedConfirm();
 

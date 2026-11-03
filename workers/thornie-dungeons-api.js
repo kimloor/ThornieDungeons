@@ -8637,9 +8637,16 @@ async function adminSeedEnabled(db) {
   return !!row && row.value_json === "true";
 }
 
-// Each operation: plan(character, input) -> { error } | { change: {op, label, before, after, ...}, mutate(db, ctx) -> statement }.
-// mutate() statements MUST be gated on the audit row (ctx.auditId) so they only apply when the
-// observed-state guard on the audit INSERT held; that keeps several operations composable.
+// Each operation: plan(character, input) -> { error } | { change: {op, label, before, after, ...},
+//   guard: { <characters column>: observed value }, expectedChanges: <rows the statement must touch>,
+//   mutate(db, ctx) -> statement }.
+// - `guard` is the field-level state the operation read; apply refuses (character_state_changed) if any of
+//   those columns changed since the preview. characters.updated_at alone is NOT a full revision (see §10).
+// - mutate() statements MUST include ctx.gateSql / ctx.gateBinds: they only apply when the audit row written
+//   by THIS attempt exists (its attemptToken), never because another attempt used the same audit_id.
+// - After every mutate() statement the pipeline appends an assertion that aborts the whole batch unless the
+//   statement touched exactly `expectedChanges` rows.
+const ADMIN_SEED_GUARD_COLUMNS = new Set(["gold"]); // H2/H3 extend this allowlist with the columns they read
 const ADMIN_SEED_OPS = Object.freeze({
   gold: {
     plan(character, input) {
@@ -8648,8 +8655,10 @@ const ADMIN_SEED_OPS = Object.freeze({
       const before = Number(character.gold) || 0;
       return {
         change: { op: "gold", label: "Gold", before, after: before + amount, amount },
-        mutate: (db, ctx) => db.prepare(`UPDATE characters SET gold = gold + ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND EXISTS (SELECT 1 FROM admin_audit_log WHERE audit_id = ?)`)
-          .bind(amount, ctx.now, ctx.characterId, ctx.playerId, ctx.auditId),
+        guard: { gold: before },
+        expectedChanges: 1,
+        mutate: (db, ctx) => db.prepare(`UPDATE characters SET gold = gold + ?, updated_at = ? WHERE character_id = ? AND player_id = ? AND ${ctx.gateSql}`)
+          .bind(amount, ctx.now, ctx.characterId, ctx.playerId, ...ctx.gateBinds),
       };
     },
   },
@@ -8697,6 +8706,23 @@ async function handleAdminSeedLookup(db, adminAuth, params) {
   return json({ ok: true, account: { playerId: player.id, diamonds: Number(player.diamonds) || 0 }, characters, limits: ADMIN_SEED_LIMITS, operations: Object.keys(ADMIN_SEED_OPS) });
 }
 
+function adminSeedCanonical(value) {
+  if (Array.isArray(value)) return value.map(adminSeedCanonical);
+  if (value && typeof value === "object") return Object.keys(value).sort().reduce((out, key) => { out[key] = adminSeedCanonical(value[key]); return out; }, {});
+  return value;
+}
+// Binds a requestId to the exact request it was first used for (player, character, operations).
+async function adminSeedRequestHash(body) {
+  return adminItemSnapshotHash({ request: JSON.stringify(adminSeedCanonical({ playerId: body?.playerId, characterId: body?.characterId, ops: body?.ops })) });
+}
+// requestId already used: identical request -> already_applied, anything else -> 409 request_id_conflict.
+function adminSeedReplayResponse(prior, requestHash, characterId) {
+  let recorded = null;
+  try { recorded = JSON.parse(prior.metadata_json || "{}").requestHash; } catch (_) { recorded = null; }
+  if (prior.target_id === String(characterId) && recorded && recorded === requestHash) return json({ ok: true, already_applied: true });
+  return json({ error: "request_id_conflict" }, 409);
+}
+
 // Shared by preview and apply so both see exactly the same plan. Returns { response } or the plan.
 async function planAdminSeed(db, body) {
   const { playerId, characterId, ops } = body || {};
@@ -8711,14 +8737,19 @@ async function planAdminSeed(db, body) {
   if (blocked) return { response: json({ error: blocked }, 409) };
   const changes = [];
   const mutations = [];
+  const guard = {};
   for (const key of keys) {
     const planned = ADMIN_SEED_OPS[key].plan(character, ops[key]);
     if (planned.error) return { response: json({ error: planned.error, op: key }, 400) };
     changes.push(planned.change);
-    mutations.push(planned.mutate);
+    mutations.push({ mutate: planned.mutate, expectedChanges: planned.expectedChanges });
+    for (const [column, value] of Object.entries(planned.guard || {})) {
+      if (!ADMIN_SEED_GUARD_COLUMNS.has(column)) throw new Error(`admin_seed_guard_column_not_allowed:${column}`);
+      guard[column] = value;
+    }
   }
-  const previewHash = await adminItemSnapshotHash({ playerId, characterId, updatedAt: character.updated_at || "", changes: JSON.stringify(changes) });
-  return { character, changes, mutations, previewHash };
+  const previewHash = await adminItemSnapshotHash({ playerId, characterId, updatedAt: character.updated_at || "", changes: JSON.stringify(changes), guard: JSON.stringify(adminSeedCanonical(guard)) });
+  return { character, changes, mutations, guard, previewHash };
 }
 
 async function handleAdminSeedPreview(db, adminAuth, body) {
@@ -8736,6 +8767,15 @@ async function handleAdminSeedPreview(db, adminAuth, body) {
   });
 }
 
+// Why an apply that wrote nothing was refused (a competing request, a gameplay writer, or a changed character).
+async function adminSeedWhyNotApplied(db, auditId, requestHash, characterId) {
+  const prior = await db.prepare(`SELECT target_id, metadata_json FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
+  if (prior) return adminSeedReplayResponse(prior, requestHash, characterId);
+  const blocked = await adminSeedBlockedReason(db, characterId);
+  if (blocked) return json({ error: blocked }, 409);
+  return json({ error: "character_state_changed" }, 409);
+}
+
 async function handleAdminSeedApply(db, adminAuth, body) {
   if (!adminAuth?.ok) return json({ error: adminAuth?.error || "admin_session_invalid" }, 401);
   if (!(await adminSeedEnabled(db))) return json({ error: "feature_disabled" }, 403);
@@ -8746,33 +8786,51 @@ async function handleAdminSeedApply(db, adminAuth, body) {
   if (trimmed.length < ADMIN_DELETE_REASON_MIN || trimmed.length > ADMIN_DELETE_REASON_MAX) return json({ error: "invalid_reason", min: ADMIN_DELETE_REASON_MIN, max: ADMIN_DELETE_REASON_MAX }, 400);
   if (typeof previewHash !== "string" || !/^[0-9a-f]{64}$/.test(previewHash)) return json({ error: "preview_required" }, 400);
   const auditId = `adm-seed-${requestId}`;
-  const prior = await db.prepare(`SELECT target_id FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
-  if (prior) return prior.target_id === String(body.characterId) ? json({ ok: true, already_applied: true }) : json({ error: "request_id_conflict" }, 409);
+  const requestHash = await adminSeedRequestHash(body);
+  const prior = await db.prepare(`SELECT target_id, metadata_json FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
+  if (prior) return adminSeedReplayResponse(prior, requestHash, body.characterId);
   const planned = await planAdminSeed(db, body);
   if (planned.response) return planned.response;
   if (planned.previewHash !== previewHash) return json({ error: "preview_changed" }, 409);
 
-  const { character, changes, mutations } = planned;
+  const { character, changes, mutations, guard } = planned;
   const now = nowIso();
-  const ctx = { characterId: character.character_id, playerId: character.player_id, now, auditId };
+  const attemptToken = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const gateSql = `EXISTS (SELECT 1 FROM admin_audit_log WHERE audit_id = ? AND instr(metadata_json, ?) > 0)`;
+  const gateBinds = [auditId, `"attemptToken":"${attemptToken}"`];
+  const ctx = { characterId: character.character_id, playerId: character.player_id, now, auditId, gateSql, gateBinds };
   const before = { playerId: ctx.playerId, characterId: ctx.characterId, characterName: character.name };
   const after = {};
   for (const change of changes) { before[change.op] = change.before; after[change.op] = change.after; }
-  const metadata = buildAdminAuditMetadata({ before, after, changedKeys: changes.map((change) => change.op), reason: trimmed });
-  const guard = `EXISTS (SELECT 1 FROM characters WHERE character_id = ? AND player_id = ? AND updated_at = ?)`;
+  const metadata = { ...buildAdminAuditMetadata({ before, after, changedKeys: changes.map((change) => change.op), reason: trimmed }), requestHash, attemptToken };
+  // Transaction-level guard (evaluated inside the batch, not before it): the character must still be exactly as
+  // previewed (updated_at + the columns the operations read), have no pending gameplay operation and no run
+  // touched inside the activity window (an unparseable run timestamp counts as active).
+  const guardColumns = Object.keys(guard);
+  const guardSql = ["character_id = ?", "player_id = ?", "updated_at = ?", ...guardColumns.map((column) => `${column} = ?`)].join(" AND ");
+  const guardBinds = [ctx.characterId, ctx.playerId, character.updated_at || "", ...guardColumns.map((column) => guard[column])];
+  const cutoff = new Date(Date.now() - ADMIN_ITEM_RUN_ACTIVE_WINDOW_MS).toISOString();
+  const assertion = (expected) => db.prepare(`SELECT CASE WHEN NOT (${gateSql}) THEN 1 WHEN changes() = ? THEN 1 ELSE json('seed_mutation_rows_mismatch') END`).bind(...gateBinds, expected);
+  const statements = [
+    db.prepare(`INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) SELECT ?, ?, 'ADMIN_SEED', 'character', ?, ?, ? WHERE EXISTS (SELECT 1 FROM characters WHERE ${guardSql}) AND NOT EXISTS (SELECT 1 FROM character_operation_receipts WHERE character_id = ? AND result_json = 'pending') AND NOT EXISTS (SELECT 1 FROM character_run_state WHERE character_id = ? AND (updated_at > ? OR updated_at NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T*'))`)
+      .bind(auditId, adminAuth.playerId, ctx.characterId, JSON.stringify(metadata), now, ...guardBinds, ctx.characterId, ctx.characterId, cutoff),
+  ];
+  for (const { mutate, expectedChanges } of mutations) { statements.push(mutate(db, ctx)); statements.push(assertion(expectedChanges)); }
   let results;
   try {
-    results = await db.batch([
-      db.prepare(`INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) SELECT ?, ?, 'ADMIN_SEED', 'character', ?, ?, ? WHERE ${guard}`)
-        .bind(auditId, adminAuth.playerId, ctx.characterId, JSON.stringify(metadata), now, ctx.characterId, ctx.playerId, character.updated_at || ""),
-      ...mutations.map((mutate) => mutate(db, ctx)),
-    ]);
+    results = await db.batch(statements);
   } catch (error) {
-    if (await db.prepare(`SELECT 1 AS x FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first().catch(() => null)) return json({ ok: true, already_applied: true });
-    console.error("admin_audit_failed", "ADMIN_SEED", error && error.message);
+    const message = String(error && error.message);
+    if (message.includes("seed_mutation_rows_mismatch") || message.includes("malformed JSON")) {
+      console.error("admin_seed_mutation_mismatch", "ADMIN_SEED", message);
+      return json({ error: "seed_mutation_failed" }, 500);
+    }
+    const settled = await db.prepare(`SELECT target_id, metadata_json FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first().catch(() => null);
+    if (settled) return adminSeedReplayResponse(settled, requestHash, ctx.characterId);
+    console.error("admin_audit_failed", "ADMIN_SEED", message);
     return json({ error: "admin_audit_failed" }, 500);
   }
-  if (Number(results?.[0]?.meta?.changes) !== 1) return json({ error: "character_state_changed" }, 409);
+  if (Number(results?.[0]?.meta?.changes) !== 1) return await adminSeedWhyNotApplied(db, auditId, requestHash, ctx.characterId);
   return json({ ok: true, auditId, target: { playerId: ctx.playerId, characterId: ctx.characterId, name: character.name }, changes });
 }
 

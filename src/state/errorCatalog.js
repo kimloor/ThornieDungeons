@@ -219,6 +219,7 @@ const ERROR_KIND_BY_CODE = Object.freeze({
   no_seed_ops: "validation",
   unknown_seed_op: "validation",
   player_not_found: "business",
+  seed_mutation_failed: "admin",
   admin_audit_failed: "admin",
   confirm_mismatch: "validation",
   invalid_reason: "validation",

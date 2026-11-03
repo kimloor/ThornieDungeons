@@ -119,10 +119,11 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.35", date: "2026-11-03", title: "เตรียมกิจกรรม Halloween H01",
-      items: ["เพิ่มเนื้อหากิจกรรม Halloween พร้อมบอส Haloween nightmare และอาวุธ Excaliburnt"]
+      version: "1.1.42", date: "2026-11-03", title: "เตรียมเครื่องมือทดสอบหลังบ้าน",
+      items: ["เตรียมเครื่องมือสำหรับผู้ดูแลระบบเพื่อใช้ทดสอบระบบกับบัญชีทดสอบ (ยังปิดใช้งานอยู่) ไม่มีการเปลี่ยนแปลงต่อการเล่นหรือข้อมูลตัวละครของผู้เล่น"]
     },
     history: [
+      { version: "1.1.35", date: "2026-11-03", title: "เตรียมกิจกรรม Halloween H01", items: ["เพิ่มเนื้อหากิจกรรม Halloween พร้อมบอส Haloween nightmare และอาวุธ Excaliburnt"] },
       { version: "1.1.33", date: "2026-10-29", title: "อัปเดตการโหลดภาพอุปกรณ์ Idle", items: ["เพิ่ม Revision ให้ภาพ Leather และกางเกง Azure"] },
       { version: "1.1.32", date: "2026-10-29", title: "แก้กางเกงแสดงผลเมื่อสวมอุปกรณ์ผสม", items: ["จำกัดภาพมือที่ซ้อนหน้าดาบ Leather ไม่ให้ทับกางเกง"] },
       { version: "1.1.31", date: "2026-10-29", title: "แก้สีตัวอักษรหน้ารายละเอียดไอเทม", items: ["คืนสีตัวอักษรและปุ่มให้ถูกต้องในหน้าต่างเปรียบเทียบไอเทมบนมือถือ"] },

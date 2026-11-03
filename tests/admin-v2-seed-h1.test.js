@@ -19,6 +19,7 @@ class Db {
   constructor() { this.raw = new DatabaseSync(":memory:"); }
   prepare(sql) { return new Stmt(this.raw, sql); }
   async batch(list) {
+    if (this.beforeBatch) { const hook = this.beforeBatch; this.beforeBatch = null; await hook(this.raw); }
     const out = [];
     this.raw.exec("BEGIN");
     try { for (const s of list) out.push(await s.run()); this.raw.exec("COMMIT"); return out; }
@@ -200,11 +201,241 @@ test("audit failure rolls the whole batch back (500 admin_audit_failed, gold unc
   assert.equal(gold(db), 100);
 });
 
-test("the mutation is gated on the audit row: a state change after planning applies nothing", async () => {
+
+// ---------------------------------------------------------------------------------------------
+// P1-A: the activity guard lives INSIDE the transaction (competing writer between preflight and batch)
+// ---------------------------------------------------------------------------------------------
+const seedBody = (over = {}) => ({ playerId: "P1", characterId: "c1", ops: { gold: { amount: 500 } }, reason: "QA baseline for testing", ...over });
+async function applyWithHook(db, hook, over = {}) {
+  const body = seedBody({ requestId: `req-${++n}-hookhook`, ...over });
+  const pv = await preview(db, { playerId: body.playerId, characterId: body.characterId, ops: body.ops });
+  db.beforeBatch = hook;
+  return j(await h.handleAdminSeedApply(db, ADMIN, { ...body, previewHash: pv.previewHash }));
+}
+
+test("P1-A: a pending gameplay operation that appears after preflight blocks the apply with no audit and no mutation", async () => {
   const db = createDb();
-  const ctx = { characterId: "c1", playerId: "P1", now: new Date().toISOString(), auditId: "adm-seed-never-inserted" };
-  const planned = h.ADMIN_SEED_OPS.gold.plan({ gold: 100 }, { amount: 500 });
-  const res = await planned.mutate(db, ctx).run();
-  assert.equal(res.meta.changes, 0);
+  const r = await applyWithHook(db, (raw) => raw.prepare("INSERT INTO character_operation_receipts (character_id, operation, request_id, operation_token, payload_json, result_json) VALUES ('c1','buy','r','t','{}','pending')").run());
+  assert.equal(r.status, 409); assert.equal(r.error, "operation_pending");
+  assert.equal(gold(db), 100); assert.equal(audits(db).length, 0);
+});
+
+test("P1-A: a run that starts after preflight blocks the apply with no audit and no mutation", async () => {
+  const db = createDb();
+  const r = await applyWithHook(db, (raw) => raw.prepare("INSERT INTO character_run_state VALUES ('c1', 1, ?)").run(new Date().toISOString()));
+  assert.equal(r.status, 409); assert.equal(r.error, "character_in_run");
+  assert.equal(gold(db), 100); assert.equal(audits(db).length, 0);
+});
+
+test("P1-A: an unparseable run timestamp counts as an active run, both at preflight and inside the batch", async () => {
+  let db = createDb();
+  db.raw.prepare("INSERT INTO character_run_state VALUES ('c1', 1, 'garbage')").run();
+  assert.equal((await preview(db)).error, "character_in_run");
+  db = createDb();
+  const r = await applyWithHook(db, (raw) => raw.prepare("INSERT INTO character_run_state VALUES ('c1', 1, 'garbage')").run());
+  assert.equal(r.error, "character_in_run"); assert.equal(gold(db), 100); assert.equal(audits(db).length, 0);
+});
+
+test("P1-A: without a race the same apply succeeds, and a writer that only touches last_active_at does not block it", async () => {
+  const db = createDb();
+  const r = await applyWithHook(db, (raw) => raw.prepare("UPDATE characters SET last_active_at = ? WHERE character_id = 'c1'").run(new Date().toISOString()));
+  assert.equal(r.status, 200); assert.equal(gold(db), 600); assert.equal(audits(db).length, 1);
+});
+
+// ---------------------------------------------------------------------------------------------
+// P1-D: field-level guard on what the operation reads; writer coverage of `characters`
+// ---------------------------------------------------------------------------------------------
+test("P1-D: Gold changed by a writer that does NOT bump updated_at is still detected (field-level guard)", async () => {
+  const db = createDb();
+  const r = await applyWithHook(db, (raw) => raw.prepare("UPDATE characters SET gold = 999 WHERE character_id = 'c1'").run());
+  assert.equal(r.status, 409); assert.equal(r.error, "character_state_changed");
+  assert.equal(gold(db), 999); assert.equal(audits(db).length, 0);
+});
+
+test("P1-D: preview hash also binds the guarded field values", async () => {
+  const db = createDb();
+  const a = await preview(db);
+  db.raw.prepare("UPDATE characters SET gold = 101 WHERE character_id = 'c1'").run();
+  const b = await preview(db);
+  assert.notEqual(a.previewHash, b.previewHash);
+});
+
+test("P1-D writer coverage: every UPDATE characters that does not bump updated_at is a known, Gold-free writer", () => {
+  const root = path.resolve(__dirname, "..");
+  const files = ["workers/thornie-dungeons-api.js", ...fs.readdirSync(path.join(root, "workers/modules")).map((f) => "workers/modules/" + f)];
+  const nonBumping = [];
+  let bumping = 0;
+  for (const file of files) {
+    const src = fs.readFileSync(path.join(root, file), "utf8");
+    for (const m of src.matchAll(/UPDATE\s+characters\s+SET([\s\S]*?)\sWHERE/gi)) {
+      const columns = [...m[1].matchAll(/(\w+)\s*=/g)].map((x) => x[1]);
+      if (columns.includes("updated_at")) { bumping += 1; continue; }
+      nonBumping.push(columns.join(","));
+    }
+  }
+  // Review these when this list changes: a new non-bumping writer must not touch a column a seed operation guards.
+  assert.deepEqual(nonBumping.sort(), ["last_active_at", "raid_stamina,raid_stamina_updated_at"]);
+  assert.ok(bumping >= 15);
+  assert.ok(!nonBumping.some((cols) => cols.split(",").includes("gold")));
+});
+
+// ---------------------------------------------------------------------------------------------
+// P1-B: requestId is bound to the exact request (player, character, operations)
+// ---------------------------------------------------------------------------------------------
+const rawApply = async (db, over) => {
+  const body = seedBody(over);
+  const pv = await preview(db, { playerId: body.playerId, characterId: body.characterId, ops: body.ops });
+  return j(await h.handleAdminSeedApply(db, ADMIN, { previewHash: pv.previewHash || "0".repeat(64), ...body }));
+};
+
+test("P1-B: replaying the identical request is already_applied (even with ops keys in another order) and never mutates twice", async () => {
+  const db = createDb();
+  const body = seedBody({ requestId: "req-bind-abcdefgh" });
+  assert.equal((await rawApply(db, body)).status, 200);
+  assert.equal((await rawApply(db, body)).already_applied, true);
+  assert.equal(gold(db), 600); assert.equal(audits(db).length, 1);
+  assert.ok(JSON.parse(audits(db)[0].metadata_json).requestHash.match(/^[0-9a-f]{64}$/));
+});
+
+test("P1-B: the same requestId with a different amount, player or character is 409 request_id_conflict and changes nothing", async () => {
+  const db = createDb();
+  const base = { requestId: "req-bind-abcdefgh" };
+  assert.equal((await rawApply(db, base)).status, 200);
+  for (const over of [{ ops: { gold: { amount: 501 } } }, { playerId: "P2", characterId: "c2" }, { characterId: "c1b" }, { playerId: "P2" }]) {
+    const r = await rawApply(db, { ...base, ...over });
+    assert.equal(r.status, 409, JSON.stringify(over)); assert.equal(r.error, "request_id_conflict", JSON.stringify(over));
+  }
+  assert.equal(gold(db), 600); assert.equal(gold(db, "c1b"), 5); assert.equal(gold(db, "c2"), 50); assert.equal(audits(db).length, 1);
+});
+
+test("P1-B: a duplicate that races inside the batch is already_applied once and mutates once", async () => {
+  const db = createDb();
+  const body = seedBody({ requestId: "req-race-abcdefgh" });
+  const pv = await preview(db);
+  db.beforeBatch = async () => { assert.equal((await j(await h.handleAdminSeedApply(db, ADMIN, { ...body, previewHash: pv.previewHash }))).status, 200); };
+  const loser = await j(await h.handleAdminSeedApply(db, ADMIN, { ...body, previewHash: pv.previewHash }));
+  assert.equal(loser.status, 200); assert.equal(loser.already_applied, true);
+  assert.equal(gold(db), 600); assert.equal(audits(db).length, 1);
+});
+
+test("P1-B: a different payload racing on the same requestId is request_id_conflict and does not mutate", async () => {
+  const db = createDb();
+  const mine = seedBody({ requestId: "req-race2-abcdefgh" });
+  const theirs = seedBody({ requestId: "req-race2-abcdefgh", ops: { gold: { amount: 7 } } });
+  const pvMine = await preview(db);
+  const pvTheirs = await preview(db, { ops: theirs.ops });
+  db.beforeBatch = async () => { await h.handleAdminSeedApply(db, ADMIN, { ...theirs, previewHash: pvTheirs.previewHash }); };
+  const r = await j(await h.handleAdminSeedApply(db, ADMIN, { ...mine, previewHash: pvMine.previewHash }));
+  assert.equal(r.status, 409); assert.equal(r.error, "request_id_conflict");
+  assert.equal(gold(db), 107); assert.equal(audits(db).length, 1);
+});
+
+test("P1-B: after a failed batch the same requestId can be retried and applies exactly once", async () => {
+  const db = createDb();
+  const body = seedBody({ requestId: "req-retry-abcdefgh" });
+  const pv = await preview(db);
+  db.raw.exec("CREATE TRIGGER fail_audit BEFORE INSERT ON admin_audit_log BEGIN SELECT RAISE(ABORT, 'boom'); END");
+  const failed = await j(await h.handleAdminSeedApply(db, ADMIN, { ...body, previewHash: pv.previewHash }));
+  assert.equal(failed.status, 500); assert.equal(failed.error, "admin_audit_failed");
+  assert.equal(gold(db), 100); assert.equal(audits(db).length, 0);
+  db.raw.exec("DROP TRIGGER fail_audit");
+  const retry = await j(await h.handleAdminSeedApply(db, ADMIN, { ...body, previewHash: pv.previewHash }));
+  assert.equal(retry.status, 200); assert.ok(!retry.already_applied);
+  assert.equal((await j(await h.handleAdminSeedApply(db, ADMIN, { ...body, previewHash: pv.previewHash }))).already_applied, true);
+  assert.equal(gold(db), 600); assert.equal(audits(db).length, 1);
+});
+
+test("P1-B: a mutation is gated on THIS attempt's audit row, not on any row sharing the audit_id", async () => {
+  const db = createDb();
+  db.raw.prepare("INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) VALUES ('adm-seed-x','Admin_1','ADMIN_SEED','character','c1','{\"attemptToken\":\"winner\"}','t')").run();
+  const ctx = { characterId: "c1", playerId: "P1", now: new Date().toISOString(), auditId: "adm-seed-x",
+    gateSql: "EXISTS (SELECT 1 FROM admin_audit_log WHERE audit_id = ? AND instr(metadata_json, ?) > 0)", gateBinds: ["adm-seed-x", "\"attemptToken\":\"loser\""] };
+  const res = await h.ADMIN_SEED_OPS.gold.plan({ gold: 100 }, { amount: 500 }).mutate(db, ctx).run();
+  assert.equal(res.meta.changes, 0); assert.equal(gold(db), 100);
+});
+
+// ---------------------------------------------------------------------------------------------
+// P1-C: every mutation result is verified; any mismatch rolls the whole batch back
+// ---------------------------------------------------------------------------------------------
+async function withPlan(planFn, run) {
+  const op = h.ADMIN_SEED_OPS.gold; const original = op.plan;
+  op.plan = planFn;
+  try { return await run(); } finally { op.plan = original; }
+}
+const goldPlan = (mutateSql, expectedChanges = 1) => (character, input) => ({
+  change: { op: "gold", label: "Gold", before: character.gold, after: character.gold + input.amount, amount: input.amount },
+  guard: { gold: character.gold }, expectedChanges,
+  mutate: (db, ctx) => db.prepare(mutateSql(ctx)).bind(...ctx.gateBinds),
+});
+
+test("P1-C: audit insert succeeds but the mutation touches 0 rows -> whole batch rolled back, no success", async () => {
+  const db = createDb();
+  await withPlan(goldPlan((ctx) => `UPDATE characters SET gold = gold + 1 WHERE character_id = 'nope' AND ${ctx.gateSql}`), async () => {
+    const r = await apply(db);
+    assert.equal(r.status, 500); assert.equal(r.error, "seed_mutation_failed");
+  });
+  assert.equal(gold(db), 100); assert.equal(audits(db).length, 0);
+});
+
+test("P1-C: a mutation that touches more rows than expected rolls back everything", async () => {
+  const db = createDb();
+  await withPlan(goldPlan((ctx) => `UPDATE characters SET gold = gold + 1 WHERE player_id = 'P1' AND ${ctx.gateSql}`), async () => {
+    const r = await apply(db);
+    assert.equal(r.status, 500); assert.equal(r.error, "seed_mutation_failed");
+  });
+  assert.equal(gold(db), 100); assert.equal(gold(db, "c1b"), 5); assert.equal(audits(db).length, 0);
+});
+
+test("P1-C: an operation may declare a different expected row count and it is enforced", async () => {
+  const db = createDb();
+  await withPlan(goldPlan((ctx) => `UPDATE characters SET gold = gold + 1 WHERE player_id = 'P1' AND ${ctx.gateSql}`, 2), async () => {
+    const r = await apply(db);
+    assert.equal(r.status, 200);
+  });
+  assert.equal(gold(db), 101); assert.equal(gold(db, "c1b"), 6); assert.equal(audits(db).length, 1);
+});
+
+test("P1-C: a failing mutation statement leaves no partial commit", async () => {
+  const db = createDb();
+  await withPlan(goldPlan((ctx) => `UPDATE characters SET no_such_column = 1 WHERE character_id = 'c1' AND ${ctx.gateSql}`), async () => {
+    const r = await apply(db);
+    assert.equal(r.status, 500);
+  });
+  assert.equal(gold(db), 100); assert.equal(audits(db).length, 0);
+});
+
+test("P1-C: a guard column outside the allowlist is rejected before anything is written", async () => {
+  const db = createDb();
+  await withPlan((character) => ({ change: { op: "gold", label: "Gold", before: 1, after: 2 }, guard: { "gold = gold; DROP TABLE characters; --": 1 }, expectedChanges: 1, mutate: (d, ctx) => d.prepare("SELECT 1").bind() }), async () => {
+    await assert.rejects(() => preview(db), /admin_seed_guard_column_not_allowed/);
+  });
   assert.equal(gold(db), 100);
+});
+
+// ---------------------------------------------------------------------------------------------
+// P2-A: kill switch semantics on all three endpoints
+// ---------------------------------------------------------------------------------------------
+test("P2-A: only the exact JSON value true enables Seed; every other stored value is OFF on all three endpoints", async () => {
+  for (const value of ["false", '"true"', "1", "null", "{bad", "True", " true", "true ", "", "[true]"]) {
+    const db = createDb(); db.raw.prepare("UPDATE game_config SET value_json = ? WHERE key = 'admin_seed_enabled'").run(value);
+    const before = db.raw.prepare("SELECT * FROM game_config").all();
+    assert.equal((await lookup(db)).status, 403, `lookup ${JSON.stringify(value)}`);
+    assert.equal((await preview(db)).status, 403, `preview ${JSON.stringify(value)}`);
+    const a = await j(await h.handleAdminSeedApply(db, ADMIN, { ...seedBody({ requestId: "req-kill-abcdefgh" }), previewHash: "0".repeat(64) }));
+    assert.equal(a.status, 403, `apply ${JSON.stringify(value)}`); assert.equal(a.error, "feature_disabled");
+    assert.equal(gold(db), 100); assert.equal(audits(db).length, 0);
+    assert.deepEqual(db.raw.prepare("SELECT * FROM game_config").all(), before);
+  }
+  const on = createDb();
+  assert.equal((await lookup(on)).status, 200);
+});
+
+test("P2-A: order of checks is documented behaviour: invalid admin -> 401 even when OFF; valid admin + OFF -> 403", async () => {
+  const db = createDb({ enabled: false });
+  const bad = { ok: false, error: "admin_session_invalid" };
+  assert.equal((await lookup(db, "P1", bad)).status, 401);
+  assert.equal((await j(await h.handleAdminSeedPreview(db, bad, seedBody()))).status, 401);
+  assert.equal((await j(await h.handleAdminSeedApply(db, bad, seedBody()))).status, 401);
+  assert.equal((await lookup(db)).status, 403);
+  assert.equal((await preview(db)).status, 403);
 });

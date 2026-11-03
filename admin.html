@@ -34,6 +34,7 @@
   .matRow input, .lootRow input, .lootRow select { flex: 1; }
   .matRow button, .lootRow button, .rowActions button { background: #d9534f; color: #fff; border: none; border-radius: 6px; padding: 5px 9px; font-size: 12px; cursor: pointer; }
   .rowActions { display: flex; gap: 6px; }
+  .seedBar { position: sticky; bottom: 0; background: #1c1f2b; border-top: 1px solid #3a4756; padding: 12px; margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
   .seedActions { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-top: 12px; }
   .rowActions .edit { background: #3a5ac9; }
   .btn-add { background: #2f7d4f; margin-top: 4px; }
@@ -365,20 +366,27 @@
     <div class="card" id="seedFormCard" style="display:none;">
       <h2>Seed: <span id="seedTargetName"></span></h2>
       <div id="seedTargetMeta" class="viewerMeta"></div>
+      <div class="msg err" id="seedTargetWarn"></div>
       <div class="card">
         <label><input type="checkbox" id="seedGoldOn" checked> <b>Gold</b> <span class="muted">เพิ่มได้ 1–100,000 ต่อครั้ง</span></label>
         <div class="field"><input type="number" id="seedGoldAmount" min="1" max="100000" step="1" value="1000" aria-label="จำนวนทองที่เพิ่ม"></div>
       </div>
       <div class="muted">การ์ดอื่น (Level, ชั้น, Diamond, Potion, วัสดุ, Pet, Equipment) จะเพิ่มใน H2/H3</div>
-      <div class="seedActions">
-        <button class="ghost" id="seedBackToCharsBtn" type="button">← เปลี่ยนตัวละคร</button>
-        <button class="btn-primary" id="seedPreviewBtn" type="button">พรีวิวทั้งหมด</button>
+      <div class="seedBar">
+        <div class="muted" id="seedSummary"></div>
+        <div class="field"><label for="seedFormReason">เหตุผล (5–300 ตัวอักษร)</label><input id="seedFormReason" maxlength="300" autocomplete="off"></div>
+        <div class="seedActions">
+          <button class="ghost" id="seedBackToCharsBtn" type="button">← เปลี่ยนตัวละคร</button>
+          <button class="btn-primary" id="seedPreviewBtn" type="button">พรีวิวทั้งหมด</button>
+        </div>
+        <div class="msg" id="seedFormMsg"></div>
       </div>
-      <div class="msg" id="seedFormMsg"></div>
     </div>
 
     <div class="card" id="seedPreviewCard" style="display:none;">
       <h2>พรีวิว Seed <span class="pill" id="seedPreviewTarget"></span></h2>
+      <div class="viewerMeta mono" id="seedPreviewIds"></div>
+      <div class="msg err" id="seedPreviewNonQa"></div>
       <div class="msg err" id="seedPreviewWarn"></div>
       <div class="scrollTable">
         <table id="seedPreviewTable">
