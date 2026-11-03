@@ -324,3 +324,10 @@ test("Dungeon Hub presents one shared Resume/Discard checkpoint recovery flow", 
   assert.match(app, /md-checkpoint-recovery-discard/);
   assert.match(app, /checkpointCandidate = options\.checkpointOverride \|\| resumeBattle/);
 });
+
+test("Checkpoint recovery effect declares its state before evaluating hook dependencies", () => {
+  const stateDeclaration = app.indexOf('const [resumeBattle, setResumeBattle] = useState(null)');
+  const recoveryEffect = app.indexOf('if (phase === "map" && resumeBattle?.battleId)');
+  assert.ok(stateDeclaration >= 0, "resumeBattle state declaration exists");
+  assert.ok(recoveryEffect > stateDeclaration, "resumeBattle must be initialized before the effect dependency array is evaluated");
+});

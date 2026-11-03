@@ -94,12 +94,6 @@ function ThornieDungeons() {
       clearInterval(timer);
     };
   }, [cred.url, phase]);
-  useEffect(() => {
-    if (phase === "map" && resumeBattle?.battleId) {
-      setCheckpointPromptError("");
-      setCheckpointPromptOpen(true);
-    }
-  }, [phase, resumeBattle?.battleId]);
   const refreshGuildChatStatus = useCallback((characterId) => cloudGetGuildChatStatus(cred.url, characterId).then((res) => {
     if (activeCharacterIdRef.current === characterId && res?.ok) setGuildUnreadState({ characterId, unread: !!res.guild?.unread });
   }).catch(() => {}), [cred.url]);
@@ -147,6 +141,12 @@ function ThornieDungeons() {
   const [resumeBattle, setResumeBattle] = useState(null); // Battle V1 safe Action-boundary checkpoint
   const [checkpointPromptOpen, setCheckpointPromptOpen] = useState(false);
   const [checkpointPromptError, setCheckpointPromptError] = useState("");
+  useEffect(() => {
+    if (phase === "map" && resumeBattle?.battleId) {
+      setCheckpointPromptError("");
+      setCheckpointPromptOpen(true);
+    }
+  }, [phase, resumeBattle?.battleId]);
   const [battleState, setBattleState] = useState(null);
   const battleStateRef = useRef(null);
   const battlePresentationRef = useRef(null);
