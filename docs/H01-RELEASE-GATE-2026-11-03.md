@@ -49,9 +49,9 @@ GitHub Actions **Upload R2 assets #59**, job `upload` (job ID `125719095464`), l
 16. `ui/dungeon-select/dungeon-gate-halloween-v1.webp`
 17. `ui/equipment-icons/event/excaliburnt.png`
 
-The workflow's 18th object is the staged manifest itself: `r2-upload/manifest.json` maps directly to R2 key `manifest.json`. Therefore the run's 18-object count reconciles as **17 H01 image assets + 1 manifest JSON**. The job log explicitly records upload followed by remote download and SHA-256 equality for each of the 17 listed image assets, ending with “Uploaded and verified 18 object(s).” The manifest JSON is included in the workflow's changed-file list and supported upload types; its key is not repeated as an image-style `Verified <key>` line in the excerpted object list. The run therefore provides successful upload/read-back evidence for the 18 changed objects, but this audit has not independently queried current R2 state after the run.
+The workflow's 18th object is the staged manifest itself: `r2-upload/manifest.json` maps directly to R2 key `manifest.json`. Therefore the run's 18-object count reconciles as **17 H01 image assets + 1 manifest JSON**. The job log explicitly records upload followed by remote download and SHA-256 equality for each of the 17 listed image assets, ending with “Uploaded and verified 18 object(s).” The manifest JSON is included in the workflow's changed-file list and supported upload types; its key is not repeated as an image-style `Verified <key>` line in the excerpted object list. The run provides historical upload/read-back evidence for 18 changed objects. Current R2 state remains unverified: the connected GitHub tools do not expose R2 list/get, and the Production status URL could not be fetched through the available read-only web access.
 
-**Workflow script issue:** after the successful upload count, the job log emits shell command-substitution errors on the Markdown summary lines containing backtick-quoted `assets`, `r2-upload/<key>`, and `R2 <key>`. The upload/verification loop had already completed and the job concluded SUCCESS, so these errors affect the step-summary formatting, not the 18-object upload/read-back loop. They should still be fixed in a separate low-risk workflow maintenance change; do not treat the step summary as trustworthy until then.
+**Workflow script issue:** after the successful upload count, the job log emits shell command-substitution errors on the Markdown summary lines containing backtick-quoted `assets`, `r2-upload/<key>`, and `R2 <key>`. The upload/verification loop had already completed and the job concluded SUCCESS, so these errors affect the step-summary formatting, not the 18-object upload/read-back loop. Fixed in source at commit `46703b6ab880f4604a5965d7d81f15e104ad7657` by escaping the Markdown backticks in the two summary echo lines. This prevents Bash command substitution. The workflow has not yet been rerun, so runtime confirmation remains pending.
 
 ## 4. Workflow evidence
 
@@ -71,7 +71,7 @@ Cleanup branch workflow run #496 failed after successful cleanup runs #494 and #
 | Gate | Evidence / current assessment | Status |
 |---|---|---|
 | Source Integrity | Main SHA and PR #201 merge verified; relevant source is in main. | PASS |
-| Assets Integrity | R2 upload run reconciles to 17 H01 image assets + `manifest.json` (18 total); log confirms remote download/SHA-256 verification for the 17 image keys and reports 18 total. Current R2 state was not independently re-read; workflow summary has shell quoting errors after the upload loop. | BLOCKED |
+| Assets Integrity | R2 upload run reconciles to 17 H01 image assets + `manifest.json` (18 total); log confirms remote download/SHA-256 verification for the 17 image keys and reports 18 total. Current R2 state was not independently re-read; the summary quoting fix is committed but not yet rerun. | BLOCKED |
 | Build Integrity | Frontend deploy workflow succeeded; independent clean build and generated-output check were not run in this audit. | BLOCKED |
 | API Integration | API deploy succeeded; event inactive behavior and authorization were not independently exercised against Production. | BLOCKED |
 | Gameplay | Prior DEV checkpoint reports H01 automated coverage and Phaser Canvas 56/56; not rerun by Independent QA. | BLOCKED |
@@ -93,7 +93,7 @@ This record preserves attribution and does not claim this audit independently re
 
 ## 7. Blockers / required next actions
 
-1. The 18th R2 object is reconciled as `manifest.json`. Remaining asset follow-up: independently re-read current R2 objects if an authorized read-only path is available, and fix the Markdown summary quoting bug in `.github/workflows/upload-r2-assets.yml` (the upload loop itself completed and verified before the shell errors).
+1. The 18th R2 object is reconciled as `manifest.json`. Current R2 object listing/read-back remains pending until an authorized read-only R2 path is available. The summary quoting fix is committed at `46703b6`; rerun and verify the workflow on a subsequent authorized dispatch or asset-staging change.
 2. Verify event Server Config is inactive and confirm UI/API enforce inactive status using a permitted read-only/status endpoint; do not activate.
 3. Obtain independent automated test execution evidence for H01 focused tests and relevant regression suite.
 4. Complete authorized manual QA for event entry, battle mechanics, reward/settlement, duplicate/retry protection, checkpoint/resume, expiry/in-flight completion, and mobile UI. Use normal client flows; no direct D1 writes or test-account mutations without separate approval.
