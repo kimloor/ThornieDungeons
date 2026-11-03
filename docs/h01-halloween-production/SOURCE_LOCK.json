@@ -1,0 +1,32 @@
+{
+  "main": "dcb4cd0c97f145d803e4317674921d95c4a0c9c9",
+  "authority": "Owner: use approved images in this conversation as sources for H01-04; dedicated Graphics branch/Draft PR authorized",
+  "scope": "FINAL ASSET PRODUCTION ONLY; no R2/manifest/runtime/deploy/main merge",
+  "files": [
+    {
+      "path": "docs/h01-halloween-review/gate/HALLOWEEN_GATE_PROTOTYPE.png",
+      "sha256": "f6330ef599df518797d989b53de9bcb79c4e3235b00a114b814d5c35962ba0a2"
+    },
+    {
+      "path": "docs/h01-halloween-review/boss/HALOWEEN_NIGHTMARE_IDLE_01.png",
+      "sha256": "83909092055fbcc9b69ab70e7dbae563beac9ba6e4a4549dec16be1604a0f354"
+    },
+    {
+      "path": "docs/h01-halloween-review/excaliburnt/EXCALIBURNT_MASTER_UPRIGHT.png",
+      "sha256": "58f024de715500b87bd211e382cf2227ffa0221b7e4ee3087c4cced06048fa19"
+    },
+    {
+      "path": "docs/h01-halloween-review/excaliburnt/EXCALIBURNT_ICON_512.png",
+      "sha256": "cc8b3a9a45c37773da00f5fd91d7230a9230684fd227ea31de191958c0ec5154"
+    },
+    {
+      "path": "docs/h01-halloween-review/excaliburnt/EXCALIBURNT_IDLE_01_WEAPON_ONLY.png",
+      "sha256": "999d9bdc0a77115960fc2a8bb6b2a4300c4fd058d97808e3a47ef3c9c5bf5f5f"
+    }
+  ],
+  "approvals": {
+    "gate": "Owner approved",
+    "boss": "Owner approved",
+    "excaliburnt": "Owner approved revision 2; rounded stone, embedded blade tip fully hidden"
+  }
+}

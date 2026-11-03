@@ -166,19 +166,19 @@ function makeEnemy(floor, options = {}) {
     : null;
   const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
   const canonicalProfile = isBoss
-    ? DUNGEON_V2.getDungeonV2BossProfile(options.profileId)
+    ? DUNGEON_V2.getDungeonV2BossProfile(options.statProfileId || options.profileId)
     : DUNGEON_V2.getDungeonV2MonsterProfile(options.profileId);
   const t = options.profileId
     ? pool.find(entry => String(entry.dungeonV2Id || entry.id) === String(options.profileId)) || {
       id: canonicalProfile?.id || String(options.profileId),
-      name: canonicalProfile?.name || String(options.profileId),
+      name: options.displayName || canonicalProfile?.name || String(options.profileId),
       color: "#7ED9A8",
       sizeClass: isBoss ? "large" : "medium",
       anchorType: options.profileId === "bramble_bat" ? "flying" : "ground"
     }
     : pool[Math.floor(Math.random() * pool.length)] || pool[0];
   const packCount = Math.max(1, Math.min(3, Math.floor(Number(options.packCount) || 1)));
-  const v2ProfileId = t.dungeonV2Id || t.id;
+  const v2ProfileId = options.statProfileId || t.dungeonV2Id || t.id;
   const v2Stats = isBoss
     ? DUNGEON_V2.resolveDungeonV2BossStats(floor, v2ProfileId)
     : DUNGEON_V2.resolveDungeonV2NormalStats(floor, v2ProfileId, { packCount, elite: isElite, modifier });
@@ -188,7 +188,9 @@ function makeEnemy(floor, options = {}) {
   const agi = t.agi || (isBoss ? 8 : 4) + Math.floor(floor / 10);
   const speedAdjustment = Number(v2Stats.speedAdjustment) || 0;
   const baseAtk = v2Stats.atk;
-  const skillConfig = DUNGEON_V2.getDungeonV2SkillConfig(v2ProfileId, encounterType);
+  const skillConfig = Array.isArray(options.skillCycle) && options.skillCycle.length
+    ? { skillSetId: options.profileId, cycle: options.skillCycle, phase2Cycle: null, phaseAction: null }
+    : DUNGEON_V2.getDungeonV2SkillConfig(v2ProfileId, encounterType);
   return {
     id: t.id,
     uid: options.instanceId || `${t.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -204,7 +206,8 @@ function makeEnemy(floor, options = {}) {
     chapter: DUNGEON_V2.dungeonChapterForFloor(floor),
     chapterFloor: DUNGEON_V2.dungeonChapterFloor(floor),
     sourceIdentity: isBoss ? `chapter_boss:${t.id}` : `${encounterType}:${t.id}`,
-    dungeonV2ProfileId: v2Stats.profileId,
+    dungeonV2ProfileId: options.profileId || v2Stats.profileId,
+    dungeonV2StatProfileId: v2Stats.profileId,
     dungeonV2SkillSetId: skillConfig?.skillSetId || null,
     dungeonV2SkillCycle: skillConfig?.cycle || null,
     dungeonV2SkillPhase2Cycle: skillConfig?.phase2Cycle || null,
@@ -245,6 +248,9 @@ function makeEncounter(floor, options = {}) {
       encounterType,
       packCount: serverContext.packCount,
       profileId: enemy.id,
+      displayName: enemy.id === "haloween_nightmare" ? "Haloween nightmare" : undefined,
+      statProfileId: enemy.statProfileId,
+      skillCycle: enemy.skillCycle,
       instanceId: enemy.instanceId,
       modifierId: enemy.modifierId
     }));

@@ -359,7 +359,7 @@ Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
                      ↓
 Gate C — Ver 1.1.0 Release Acceptance            ✅ COMPLETE (2026-10-20)
                      ↓
-Visible game version                             Ver 1.1.34
+Visible game version                             Ver 1.1.35
                      ↓
 NEW WAVE 1 — Global Loading System V1         ✅ COMPLETE (Ver 1.1.1)
                      ↓
@@ -478,3 +478,12 @@ Owner-reported Production symptom after the P0 rollout: after using a Potion, th
 4. Reconcile H01 Halloween implementation/QA status against the current PRs and contract before assigning further work; do not rely on stale H01 status text elsewhere in this roadmap.
 5. Resume approved roadmap work only after the active P0 gameplay blocker is closed.
 
+- **H01-00 / H01-01 / H01-02 / H01-02B:** Design, Owner decisions and interface/technical contract review documented; maintain high-risk server-authority gates.
+- **H01-03:** Owner concept approval 3/3 (purple Boss Gate variant, Haloween nightmare, Excaliburnt Rev2).
+- **H01-04:** **GRAPHICS ARTWORK ACCEPTED / OWNER VISUAL PASS**. PR #183 (Draft, `art/h01-04-final-graphics`) contains recovered 17/17 final exports, verified SHA/dimensions/alpha and review materials. Owner reviewed repo images and accepted visual appearance. Excaliburnt Death_01/02 retain intentional transparent weapon layers under established convention. No regeneration required.
+- **H01-05 (DEV COMPLETE / QA PENDING):** isolated branch implements server-status-driven visibility, 5-second Raid/Halloween banner rotation with interval cleanup and scoped map-gate placement. No version bump, activation or release.
+- **H01-06 (DEV COMPLETE / STAGING QA PENDING / HIGH RISK):** server-issued event window/context, fixed boss and deterministic skill cycle, protected expiry resume, reference-boss stats/XP/gold and exclusive 5% Excaliburnt / 95% gold settlement are implemented with existing exact-once completion and Overflow paths. Real staging D1 concurrency/rollback remains H01-08 evidence; Admin #182 is untouched.
+- **H01-07 (LOCAL INTEGRATION + PHASER QA COMPLETE / PUBLICATION PENDING):** approved 17/17 bytes are staged under `r2-upload`, manifest/item resolver and scoped Excaliburnt hand occlusion are bound, automated 7×8 contract/SHA checks pass, and the real Phaser Canvas fixture passes 56/56 with zero load/order/grip failures. Production R2 upload/read-back is deliberately not performed without release authority.
+- **H01-08/09/10:** Independent staging QA, explicit Owner release authorization and closure; **NOT STARTED**.
+
+**Boundary:** H01-05–07 source implementation is now prepared only on a separate DEV branch for Draft PR review. This does not approve Production D1 modification, R2 publication, merge, deploy, event activation or final H01 release. H01-08 independent staging QA and H01-09 explicit Owner authorization remain mandatory.
