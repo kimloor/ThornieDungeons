@@ -898,6 +898,7 @@ function selectSeedCharacter(c) {
   document.getElementById("seedTargetName").textContent = `${c.name} (${seedState.account.playerId})`;
   document.getElementById("seedTargetMeta").textContent = `Lv ${c.level} · Gold ${c.gold} · ชั้นที่ปลดล็อก ${c.unlockedFloor} · Stat points ${c.statPoints}`;
   seedSay("seedFormMsg", "");
+  seedShow("seedCharsCard", false);
   seedShow("seedFormCard", true);
   seedShow("seedPreviewCard", false);
 }
@@ -955,7 +956,7 @@ async function seedConfirm() {
 
 document.getElementById("seedSearchBtn").onclick = () => void seedSearch();
 document.getElementById("seedUsername").onkeydown = (e) => { if (e.key === "Enter") void seedSearch(); };
-document.getElementById("seedBackToCharsBtn").onclick = () => { seedShow("seedFormCard", false); };
+document.getElementById("seedBackToCharsBtn").onclick = () => { seedShow("seedFormCard", false); seedShow("seedCharsCard", true); };
 document.getElementById("seedPreviewBtn").onclick = () => void seedPreview();
 document.getElementById("seedBackBtn").onclick = () => { seedShow("seedPreviewCard", false); seedShow("seedFormCard", true); };
 document.getElementById("seedReason").oninput = updateSeedConfirmState;

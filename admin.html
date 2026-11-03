@@ -34,6 +34,7 @@
   .matRow input, .lootRow input, .lootRow select { flex: 1; }
   .matRow button, .lootRow button, .rowActions button { background: #d9534f; color: #fff; border: none; border-radius: 6px; padding: 5px 9px; font-size: 12px; cursor: pointer; }
   .rowActions { display: flex; gap: 6px; }
+  .seedActions { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-top: 12px; }
   .rowActions .edit { background: #3a5ac9; }
   .btn-add { background: #2f7d4f; margin-top: 4px; }
   .btn-primary { background: #3a5ac9; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-top: 6px; }
@@ -369,7 +370,7 @@
         <div class="field"><input type="number" id="seedGoldAmount" min="1" max="100000" step="1" value="1000" aria-label="จำนวนทองที่เพิ่ม"></div>
       </div>
       <div class="muted">การ์ดอื่น (Level, ชั้น, Diamond, Potion, วัสดุ, Pet, Equipment) จะเพิ่มใน H2/H3</div>
-      <div class="rowActions">
+      <div class="seedActions">
         <button class="ghost" id="seedBackToCharsBtn" type="button">← เปลี่ยนตัวละคร</button>
         <button class="btn-primary" id="seedPreviewBtn" type="button">พรีวิวทั้งหมด</button>
       </div>
@@ -387,7 +388,7 @@
       </div>
       <div class="muted">ตรวจแล้ว: ไม่มี operation ค้าง · ไม่มี run ภายใน 30 นาที · ทุกรายการสำเร็จพร้อมกันหรือไม่สำเร็จเลย · ไม่มีปุ่มลดข้อมูล</div>
       <div class="field"><label for="seedReason">เหตุผล (5–300 ตัวอักษร)</label><input id="seedReason" maxlength="300" autocomplete="off"></div>
-      <div class="rowActions">
+      <div class="seedActions">
         <button class="ghost" id="seedBackBtn" type="button">← Back</button>
         <button class="btn-primary" id="seedConfirmBtn" type="button" disabled>ยืนยัน seed</button>
       </div>
