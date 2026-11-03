@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.35" />
+<meta name="application-version" content="1.1.36" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.35";
+  content: "Ver 1.1.36";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -3411,6 +3411,18 @@ body > .md-inv2-detail-layer .md-inv2-detail {
   .md-login-brand p { margin-top:3px; }
   .md-character-select-title { padding-bottom:4px; }
 }
+
+.md-checkpoint-recovery-layer { position:absolute; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; padding:calc(18px + var(--safe-top)) calc(18px + var(--safe-right)) calc(18px + var(--safe-bottom)) calc(18px + var(--safe-left)); background:rgba(3,7,20,.78); backdrop-filter:blur(5px); }
+.md-checkpoint-recovery-card { width:min(100%,350px); padding:22px 18px 18px; border:1.5px solid rgba(255,209,102,.72); border-radius:20px; background:linear-gradient(160deg,rgba(38,27,66,.98),rgba(12,9,28,.99)); box-shadow:0 18px 48px rgba(0,0,0,.55); text-align:center; }
+.md-checkpoint-recovery-eyebrow { color:#FFD166; font-size:10px; font-weight:800; letter-spacing:1.6px; }
+.md-checkpoint-recovery-card h2 { margin:8px 0 6px; color:#FFF2C2; font-size:21px; line-height:1.25; }
+.md-checkpoint-recovery-card p { margin:0; color:#D8D0EA; font-size:14px; line-height:1.5; }
+.md-checkpoint-recovery-error { margin-top:12px; padding:8px 10px; border-radius:10px; background:rgba(225,79,79,.14); color:#FFB5B5; font-size:12px; }
+.md-checkpoint-recovery-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; }
+.md-checkpoint-recovery-actions button { min-height:46px; border-radius:12px; font:800 14px 'Baloo 2',sans-serif; cursor:pointer; }
+.md-checkpoint-recovery-resume { border:1px solid #E5B94F; background:linear-gradient(180deg,#FFE49A,#D69B31); color:#2A1A08; }
+.md-checkpoint-recovery-discard { border:1px solid rgba(207,194,231,.55); background:rgba(255,255,255,.08); color:#E5DDF4; }
+
 `;
 
 // ===== state/save.js =====
@@ -6128,7 +6140,7 @@ async function cloudPost(url, body, { retries, baseDelayMs = 300, headers = {}, 
       if (controller) init.signal = controller.signal;
       const res = await fetch(url, init);
       const data = await res.json();
-      if (res.status >= 500) return { ...data, error: data.error || "server_error", status: res.status };
+      if (!res.ok) return { ...data, error: data.error || (res.status >= 500 ? "server_error" : "request_failed"), status: res.status };
       return data;
     } catch (e) {
       return timedOut ? { error: "network_error", timedOut: true } : { error: "network_error" };
@@ -10433,6 +10445,39 @@ if (typeof module !== "undefined") module.exports = {
   Object.assign(root, { BATTLE_CORE_V1: api });
   if (typeof module !== "undefined") module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
+
+// ===== systems/battleErrorCatcher.js =====
+// One runtime switch controls both safe Battle rejection details and structured failure logging.
+(function installBattleErrorCatcher(root) {
+  let enabled = true;
+  const safeCode = value => {
+    const code = String(value == null ? "" : value).trim().toLowerCase();
+    return /^[a-z0-9][a-z0-9_-]{0,79}$/.test(code) ? code : "";
+  };
+  root.BATTLE_ERROR_CATCHER = Object.freeze({
+    setEnabled(value) { enabled = !!value; return enabled; },
+    isEnabled() { return enabled; },
+    capture({ response, thrown, action, battleId, authorityRev, safeActionSeq, requestId } = {}) {
+      if (!enabled) return null;
+      const reason = safeCode(response?.error) || safeCode(response?.reason) || safeCode(thrown?.code) || "unknown_error";
+      const detail = safeCode(response?.reason);
+      const n = Number(response?.status);
+      const status = Number.isInteger(n) && n >= 100 && n <= 599 ? n : null;
+      const diagnostic = {
+        event: "battle_action_rejected", system: "dungeon_battle", reason, version: "1.1.36",
+        correlation: {
+          battleId: safeCode(battleId) ? String(battleId).slice(0, 120) : "",
+          requestId: safeCode(requestId) ? String(requestId).slice(0, 120) : "",
+          authorityRev: Number.isInteger(Number(authorityRev)) ? Number(authorityRev) : null,
+          safeActionSeq: Number.isInteger(Number(safeActionSeq)) ? Number(safeActionSeq) : null
+        },
+        action: safeCode(action) || "unknown", status
+      };
+      try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
+      return { reason, detail, status };
+    }
+  });
+})(globalThis);
 
 // ===== systems/enhancement.js =====
 // ---------- junk materials, enhancement (ตีบวก) & empowerment (เสริมพลัง) ----------
@@ -16685,6 +16730,12 @@ function ThornieDungeons() {
       clearInterval(timer);
     };
   }, [cred.url, phase]);
+  useEffect(() => {
+    if (phase === "map" && resumeBattle?.battleId) {
+      setCheckpointPromptError("");
+      setCheckpointPromptOpen(true);
+    }
+  }, [phase, resumeBattle?.battleId]);
   const refreshGuildChatStatus = useCallback((characterId) => cloudGetGuildChatStatus(cred.url, characterId).then((res) => {
     if (activeCharacterIdRef.current === characterId && res?.ok) setGuildUnreadState({ characterId, unread: !!res.guild?.unread });
   }).catch(() => {}), [cred.url]);
@@ -16730,6 +16781,8 @@ function ThornieDungeons() {
   const [player, setPlayer] = useState(null); // ephemeral combat state, derived fresh from save each stage entry
   const [resumeRun, setResumeRun] = useState(null); // persisted current HP/MP + floor restored after entering a character
   const [resumeBattle, setResumeBattle] = useState(null); // Battle V1 safe Action-boundary checkpoint
+  const [checkpointPromptOpen, setCheckpointPromptOpen] = useState(false);
+  const [checkpointPromptError, setCheckpointPromptError] = useState("");
   const [battleState, setBattleState] = useState(null);
   const battleStateRef = useRef(null);
   const battlePresentationRef = useRef(null);
@@ -17876,15 +17929,34 @@ function ThornieDungeons() {
     else if (actor.side === "enemy") setEnemyAnims(current => ({ ...current, [actor.id]: "attack" }));
     const command = actor.kind === "hero" ? heroCommand : { type: "advance" };
     const actionKey = globalThis.crypto?.randomUUID?.() || `battle-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const receipt = await cloudSubmitDungeonBattleAction(
-      cred.url, save.characterId, state.battleId, actionKey,
-      Math.max(0, Number(state.authorityRev) || 0), command
-    );
+    let receipt;
+    let requestError = null;
+    try {
+      receipt = await cloudSubmitDungeonBattleAction(
+        cred.url, save.characterId, state.battleId, actionKey,
+        Math.max(0, Number(state.authorityRev) || 0), command
+      );
+    } catch (error) {
+      requestError = error;
+      receipt = { error: error?.code || "network_error" };
+    }
     if (!receipt?.ok || !receipt.state) {
       setBusy(false);
-      setLog(receipt?.error === "battle_revision_conflict"
-        ? "Battle state changed. Reopen the battle to continue."
-        : "Battle action was rejected by the server.");
+      const isPotionOrAttack = ["potion", "basic"].includes(command?.type);
+      const diagnostic = isPotionOrAttack ? globalThis.BATTLE_ERROR_CATCHER?.capture({
+        response: receipt, thrown: requestError, action: command.type,
+        battleId: state.battleId, authorityRev: state.authorityRev,
+        safeActionSeq: state.safeActionSeq, requestId: command?.requestId || actionKey
+      }) : null;
+      if (diagnostic) {
+        const label = command.type === "potion" ? "Potion" : "Attack";
+        const reason = [diagnostic.reason, diagnostic.detail].filter(Boolean).join(" / ");
+        setLog(`${label} rejected: ${reason}${diagnostic.status ? ` (HTTP ${diagnostic.status})` : ""}`);
+      } else {
+        setLog(receipt?.error === "battle_revision_conflict"
+          ? "Battle state changed. Reopen the battle to continue."
+          : "Battle action was rejected by the server.");
+      }
       return;
     }
     const result = { state: receipt.state, completedAction: receipt.completedAction !== false };
@@ -17960,16 +18032,47 @@ function ThornieDungeons() {
       : { type: "basic", targetId: targetUid };
     driveCoreBattle(state, command);
   }
+  async function resumePendingBattle() {
+    if (!resumeBattle?.battleId || !save?.characterId) return;
+    setCheckpointPromptError("");
+    const latest = await cloudGetBattleState(cred.url, save.characterId);
+    const payload = latest?.checkpoint?.payload;
+    if (!latest?.ok || !payload?.battleId) {
+      setResumeBattle(null);
+      setCheckpointPromptOpen(false);
+      setCheckpointPromptError("ไม่พบ Checkpoint ที่ยังดำเนินการต่อได้");
+      return;
+    }
+    if (payload.battleId !== resumeBattle.battleId) {
+      setResumeBattle(payload);
+      setCheckpointPromptError("สถานะ Checkpoint เปลี่ยนไป กรุณาตรวจสอบแล้วกด Resume อีกครั้ง");
+      return;
+    }
+    setResumeBattle(payload);
+    setCheckpointPromptOpen(false);
+    const floor = Math.max(1, Number(payload.serverContext?.floor) || Number(payload.floor) || 1);
+    enterStage(floor, null, { allowResume: true, checkpointOverride: payload });
+  }
+  async function discardPendingBattle() {
+    if (!resumeBattle?.battleId || !save?.characterId) return;
+    setCheckpointPromptError("");
+    const result = await cloudClearBattleCheckpoint(cred.url, save.characterId, resumeBattle.battleId);
+    if (!result?.ok) {
+      setCheckpointPromptError(result?.error === "battle_settlement_pending"
+        ? "ผลการต่อสู้กำลังรอยืนยันรางวัล จึงยังทิ้ง Checkpoint นี้ไม่ได้"
+        : `ทิ้ง Checkpoint ไม่สำเร็จ (${String(result?.error || "unknown_error").slice(0, 64)})`);
+      return;
+    }
+    setResumeBattle(null);
+    setCheckpointPromptOpen(false);
+    setCheckpointPromptError("");
+  }
   function enterStage(floorNum, carryPlayer = null, options = {}) {
     const stageLoading = GLOBAL_LOADING.begin({ key: "dungeon.enter", label: "กำลังเข้าดันเจี้ยน…", maxMs: 45000 });
     void (async () => {
     const allowResume = options.allowResume !== false;
-    const resumeMatches = options.halloween
-      ? resumeBattle?.serverContext?.eventId === "halloween_v1"
-      : Number(resumeBattle?.floor) === Number(floorNum);
-    const resumableCheckpoint = allowResume && resumeBattle?.serverContext && resumeMatches
-      ? resumeBattle
-      : null;
+    const checkpointCandidate = options.checkpointOverride || resumeBattle;
+    const resumableCheckpoint = allowResume && checkpointCandidate?.battleId && checkpointCandidate?.serverContext ? checkpointCandidate : null;
     let battleAuthorization = null;
     if (resumableCheckpoint) stageLoading.update({ label: "กำลังกู้คืนการต่อสู้…" });
     setBusy(true);
@@ -19501,7 +19604,18 @@ function ThornieDungeons() {
       setPhase("guild");
     },
     onBack: () => setPhase("menu")
-  }), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
+  }), phase === "map" && checkpointPromptOpen && resumeBattle?.battleId && /*#__PURE__*/React.createElement("div", {
+    className: "md-shared-overlay md-checkpoint-recovery-layer", role: "dialog", "aria-modal": "true", "aria-labelledby": "md-checkpoint-recovery-title"
+  }, /*#__PURE__*/React.createElement("div", { className: "md-checkpoint-recovery-card" },
+    /*#__PURE__*/React.createElement("div", { className: "md-checkpoint-recovery-eyebrow" }, "DUNGEON CHECKPOINT"),
+    /*#__PURE__*/React.createElement("h2", { id: "md-checkpoint-recovery-title" }, "พบการต่อสู้ที่ค้างอยู่"),
+    /*#__PURE__*/React.createElement("p", null, `Floor ${Math.max(1, Number(resumeBattle.serverContext?.floor) || Number(resumeBattle.floor) || 1)} · ต้องการทำต่อจากสถานะล่าสุดหรือไม่?`),
+    checkpointPromptError && /*#__PURE__*/React.createElement("div", { className: "md-checkpoint-recovery-error" }, checkpointPromptError),
+    /*#__PURE__*/React.createElement("div", { className: "md-checkpoint-recovery-actions" },
+      /*#__PURE__*/React.createElement("button", { type: "button", className: "md-checkpoint-recovery-resume", onClick: () => { void resumePendingBattle(); } }, "Resume"),
+      /*#__PURE__*/React.createElement("button", { type: "button", className: "md-checkpoint-recovery-discard", onClick: () => { void discardPendingBattle(); } }, "Discard")
+    )
+  )), phase === "pets" && /*#__PURE__*/React.createElement(PetScreen, {
     save: save,
     onEquip: equipPet,
     onUnequip: unequipPet,
