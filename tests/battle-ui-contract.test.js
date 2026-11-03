@@ -79,6 +79,24 @@ test("CombatScreen shows the engine round and current queued unit", () => {
   assert.doesNotMatch(components, /แตะศัตรูเพื่อเลือกเป้าหมาย/);
 });
 
+test("Combat HUD reads HP/SP and maxima from the authoritative Battle Core Hero unit", () => {
+  assert.match(components, /const heroBattleUnit = battleState\?\.units\?\.\[battleState\?\.heroId\] \|\| null/);
+  assert.match(components, /const hudHp = heroBattleUnit \? heroBattleUnit\.hp : player\.hp/);
+  assert.match(components, /const hudMaxHp = heroBattleUnit \? heroBattleUnit\.maxHp : stats\.maxHp/);
+  assert.match(components, /const hudSp = heroBattleUnit \? heroBattleUnit\.sp : player\.mp/);
+  assert.match(components, /const hudMaxSp = heroBattleUnit \? heroBattleUnit\.maxSp : stats\.maxMp/);
+  assert.match(components, /"HP ", hudHp, "\/", hudMaxHp/);
+  assert.match(components, /"SP ", hudSp, "\/", hudMaxSp/);
+  assert.match(components, /Number\(hudHp\) \/ Math\.max\(1, Number\(hudMaxHp\) \|\| 1\)/);
+});
+
+test("Back-to-map floor selection carries only the latest victory into the same or next floor", () => {
+  assert.match(app, /previousBattle\?\.result === "victory"/);
+  assert.match(app, /targetFloor === previousFloor \|\| targetFloor === previousFloor \+ 1/);
+  assert.match(app, /previousBattleId: carryBattleId/);
+  assert.match(app, /\{ encounter, previewContext, \.\.\.\(carryBattleId/);
+});
+
 test("monster formation reserves the centre slot for solo units and Bosses", () => {
   assert.match(components, /function buildMonsterFormation\(monsters\)/);
   assert.match(components, /monster\.isBoss \|\| monster\.isEliteBoss/);
