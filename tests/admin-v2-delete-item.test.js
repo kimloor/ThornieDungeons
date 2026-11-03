@@ -231,3 +231,68 @@ test("worker source: single-target guarded statements, no bulk or generic SQL, r
   assert.match(src, /case "adminDeleteItem": return await handleAdminDeleteItem\(db, adminAuth, body\)/);
   assert.match(src, /"adminGetItemDetail", "adminPreviewItemDelete"/);
 });
+
+// ---- W2-F/W2-G hardening (Project Lead review of main ca84ae56, finding A1) ----
+// The activity checks must hold at the mutation, not only in the preflight read: a pending
+// operation or a fresh run that starts between the preflight and db.batch must stop the delete.
+for (const [label, startActivity, expected] of [
+  ["a pending operation starts", (db) => db.raw.prepare("INSERT INTO character_operation_receipts VALUES ('c1','sell','race1','tok-race','{}','pending','t')").run(), "operation_pending"],
+  ["a run starts (fresh character_run_state row)", (db) => db.raw.prepare("INSERT INTO character_run_state VALUES ('c1',2,?)").run(NOW()), "character_in_run"],
+  ["a stale run row is refreshed", (db) => { db.raw.prepare("INSERT OR REPLACE INTO character_run_state VALUES ('c1',2,?)").run(NOW()); }, "character_in_run"],
+]) {
+  test(`A1 race: ${label} after the preflight -> nothing deleted, no success audit, no ownership event`, async () => {
+    const db = createDb();
+    if (label.startsWith("a stale")) db.raw.prepare("INSERT INTO character_run_state VALUES ('c1',1,'2026-09-29T14:55:14.765Z')").run();
+    const pv = await preview(db);
+    assert.equal(pv.ok, true);
+    const realBatch = db.batch.bind(db);
+    db.batch = async (list) => { startActivity(db); return realBatch(list); };
+    const r = await del(db, { snapshotHash: pv.snapshotHash });
+    assert.equal(r.status, 409); assert.equal(r.error, expected);
+    assert.equal(count(db, "items", "item_id='gear1'"), 1);
+    assert.equal(audits(db).length, 0);
+    assert.equal(count(db, "item_ownership_events", "event_type='admin_deleted'"), 0);
+  });
+}
+
+test("A1: a run row older than 30 minutes (including unparseable timestamps handled as active) is judged at the SQL guard too", async () => {
+  const db = createDb();
+  const pv = await preview(db);
+  db.raw.prepare("INSERT INTO character_run_state VALUES ('c1',1,'not-a-date')").run();
+  const r = await del(db, { snapshotHash: pv.snapshotHash });
+  assert.equal(r.status, 409); assert.equal(r.error, "character_in_run");
+  assert.equal(count(db, "items", "item_id='gear1'"), 1);
+});
+
+test("A1: stale run (>30 min) and settled receipts still allow the delete via the guarded batch", async () => {
+  const db = createDb();
+  db.raw.prepare("INSERT INTO character_run_state VALUES ('c1',1,'2026-09-29T14:55:14.765Z')").run();
+  db.raw.prepare("INSERT INTO character_operation_receipts VALUES ('c1','sell','done1','tok-done','{}','{\"ok\":true}','t')").run();
+  const r = await del(db);
+  assert.equal(r.ok, true); assert.equal(count(db, "items", "item_id='gear1'"), 0);
+});
+
+test("A1: every item mutation moves updated_at (optimistic-concurrency contract): partial stack delete", async () => {
+  const db = createDb();
+  const before = db.raw.prepare("SELECT updated_at FROM items WHERE item_id='junk1'").get().updated_at;
+  const r = await del(db, { itemId: "junk1", quantity: 2 });
+  assert.equal(r.ok, true);
+  const after = db.raw.prepare("SELECT updated_at FROM items WHERE item_id='junk1'").get().updated_at;
+  assert.notEqual(after, before);
+});
+
+test("A1: a concurrent duplicate request (same requestId) cannot delete twice: loser is already_applied, one audit row", async () => {
+  const db = createDb();
+  const pv = await preview(db, "junk1", { quantity: "2" });
+  const body = { playerId: "P1", characterId: "c1", itemId: "junk1", quantity: 2, reason: "duplicate race", confirmText: "junk1", snapshotHash: pv.snapshotHash, requestId: "req-dup-race-abcdefgh" };
+  const realBatch = db.batch.bind(db);
+  let injected = false;
+  db.batch = async (list) => {
+    if (!injected) { injected = true; await realBatch(list); } // the "other" request lands first
+    return realBatch(list); // ours now hits the audit primary key and rolls back
+  };
+  const r = await j(await h.handleAdminDeleteItem(db, ADMIN, body));
+  assert.equal(r.ok, true); assert.equal(r.already_applied, true);
+  assert.equal(JSON.parse(db.raw.prepare("SELECT extra_json FROM items WHERE item_id='junk1'").get().extra_json).quantity, 5);
+  assert.equal(audits(db).length, 1);
+});
