@@ -225,7 +225,7 @@ Graphics dependency: **G15 Player Information Center UI Pack** provides the shar
 **Later main baseline:** Ver 1.1.15 / Client Systems PR-D merged after that review; the above 804/804 count applies to Ver 1.1.14 and must not be misreported as the Ver 1.1.15 test result.
 
 ### WAVE 2 — Admin V2 Expansion
-**Status: CONTRACTS (ADMIN-V2.md section 22) APPROVED; W2-A (Ver 1.1.20), W2-C (no version bump), W2-D (Ver 1.1.21) and W2-E (Ver 1.1.22) MERGED; W2-F (#161) merged DISABLED (Ver 1.1.23); W2-G restore-from-audit (#165) merged DISABLED (Ver 1.1.24, same flag); security hardening #182 merged (ec02c8b, 2026-11-03); W2-F/W2-G release gate NOT passed, flag `admin_item_delete_enabled` OFF; W2-H H1 Admin QA Seed (Gold canary, flag `admin_seed_enabled` OFF, Ver 1.1.43) in PR #202 awaiting independent re-review; PR #185 (staging QA workflow) closed WITHOUT merge by Owner decision (QA moved to Production with designated accounts, see PRODUCTION-QA-POLICY-V1.md). ADDITIONAL TOOLS PENDING DESIGN (2026-10-27)**
+**Status: CONTRACTS (ADMIN-V2.md section 22) APPROVED; W2-A (Ver 1.1.20), W2-C (no version bump), W2-D (Ver 1.1.21) and W2-E (Ver 1.1.22) MERGED; W2-F (#161) merged DISABLED (Ver 1.1.23); W2-G restore-from-audit (#165) merged DISABLED (Ver 1.1.24, same flag); security hardening #182 merged (ec02c8b, 2026-11-03); W2-F/W2-G release gate NOT passed, flag `admin_item_delete_enabled` OFF; W2-H H1 Admin QA Seed (Gold canary, flag `admin_seed_enabled` OFF, Ver 1.1.44) in PR #202 awaiting independent re-review; PR #185 (staging QA workflow) closed WITHOUT merge by Owner decision (QA moved to Production with designated accounts, see PRODUCTION-QA-POLICY-V1.md). ADDITIONAL TOOLS PENDING DESIGN (2026-10-27)**
 **Contract/design record:** `docs/ADMIN-V2.md` sections 21-22; Claude read-only audit Issue #144.
 
 - **W2-A — mutation audit logging (approved):** cover all current Admin data mutations, with actor, action, target, sanitized change detail and reliable persistence. Revalidate the eight unaudited mutation actions reported in Issue #144 against the latest code.
@@ -359,7 +359,7 @@ Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
                      ↓
 Gate C — Ver 1.1.0 Release Acceptance            ✅ COMPLETE (2026-10-20)
                      ↓
-Visible game version                             Ver 1.1.43
+Visible game version                             Ver 1.1.44
                      ↓
 NEW WAVE 1 — Global Loading System V1         ✅ COMPLETE (Ver 1.1.1)
                      ↓

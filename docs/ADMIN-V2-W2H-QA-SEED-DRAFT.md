@@ -111,7 +111,7 @@ Design mockup: Claude Design canvas "Admin QA Seed (W2-H) — Page Design" (3 bo
 - Version bump on shipped H1/H2/H3; tests need `item_provenance` / `item_ownership_events` tables; register new error codes in the admin client.
 - Provenance origin type `admin_seed`, ownership event type `admin_seeded`.
 
-## 10. H1 implementation record (Ver 1.1.43, PR #202, branch `feat/w2h-h1-admin-seed-shell`)
+## 10. H1 implementation record (Ver 1.1.44, PR #202, branch `feat/w2h-h1-admin-seed-shell`)
 Shipped DISABLED (`game_config.admin_seed_enabled` absent = off). Scope: framework + `gold` canary only. Independent review (2026-11-03) found P1-A..D and P2-A..C; all addressed below and awaiting independent re-review.
 
 **API**
