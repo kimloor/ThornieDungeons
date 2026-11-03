@@ -334,7 +334,7 @@ test("Checkpoint recovery effect declares its state before evaluating hook depen
 
 
 test("Dungeon single-target actions retarget a dead selection to the living enemy with lowest HP", () => {
-  const action = app.slice(app.indexOf("async function driveCoreBattle"), app.indexOf("const BATTLE_SESSION_ERRORS"));
+  const action = app.slice(app.indexOf("async function driveCoreBattle"));
   assert.match(action, /BATTLE_CORE_V1\.getActionMetadata\(state, actor, command\)/);
   assert.match(action, /targeting\.requiresEnemyTarget && !targeting\.legalTargetIds\.includes\(String\(command\.targetId \|\| ""\)\)/);
   assert.match(action, /\.sort\(\(a, b\) => Number\(a\.hp\) - Number\(b\.hp\) \|\| Number\(a\.tieOrder\) - Number\(b\.tieOrder\)\)/);
