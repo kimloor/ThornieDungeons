@@ -71,7 +71,7 @@ Cleanup branch workflow run #496 failed after successful cleanup runs #494 and #
 | Gate | Evidence / current assessment | Status |
 |---|---|---|
 | Source Integrity | Main SHA and PR #201 merge verified; relevant source is in main. | PASS |
-| Assets Integrity | R2 run log read-back verified 18 per workflow summary; explicit visible key list yields 17 and trailing script errors need reconciliation. | BLOCKED |
+| Assets Integrity | R2 upload run reconciles to 17 H01 image assets + `manifest.json` (18 total); log confirms remote download/SHA-256 verification for the 17 image keys and reports 18 total. Current R2 state was not independently re-read; workflow summary has shell quoting errors after the upload loop. | BLOCKED |
 | Build Integrity | Frontend deploy workflow succeeded; independent clean build and generated-output check were not run in this audit. | BLOCKED |
 | API Integration | API deploy succeeded; event inactive behavior and authorization were not independently exercised against Production. | BLOCKED |
 | Gameplay | Prior DEV checkpoint reports H01 automated coverage and Phaser Canvas 56/56; not rerun by Independent QA. | BLOCKED |
@@ -93,7 +93,7 @@ This record preserves attribution and does not claim this audit independently re
 
 ## 7. Blockers / required next actions
 
-1. Reconcile the 18th R2 object identity and investigate the trailing shell syntax errors in Upload R2 workflow #59; preserve logs/evidence.
+1. The 18th R2 object is reconciled as `manifest.json`. Remaining asset follow-up: independently re-read current R2 objects if an authorized read-only path is available, and fix the Markdown summary quoting bug in `.github/workflows/upload-r2-assets.yml` (the upload loop itself completed and verified before the shell errors).
 2. Verify event Server Config is inactive and confirm UI/API enforce inactive status using a permitted read-only/status endpoint; do not activate.
 3. Obtain independent automated test execution evidence for H01 focused tests and relevant regression suite.
 4. Complete authorized manual QA for event entry, battle mechanics, reward/settlement, duplicate/retry protection, checkpoint/resume, expiry/in-flight completion, and mobile UI. Use normal client flows; no direct D1 writes or test-account mutations without separate approval.
@@ -103,4 +103,4 @@ This record preserves attribution and does not claim this audit independently re
 ## 8. Release decision
 
 **H01 is NOT READY TO ACTIVATE. Release Gate = BLOCKED.**  
-The source is merged and FE/API deployment workflows succeeded; asset publication has workflow evidence with a count/key/log discrepancy. Independent gameplay, settlement, inactive-config verification and production acceptance remain incomplete. No Event activation is authorized by this audit.
+The source is merged and FE/API deployment workflows succeeded. R2 upload count is reconciled as 17 image assets plus the manifest; remote read-back/SHA verification is present in the successful workflow log, with a separate summary-formatting shell bug after the upload loop. Independent gameplay, settlement, inactive-config verification and production acceptance remain incomplete. No Event activation is authorized by this audit.
