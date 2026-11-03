@@ -87,7 +87,7 @@ test("Combat HUD reads HP/SP and maxima from the authoritative Battle Core Hero 
   assert.match(components, /const hudMaxSp = heroBattleUnit \? heroBattleUnit\.maxSp : stats\.maxMp/);
   assert.match(components, /"HP ", hudHp, "\/", hudMaxHp/);
   assert.match(components, /"SP ", hudSp, "\/", hudMaxSp/);
-  assert.match(components, /hudHp \/ Math\.max\(1, Number\(hudMaxHp\) \|\| 1\)/);
+  assert.match(components, /Number\(hudHp\) \/ Math\.max\(1, Number\(hudMaxHp\) \|\| 1\)/);
 });
 
 test("Back-to-map floor selection carries only the latest victory into the same or next floor", () => {
