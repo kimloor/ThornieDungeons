@@ -746,6 +746,7 @@ On return:
 - Resume reopens the same `battleId`; it must not create a new encounter or replay action/reward receipts.
 - Discard calls authenticated server-side cancellation for that character + `battleId`; it closes the Checkpoint and marks non-terminal Battle Authority abandoned. Pending terminal settlement remains recoverable and cannot be discarded.
 - Normal and Halloween use this same recovery path; event type affects encounter context, not recovery mechanics.
+- Migration `0033_battle_checkpoint_recovery_reset_v1.sql` closes existing active non-terminal Checkpoints and marks their Authority abandoned; terminal outcomes awaiting settlement remain active and recoverable. Closed rows remain for audit rather than being physically deleted.
 - Auto resumes **OFF**
 
 If a checkpoint is invalid/corrupt, fail safely without duplicating rewards. Prefer a safe restart of the battle/session over granting an unverified result.

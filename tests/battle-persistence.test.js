@@ -686,3 +686,24 @@ test("discard closes only the selected pending checkpoint and permits a fresh ba
   assert.equal(fresh.body.ok, true, JSON.stringify(fresh.body));
   assert.notEqual(fresh.body.battleId, started.body.battleId);
 });
+
+test("one-time checkpoint reset closes active nonterminal battles and preserves pending settlement", async () => {
+  const api = worker({ eventId: null }), db = database();
+  const normal = await account(api, db, "ResetNormal");
+  const terminal = await account(api, db, "ResetTerminal");
+  const normalBattle = await post(api, db, normal.token, { action: "startDungeonBattle", characterId: normal.characterId, floor: 1 });
+  const terminalBattle = await post(api, db, terminal.token, { action: "startDungeonBattle", characterId: terminal.characterId, floor: 1 });
+  forceAuthoritativeVictory(db, terminalBattle.body.battleId);
+  const migration = fs.readFileSync(path.join(__dirname, "../migrations/auto/0033_battle_checkpoint_recovery_reset_v1.sql"), "utf8");
+  db.raw.exec(migration);
+  db.raw.exec(migration);
+  assert.equal(db.raw.prepare("SELECT state FROM battle_checkpoints WHERE battle_id=?").get(normalBattle.body.battleId).state, "closed");
+  assert.equal(db.raw.prepare("SELECT outcome FROM battle_authority WHERE battle_id=?").get(normalBattle.body.battleId).outcome, "abandoned");
+  assert.equal(db.raw.prepare("SELECT state FROM battle_checkpoints WHERE battle_id=?").get(terminalBattle.body.battleId).state, "active");
+  const pending = db.raw.prepare("SELECT outcome,settled_at FROM battle_authority WHERE battle_id=?").get(terminalBattle.body.battleId);
+  assert.equal(pending.outcome, "victory");
+  assert.equal(pending.settled_at, "");
+  const fresh = await post(api, db, normal.token, { action: "startDungeonBattle", characterId: normal.characterId, floor: 1 });
+  assert.equal(fresh.body.ok, true, JSON.stringify(fresh.body));
+  assert.notEqual(fresh.body.battleId, normalBattle.body.battleId);
+});

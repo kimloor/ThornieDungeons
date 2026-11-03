@@ -15,7 +15,7 @@
       const n = Number(response?.status);
       const status = Number.isInteger(n) && n >= 100 && n <= 599 ? n : null;
       const diagnostic = {
-        event: "battle_action_rejected", system: "dungeon_battle", reason, version: "1.1.36",
+        event: "battle_action_rejected", system: "dungeon_battle", reason, version: "1.1.37",
         correlation: {
           battleId: safeCode(battleId) ? String(battleId).slice(0, 120) : "",
           requestId: safeCode(requestId) ? String(requestId).slice(0, 120) : "",
