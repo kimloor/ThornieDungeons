@@ -59,7 +59,7 @@ jobs:
           git diff --check
 
   build:
-    if: !startsWith(github.ref, 'refs/heads/ops/p0-rollback-')
+    if: github.ref == 'refs/heads/main' || (github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/ops/p0-rollback-'))
     runs-on: ubuntu-latest
 
     steps:
