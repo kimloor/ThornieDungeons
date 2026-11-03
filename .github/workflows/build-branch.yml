@@ -16,6 +16,7 @@ on:
       - "build.js"
       - "wrangler.jsonc"
       - "tests/dungeon-v2-event-floor.test.js"
+      - "tests/h01-halloween-event.test.js"
       - "tests/raid-wings-v2.test.js"
       - "tests/p0-rollback-staging-workflow.test.js"
       - ".github/workflows/p0-rollback-fault-staging-deploy.yml"
