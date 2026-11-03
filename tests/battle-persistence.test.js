@@ -660,6 +660,7 @@ test("canonical runtime checkpoint resumes across reload without granting client
 
 test("inactive Halloween entry preserves an active Normal Dungeon authorization checkpoint", async () => {
   const api = worker({ eventId: null }), db = database();
+  db.raw.exec("CREATE TABLE game_config (key TEXT PRIMARY KEY, value_json TEXT NOT NULL)");
   const { token, characterId } = await account(api, db, "HallowInactive");
   const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
   assert.equal(started.body.ok, true);
