@@ -43,6 +43,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`GUILD-SYSTEM-V1.md`](GUILD-SYSTEM-V1.md) | **ACTIVE-PRODUCTION** — lifecycle, Leader/Member roles, applications, level/capacity, succession, W2 Donation, and W3 Guild Chat integration. |
 | [`GLOBAL-LOADING-SYSTEM-V1.md`](GLOBAL-LOADING-SYSTEM-V1.md) | **ACTIVE-DESIGN** — shared App-level loading manager/overlay, real progress rules, error handoff, integration targets, and G14 loading presentation contract. |
 | [`HERO-OVERLAY-V4.md`](HERO-OVERLAY-V4.md) | Current Hero overlay composition, equipment mapping, combat presentation, anchors, asset loading, and R2 paths. |
+| [`H01-HALLOWEEN-EVENT-V1.md`](H01-HALLOWEEN-EVENT-V1.md) | H01 Halloween event design/implementation contract; current Independent QA and Release Gate evidence is tracked in `H01-RELEASE-GATE-2026-11-03.md`. |
 | [`HERO-SKILL-SYSTEM-V1.md`](HERO-SKILL-SYSTEM-V1.md) | Hero skill branches, ranks, statuses, prerequisites, UI contract, and combat checks. |
 | [`HERO-SPRITE-V5.md`](HERO-SPRITE-V5.md) | Design-locked Hero V5 **modular layered, frame-based sprite** architecture; no skeletal/bone/Spine runtime is required, and the document does not itself authorize replacing the current production Hero. |
 | [`INVENTORY-UI-V2.md`](INVENTORY-UI-V2.md) | Inventory/equipment layout, item popup, compare rules, rarity presentation, capacity, overflow, and responsive behavior. |

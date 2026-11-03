@@ -1,6 +1,8 @@
 # H01 — Halloween Event V1: Contract and Execution Plan
 
-Status: **DESIGN IN PROGRESS / OWNER-APPROVED DIRECTION / IMPLEMENTATION NOT AUTHORIZED**
+Status: **IMPLEMENTED / MERGED / DEPLOYED (FE + API) / R2 UPLOAD VERIFIED; INDEPENDENT QA RELEASE GATE BLOCKED — EVENT NOT ACTIVATED**
+
+> Current release evidence: `docs/H01-RELEASE-GATE-2026-11-03.md`. The dated checkpoints below remain historical context; current deployment does not authorize Event activation.
 Date: 2026-10-29 (Asia/Bangkok)
 Lane: Special Event between Graphics G16 and G17; separate from Admin V2 Wave 2.
 Owner is the final approval authority for gameplay, economy, artwork and high-risk release.
