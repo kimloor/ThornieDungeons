@@ -122,3 +122,15 @@ The source is merged and FE/API deployment workflows succeeded. R2 upload count 
 - Reward tiles now use the existing GameIcon resolver for the Excaliburnt Mythic weapon identity and Gold currency icon.
 - App version and visible badge are advanced to 1.1.41; the inventory-order version contract is kept aligned. No API/Worker, D1, schema, reward odds, or settlement behavior is changed.
 - QA status: automated tests/build and frontend deployment pending; live Production interaction must be confirmed by Owner using the normal game client. The broader H01 Release Gate remains BLOCKED and Event activation is not authorized by this fix.
+
+
+## 11. Halloween Battle Entry Authority hotfix — 2026-11-03
+
+**Implementation:** PR-based backend hotfix; version 1.1.42.
+
+- Confirmed failure path: the Halloween start handler returned `ok/battleId/context` only, while `src/ui/App.js:enterStage()` requires the server-issued `state`. Both first entry and retry could therefore fail with `dungeon_authority_state_missing`.
+- The handler now atomically persists the authorization checkpoint and initial Battle Authority row, and returns `state`, `stateRev`, and `authoritative: true`.
+- Existing Halloween authorization checkpoints without an authority row are repaired using their stored event context and original battle ID. Existing authority state is returned unchanged on retry; pending settlement and active normal-battle conflicts remain guarded.
+- No schema migration or D1 schema change. Runtime D1 writes occur only through normal authenticated Event Entry; no direct Production data manipulation.
+- Automated QA status at implementation: **PENDING GitHub Actions**. Production manual Event Entry/Battle QA remains pending and must not be represented as PASS before live gameplay verification.
+- Event activation remains separately gated; this hotfix does not authorize activating the H01 event.

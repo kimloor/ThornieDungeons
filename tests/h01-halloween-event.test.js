@@ -14,12 +14,13 @@ function workerApi() {
   code += `\nglobalThis.__h01={
     bangkokCalendarMonthEnd,halloweenEventWindow,halloweenServerSkillCycle,
     dungeonV2ServerNormalizeContext,dungeonV2ServerRng,dungeonV2ServerGold,
-    dungeonV2ServerExp,dungeonV2ServerTierForFloor,dungeonV2ServerBossForFloor
+    dungeonV2ServerExp,dungeonV2ServerTierForFloor,dungeonV2ServerBossForFloor,
+    handleStartHalloweenBattle
   };`;
   const context = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, Uint32Array, crypto, atob, btoa, setTimeout, clearTimeout };
   vm.createContext(context);
   vm.runInContext(code, context);
-  return context.__h01;
+  return Object.assign(context.__h01, { context });
 }
 
 function eventDb(config) {
@@ -236,4 +237,175 @@ test("H01 Halloween checkpoints are isolated from normal Dungeon floor previews"
   assert.match(components, /bossWeaponId: "excaliburnt"[\s\S]*?alt: "Excaliburnt"/);
   assert.match(components, /iconKey: "gold"[\s\S]*?alt: "Gold"/);
   assert.match(app, /halloween: true/);
+});
+
+
+function halloweenStartHarness({ checkpoint = null, authority = null, active = true, raceWinner = null } = {}) {
+  const character = { character_id: "char-h01", player_id: "player-h01", unlocked_floor: 12, name: "QA Hero", agi: 5 };
+  let activeCheckpoint = checkpoint ? { ...checkpoint } : null;
+  let authorityRow = authority ? { ...authority } : null;
+  const executed = [];
+  const db = {
+    prepare(sql) {
+      let values = [];
+      return {
+        sql,
+        bind(...args) { values = args; this.values = values; return this; },
+        async first() {
+          if (sql.includes("SELECT * FROM characters")) return character;
+          if (sql.includes("SELECT battle_id, payload_json FROM battle_checkpoints")) return activeCheckpoint?.state === "active" ? activeCheckpoint : null;
+          if (sql.includes("SELECT state_rev, state_json, outcome, settled_at FROM battle_authority")) return authorityRow;
+          return null;
+        },
+        async run() {
+          executed.push({ sql, values });
+          if (sql.includes("UPDATE battle_checkpoints SET state = 'closed'")) {
+            if (activeCheckpoint && activeCheckpoint.battle_id === values[1]) activeCheckpoint = { ...activeCheckpoint, state: "closed" };
+          } else if (sql.includes("INSERT OR IGNORE INTO battle_authority") && !authorityRow) {
+            authorityRow = { state_rev: 0, state_json: values[3], outcome: "", settled_at: "" };
+          }
+          return { success: true, meta: { changes: 1 } };
+        }
+      };
+    },
+    async batch(statements) {
+      executed.push(...statements.map(statement => ({ sql: statement.sql, values: statement.values })));
+      const checkpointStatement = statements.find(statement => statement.sql.includes("INSERT INTO battle_checkpoints"));
+      const authorityStatement = statements.find(statement => statement.sql.includes("INSERT INTO battle_authority"));
+      assert.ok(checkpointStatement, "checkpoint insert is part of D1 batch");
+      assert.ok(authorityStatement, "authority insert is part of D1 batch");
+      if (raceWinner) {
+        activeCheckpoint = { ...raceWinner.checkpoint };
+        authorityRow = { ...raceWinner.authority };
+        throw new Error("simulated concurrent entry won");
+      }
+      if (activeCheckpoint?.state === "active") throw new Error("active checkpoint uniqueness conflict");
+      activeCheckpoint = {
+        battle_id: checkpointStatement.values[0],
+        payload_json: checkpointStatement.values[2],
+        state: "active"
+      };
+      authorityRow = {
+        state_rev: 0,
+        state_json: authorityStatement.values[3],
+        outcome: "",
+        settled_at: ""
+      };
+      return [{ success: true }, { success: true }];
+    }
+  };
+
+  const api = workerApi();
+  const context = api.context;
+  context.halloweenEventWindow = async () => ({ active, endsAt: "2026-12-01T00:00:00.000Z" });
+  context.dungeonV2ServerNormalizeContext = value => value;
+  context.dungeonV2ServerContextFromStoredCheckpoint = payload => payload?.serverContext || null;
+  context.dungeonAuthorityInitialState = async (_db, _character, serverContext, battleId) => ({
+    battleId, mode: "dungeon", floor: serverContext.floor, heroId: "hero",
+    units: { hero: { id: "hero", hp: 100, maxHp: 100, sp: 20, maxSp: 20 } }, log: []
+  });
+  context.dungeonV2ServerBossForFloor = () => "boss-profile";
+  context.halloweenServerSkillCycle = () => [];
+  const eventContext = {
+    version: 3, mode: "dungeon", eventId: "halloween_v1", floor: 20,
+    referenceFloor: 20, progressFloor: 12, role: "chapter_boss", packCount: 1,
+    encounterSeed: 101, rewardSeed: 202, startedAt: "2026-11-03T00:00:00.000Z",
+    eventEndsAt: "2026-12-01T00:00:00.000Z",
+    enemies: [{ id: "haloween_nightmare", instanceId: "halloween-test", modifierId: null, statProfileId: "boss-profile", skillCycle: [], kind: "boss", isBoss: true }]
+  };
+  return {
+    api, db, executed, character, eventContext,
+    start: async () => {
+      const response = await api.handleStartHalloweenBattle(
+        db, "player-h01", { ok: true, row: { id: "player-h01" } }, character.character_id
+      );
+      return { status: response.status, body: await response.json() };
+    },
+    get checkpoint() { return activeCheckpoint; },
+    get authority() { return authorityRow; }
+  };
+}
+
+test("H01 new Event Entry atomically creates checkpoint + Battle Authority and returns initial state", async () => {
+  const harness = halloweenStartHarness();
+  const result = await harness.start();
+  assert.equal(result.status, 200);
+  assert.equal(result.body.ok, true);
+  assert.equal(result.body.authoritative, true);
+  assert.equal(result.body.stateRev, 0);
+  assert.equal(result.body.state.battleId, result.body.battleId);
+  assert.equal(result.body.context.eventId, "halloween_v1");
+  assert.match(result.body.battleId, /^halloween-/);
+  assert.ok(harness.checkpoint, "active checkpoint persisted");
+  assert.ok(harness.authority, "authority row persisted");
+  assert.equal(harness.executed.filter(entry => entry.sql.includes("INSERT INTO battle_checkpoints") || entry.sql.includes("INSERT INTO battle_authority")).length, 2);
+});
+
+test("H01 retry repairs a legacy Halloween checkpoint missing authority without changing battle identity", async () => {
+  const sourceHarness = halloweenStartHarness();
+  const legacyContext = { ...sourceHarness.eventContext };
+  const harness = halloweenStartHarness({
+    checkpoint: {
+      battle_id: "halloween-legacy-1",
+      payload_json: JSON.stringify({ authorizationOnly: true, serverContext: legacyContext }),
+      state: "active"
+    }
+  });
+  const result = await harness.start();
+  assert.equal(result.status, 200);
+  assert.equal(result.body.battleId, "halloween-legacy-1");
+  assert.equal(result.body.context.eventId, "halloween_v1");
+  assert.equal(result.body.authoritative, true);
+  assert.equal(result.body.state.battleId, "halloween-legacy-1");
+  assert.ok(harness.authority, "missing authority was reconstructed");
+  assert.ok(harness.executed.some(entry => entry.sql.includes("INSERT OR IGNORE INTO battle_authority")));
+  assert.equal(harness.executed.some(entry => entry.sql.includes("INSERT INTO battle_checkpoints")), false);
+});
+
+test("H01 retry returns existing authoritative state without creating a duplicate battle", async () => {
+  const sourceHarness = halloweenStartHarness();
+  const context = { ...sourceHarness.eventContext };
+  const existingState = { battleId: "halloween-live-1", mode: "dungeon", units: { hero: { hp: 71 } }, log: [] };
+  const harness = halloweenStartHarness({
+    checkpoint: {
+      battle_id: "halloween-live-1",
+      payload_json: JSON.stringify({ authorizationOnly: true, serverContext: context }),
+      state: "active"
+    },
+    authority: { state_rev: 4, state_json: JSON.stringify(existingState), outcome: "", settled_at: "" }
+  });
+  const result = await harness.start();
+  assert.equal(result.status, 200);
+  assert.equal(result.body.battleId, "halloween-live-1");
+  assert.equal(result.body.stateRev, 4);
+  assert.equal(result.body.state.units.hero.hp, 71);
+  assert.equal(harness.executed.length, 0);
+});
+
+test("H01 simultaneous Event Entry reuses the winning battle instead of creating a duplicate", async () => {
+  const sourceHarness = halloweenStartHarness();
+  const winnerContext = { ...sourceHarness.eventContext };
+  const winnerState = { battleId: "halloween-race-winner", mode: "dungeon", units: { hero: { hp: 90 } }, log: [] };
+  const harness = halloweenStartHarness({
+    raceWinner: {
+      checkpoint: {
+        battle_id: "halloween-race-winner",
+        payload_json: JSON.stringify({ authorizationOnly: true, serverContext: winnerContext }),
+        state: "active"
+      },
+      authority: { state_rev: 0, state_json: JSON.stringify(winnerState), outcome: "", settled_at: "" }
+    }
+  });
+  const result = await harness.start();
+  assert.equal(result.status, 200);
+  assert.equal(result.body.battleId, "halloween-race-winner");
+  assert.equal(result.body.state.units.hero.hp, 90);
+});
+
+test("H01 Event Entry remains closed when the event is inactive", async () => {
+  const harness = halloweenStartHarness({ active: false });
+  const result = await harness.start();
+  assert.equal(result.status, 403);
+  assert.equal(result.body.error, "halloween_event_inactive");
+  assert.equal(harness.executed.length, 0);
 });
