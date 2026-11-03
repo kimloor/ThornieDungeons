@@ -49,7 +49,9 @@ GitHub Actions **Upload R2 assets #59**, job `upload` (job ID `125719095464`), l
 16. `ui/dungeon-select/dungeon-gate-halloween-v1.webp`
 17. `ui/equipment-icons/event/excaliburnt.png`
 
-The workflow reports 18 objects while the explicit H01 keys above enumerate 17 unique paths in its visible verification lines. Treat the remaining object identity as **unresolved in this audit**; do not infer its key. The same log also emits shell `command not found` / `syntax error` messages after the “Uploaded and verified 18” line. The GitHub workflow/job is marked successful, but these trailing script errors should be reviewed before relying on the workflow script as clean evidence. The log verifies upload/read-back at that run; it does not prove current R2 state independently after the run.
+The workflow's 18th object is the staged manifest itself: `r2-upload/manifest.json` maps directly to R2 key `manifest.json`. Therefore the run's 18-object count reconciles as **17 H01 image assets + 1 manifest JSON**. The job log explicitly records upload followed by remote download and SHA-256 equality for each of the 17 listed image assets, ending with “Uploaded and verified 18 object(s).” The manifest JSON is included in the workflow's changed-file list and supported upload types; its key is not repeated as an image-style `Verified <key>` line in the excerpted object list. The run therefore provides successful upload/read-back evidence for the 18 changed objects, but this audit has not independently queried current R2 state after the run.
+
+**Workflow script issue:** after the successful upload count, the job log emits shell command-substitution errors on the Markdown summary lines containing backtick-quoted `assets`, `r2-upload/<key>`, and `R2 <key>`. The upload/verification loop had already completed and the job concluded SUCCESS, so these errors affect the step-summary formatting, not the 18-object upload/read-back loop. They should still be fixed in a separate low-risk workflow maintenance change; do not treat the step summary as trustworthy until then.
 
 ## 4. Workflow evidence
 
