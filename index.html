@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.42" />
+<meta name="application-version" content="1.1.43" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.42";
+  content: "Ver 1.1.43";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -8328,8 +8328,8 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.35", date: "2026-11-03", title: "เตรียมกิจกรรม Halloween H01",
-      items: ["เพิ่มเนื้อหากิจกรรม Halloween พร้อมบอส Haloween nightmare และอาวุธ Excaliburnt"]
+      version: "1.1.43", date: "2026-11-03", title: "แก้การต่อเนื่องทรัพยากรในการต่อสู้",
+      items: ["แก้การส่งต่อ HP/SP/Pet HP เมื่อกลับแผนที่แล้วเลือกเล่นด่านเดิมหรือด่านถัดไป", "ปรับ HUD ให้แสดง HP/SP และค่าสูงสุดจาก Battle Core ชุดเดียวกับ Phaser"]
     },
     history: [
       { version: "1.1.33", date: "2026-10-29", title: "อัปเดตการโหลดภาพอุปกรณ์ Idle", items: ["เพิ่ม Revision ให้ภาพ Leather และกางเกง Azure"] },
@@ -19588,15 +19588,24 @@ function ThornieDungeons() {
       setPetReturnPhase("map");
       setPhase("pets");
     },
-    // Same rule as nextStage/retryStageAfterWin: if there's a live player object
-    // sitting in state (from the last stage you fought, incl. a flee), carry its
-    // real current HP/MP into the newly-selected stage instead of full-healing —
-    // Stage Select should only ever full-heal when there's truly no run to continue.
-    onSelectFloor: (floorNum, encounter, previewContext) => enterStage(
-      floorNum,
-      player && player.hp > 0 ? player : null,
-      { encounter, previewContext }
-    ),
+    // Carry authoritative resources only after a settled victory, and only
+    // when retrying that floor or entering the immediately following floor.
+    // Selecting another unlocked floor intentionally starts a fresh battle.
+    onSelectFloor: (floorNum, encounter, previewContext) => {
+      const previousBattle = battleStateRef.current;
+      const previousFloor = Math.max(1, Math.floor(Number(previousBattle?.floor) || Number(selectedFloor) || 1));
+      const targetFloor = Math.floor(Number(floorNum) || 0);
+      const carryBattleId = previousBattle?.result === "victory"
+        && previousBattle?.battleId
+        && (targetFloor === previousFloor || targetFloor === previousFloor + 1)
+        ? previousBattle.battleId
+        : null;
+      return enterStage(
+        floorNum,
+        player && player.hp > 0 ? player : null,
+        { encounter, previewContext, ...(carryBattleId ? { previousBattleId: carryBattleId } : {}) }
+      );
+    },
     onSelectHalloween: () => enterStage(
       null,
       player && player.hp > 0 ? player : null,
@@ -26136,7 +26145,14 @@ function CombatScreen({
   const skills = heroActiveSkillList(player.skillLevels || {});
   const potionStacks = ownedPotionStacks(inventory || []);
   const stats = getStats(player, equipped);
-  const hpPct = Math.max(0, Math.min(100, player.hp / stats.maxHp * 100));
+  // The Battle Core unit is authoritative during combat and must match Phaser's
+  // HP/SP values and maxima. getStats remains the non-battle fallback only.
+  const heroBattleUnit = battleState?.units?.[battleState?.heroId] || null;
+  const hudHp = heroBattleUnit ? heroBattleUnit.hp : player.hp;
+  const hudMaxHp = heroBattleUnit ? heroBattleUnit.maxHp : stats.maxHp;
+  const hudSp = heroBattleUnit ? heroBattleUnit.sp : player.mp;
+  const hudMaxSp = heroBattleUnit ? heroBattleUnit.maxSp : stats.maxMp;
+  const hpPct = Math.max(0, Math.min(100, Number(hudHp) / Math.max(1, Number(hudMaxHp) || 1) * 100));
   const battleResources = player.battleResources || {};
   const activeBattleResources = [
     ["fury", "🔥"],
@@ -26283,9 +26299,9 @@ function CombatScreen({
     className: "md-hud-text"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row"
-  }, "HP ", player.hp, "/", stats.maxHp), /*#__PURE__*/React.createElement("div", {
+  }, "HP ", hudHp, "/", hudMaxHp), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row"
-  }, "SP ", player.mp, "/", stats.maxMp), /*#__PURE__*/React.createElement("div", {
+  }, "SP ", hudSp, "/", hudMaxSp), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row xp"
   }, "EXP ", Math.floor(xpPct), "%"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
     queue: turnQueue || [],
@@ -26355,7 +26371,7 @@ function CombatScreen({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, player.hp, "/", stats.maxHp)), /*#__PURE__*/React.createElement(HeroSprite, {
+  }, hudHp, "/", hudMaxHp)), /*#__PURE__*/React.createElement(HeroSprite, {
     anim: heroAnim,
     equipped: equipped,
     label: heroName,
