@@ -1,3 +1,4 @@
+// One runtime switch controls both safe Battle rejection details and structured failure logging.
 (function installBattleErrorCatcher(root) {
   let enabled = true;
   const safeCode = value => {
