@@ -657,3 +657,31 @@ test("canonical runtime checkpoint resumes across reload without granting client
   assert.equal(replay.body.firstCompletion, false);
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_completions WHERE battle_id=?").get(started.body.battleId).c, 1);
 });
+
+test("inactive Halloween entry preserves an active Normal Dungeon authorization checkpoint", async () => {
+  const api = worker({ eventId: null }), db = database();
+  const { token, characterId } = await account(api, db, "HalloweenInactiveCheckpoint");
+  const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
+  assert.equal(started.body.ok, true);
+  assert.equal(db.raw.prepare("SELECT state FROM battle_checkpoints WHERE battle_id=?").get(started.body.battleId).state, "active");
+  const halloween = await post(api, db, token, { action: "startHalloweenBattle", characterId });
+  assert.equal(halloween.status, 403);
+  assert.equal(halloween.body.error, "halloween_event_inactive");
+  assert.equal(db.raw.prepare("SELECT state FROM battle_checkpoints WHERE battle_id=?").get(started.body.battleId).state, "active");
+  const resumed = await get(api, db, token, { action: "getBattleState", characterId });
+  assert.equal(resumed.body.checkpoint.battleId, started.body.battleId);
+});
+
+test("discard closes only the selected pending checkpoint and permits a fresh battle without rewards", async () => {
+  const api = worker({ eventId: null }), db = database();
+  const { token, characterId } = await account(api, db, "DiscardCheckpoint");
+  const started = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
+  const discarded = await post(api, db, token, { action: "clearBattleCheckpoint", characterId, battleId: started.body.battleId });
+  assert.equal(discarded.body.ok, true, JSON.stringify(discarded.body));
+  assert.equal(db.raw.prepare("SELECT state FROM battle_checkpoints WHERE battle_id=?").get(started.body.battleId).state, "closed");
+  assert.equal(db.raw.prepare("SELECT outcome FROM battle_authority WHERE battle_id=?").get(started.body.battleId).outcome, "abandoned");
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_completions WHERE battle_id=?").get(started.body.battleId).c, 0);
+  const fresh = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
+  assert.equal(fresh.body.ok, true, JSON.stringify(fresh.body));
+  assert.notEqual(fresh.body.battleId, started.body.battleId);
+});

@@ -2199,6 +2199,8 @@ async function handleStartHalloweenBattle(db, id, session, characterId) {
   if (auth.error) return json({ error: auth.error }, 401);
   const owned = await verifyOwnedCharacter(db, id, characterId);
   if (owned.error) return json({ error: owned.error }, 403);
+  const window = await halloweenEventWindow(db);
+  if (!window.active) return json({ error: "halloween_event_inactive", event: window }, 403);
   const existing = await db.prepare(
     `SELECT battle_id, payload_json FROM battle_checkpoints WHERE character_id = ? AND state = 'active' LIMIT 1`
   ).bind(characterId).first();
@@ -2213,8 +2215,6 @@ async function handleStartHalloweenBattle(db, id, session, characterId) {
       .bind(nowIso(), existing.battle_id, characterId).run();
   }
 
-  const window = await halloweenEventWindow(db);
-  if (!window.active) return json({ error: "halloween_event_inactive", event: window }, 403);
   const progressFloor = Math.max(1, Math.floor(Number(owned.row.unlocked_floor) || 1));
   const referenceFloor = Math.ceil(progressFloor / 10) * 10;
   const encounterSeed = secureUint32();
