@@ -574,6 +574,13 @@ For normal Dungeon continuation:
 
 - Hero HP carries forward
 - Hero SP carries forward
+- Active Pet HP carries forward under the existing Pet lifecycle rules
+
+The server accepts a carry source only from the character's **latest settled Victory** and only for:
+- retrying the just-cleared floor
+- entering the immediately following floor
+
+Back to Map → Floor Select must pass that Battle ID under the same conditions. Selecting a different unlocked floor starts a fresh battle and must not send an unrelated carry source. The client must not substitute its local player snapshot for the server-authoritative carry state.
 
 Do not automatically Full Heal Hero before Boss Floor unless a separate later Dungeon/Boss rule explicitly says so.
 
@@ -611,6 +618,7 @@ Left:
 - Hero HP
 - Hero SP
 - EXP%
+- During an active Battle, HP/SP current values and maxima must come from the authoritative Battle Core Hero unit, matching the values rendered by Phaser. Recomputed character stats are fallback values only when no Battle Core Hero unit exists.
 
 Middle:
 

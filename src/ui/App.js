@@ -2936,15 +2936,24 @@ function ThornieDungeons() {
       setPetReturnPhase("map");
       setPhase("pets");
     },
-    // Same rule as nextStage/retryStageAfterWin: if there's a live player object
-    // sitting in state (from the last stage you fought, incl. a flee), carry its
-    // real current HP/MP into the newly-selected stage instead of full-healing —
-    // Stage Select should only ever full-heal when there's truly no run to continue.
-    onSelectFloor: (floorNum, encounter, previewContext) => enterStage(
-      floorNum,
-      player && player.hp > 0 ? player : null,
-      { encounter, previewContext }
-    ),
+    // Carry authoritative resources only after a settled victory, and only
+    // when retrying that floor or entering the immediately following floor.
+    // Selecting another unlocked floor intentionally starts a fresh battle.
+    onSelectFloor: (floorNum, encounter, previewContext) => {
+      const previousBattle = battleStateRef.current;
+      const previousFloor = Math.max(1, Math.floor(Number(previousBattle?.floor) || Number(selectedFloor) || 1));
+      const targetFloor = Math.floor(Number(floorNum) || 0);
+      const carryBattleId = previousBattle?.result === "victory"
+        && previousBattle?.battleId
+        && (targetFloor === previousFloor || targetFloor === previousFloor + 1)
+        ? previousBattle.battleId
+        : null;
+      return enterStage(
+        floorNum,
+        player && player.hp > 0 ? player : null,
+        { encounter, previewContext, ...(carryBattleId ? { previousBattleId: carryBattleId } : {}) }
+      );
+    },
     onSelectHalloween: () => enterStage(
       null,
       player && player.hp > 0 ? player : null,

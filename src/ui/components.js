@@ -6014,7 +6014,14 @@ function CombatScreen({
   const skills = heroActiveSkillList(player.skillLevels || {});
   const potionStacks = ownedPotionStacks(inventory || []);
   const stats = getStats(player, equipped);
-  const hpPct = Math.max(0, Math.min(100, player.hp / stats.maxHp * 100));
+  // The Battle Core unit is authoritative during combat and must match Phaser's
+  // HP/SP values and maxima. getStats remains the non-battle fallback only.
+  const heroBattleUnit = battleState?.units?.[battleState?.heroId] || null;
+  const hudHp = heroBattleUnit ? heroBattleUnit.hp : player.hp;
+  const hudMaxHp = heroBattleUnit ? heroBattleUnit.maxHp : stats.maxHp;
+  const hudSp = heroBattleUnit ? heroBattleUnit.sp : player.mp;
+  const hudMaxSp = heroBattleUnit ? heroBattleUnit.maxSp : stats.maxMp;
+  const hpPct = Math.max(0, Math.min(100, Number(hudHp) / Math.max(1, Number(hudMaxHp) || 1) * 100));
   const battleResources = player.battleResources || {};
   const activeBattleResources = [
     ["fury", "🔥"],
@@ -6161,9 +6168,9 @@ function CombatScreen({
     className: "md-hud-text"
   }, /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row"
-  }, "HP ", player.hp, "/", stats.maxHp), /*#__PURE__*/React.createElement("div", {
+  }, "HP ", hudHp, "/", hudMaxHp), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row"
-  }, "SP ", player.mp, "/", stats.maxMp), /*#__PURE__*/React.createElement("div", {
+  }, "SP ", hudSp, "/", hudMaxSp), /*#__PURE__*/React.createElement("div", {
     className: "md-hud-text-row xp"
   }, "EXP ", Math.floor(xpPct), "%"))), /*#__PURE__*/React.createElement(TurnOrderBar, {
     queue: turnQueue || [],
@@ -6233,7 +6240,7 @@ function CombatScreen({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "md-enemy-hpbar-hp"
-  }, player.hp, "/", stats.maxHp)), /*#__PURE__*/React.createElement(HeroSprite, {
+  }, hudHp, "/", hudMaxHp)), /*#__PURE__*/React.createElement(HeroSprite, {
     anim: heroAnim,
     equipped: equipped,
     label: heroName,

@@ -119,8 +119,8 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.35", date: "2026-11-03", title: "เตรียมกิจกรรม Halloween H01",
-      items: ["เพิ่มเนื้อหากิจกรรม Halloween พร้อมบอส Haloween nightmare และอาวุธ Excaliburnt"]
+      version: "1.1.43", date: "2026-11-03", title: "แก้การต่อเนื่องทรัพยากรในการต่อสู้",
+      items: ["แก้การส่งต่อ HP/SP/Pet HP เมื่อกลับแผนที่แล้วเลือกเล่นด่านเดิมหรือด่านถัดไป", "ปรับ HUD ให้แสดง HP/SP และค่าสูงสุดจาก Battle Core ชุดเดียวกับ Phaser"]
     },
     history: [
       { version: "1.1.33", date: "2026-10-29", title: "อัปเดตการโหลดภาพอุปกรณ์ Idle", items: ["เพิ่ม Revision ให้ภาพ Leather และกางเกง Azure"] },
