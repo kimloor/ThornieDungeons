@@ -90,11 +90,12 @@ test("Combat HUD reads HP/SP and maxima from the authoritative Battle Core Hero 
   assert.match(components, /Number\(hudHp\) \/ Math\.max\(1, Number\(hudMaxHp\) \|\| 1\)/);
 });
 
-test("Back-to-map floor selection carries only the latest victory into the same or next floor", () => {
-  assert.match(app, /previousBattle\?\.result === "victory"/);
-  assert.match(app, /targetFloor === previousFloor \|\| targetFloor === previousFloor \+ 1/);
+test("Back-to-map floor selection sends only settled Battle IDs to any unlocked floor and Halloween", () => {
+  assert.match(app, /\["victory", "fled", "defeat"\]\.includes\(previousBattle\?\.result\)/);
+  assert.doesNotMatch(app, /targetFloor === previousFloor \|\| targetFloor === previousFloor \+ 1/);
   assert.match(app, /previousBattleId: carryBattleId/);
-  assert.match(app, /\{ encounter, previewContext, \.\.\.\(carryBattleId/);
+  assert.match(app, /onSelectHalloween: \(\) => \{/);
+  assert.match(app, /cloudStartHalloweenBattle\(cred\.url, save\.characterId, options\.previousBattleId \|\| null\)/);
 });
 
 test("monster formation reserves the centre slot for solo units and Bosses", () => {
