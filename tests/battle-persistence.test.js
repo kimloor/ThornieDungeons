@@ -317,7 +317,7 @@ test("Worker-derived victory settles exactly once and ignores forged rewards", a
 });
 
 test("Dungeon resource carry accepts the latest settled outcome across any unlocked floor", async () => {
-  const api = worker(), db = database();
+  const api = worker({ eventId: "golden" }), db = database();
   const { token, characterId } = await account(api, db, "Battle_Carry_Latest");
   const activePet = { instId: "carry-pet", defId: "sprout", level: 1, xp: 0, star: 1 };
   db.raw.prepare("UPDATE characters SET str=1000,vit=1000,agi=1000,dex=1000,luk=1000,pets_json=?,active_pet_id=?,unlocked_floor=20 WHERE character_id=?").run(JSON.stringify({ list: [activePet] }), activePet.instId, characterId);
@@ -345,6 +345,7 @@ test("Dungeon resource carry accepts the latest settled outcome across any unloc
   assert.equal(secondHero.hp, 31);
   assert.equal(secondHero.sp, 7);
   assert.equal(second.body.context.floor, 17);
+  assert.ok(second.body.context.enemies.every(enemy => enemy.modifierId === "golden"));
   assert.equal(second.body.state.units[second.body.state.petId].hp, 13);
 
   forceAuthoritativeVictory(db, second.body.battleId);

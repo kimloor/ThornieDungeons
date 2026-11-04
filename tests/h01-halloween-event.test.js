@@ -123,7 +123,7 @@ test("H01 carry validator accepts only the latest settled Fled Battle", async ()
         bind() { return this; },
         async first() {
           return sql.includes("FROM battle_completions")
-            ? { battle_id: "latest-settled", result_json: JSON.stringify({ floor: 10 }), state_json: JSON.stringify(state), outcome: "fled", settled_at: "2026-11-04T00:00:00.000Z" }
+            ? { battle_id: "latest-settled", result_json: JSON.stringify({ result: "fled", floor: 10 }), state_json: JSON.stringify(state), outcome: "fled", settled_at: "2026-11-04T00:00:00.000Z" }
             : null;
         }
       };
@@ -132,6 +132,7 @@ test("H01 carry validator accepts only the latest settled Fled Battle", async ()
   const carry = await api.dungeonAuthorityCarryState(db, "char-1", "latest-settled", 20);
   assert.deepEqual(JSON.parse(JSON.stringify(carry)), { heroHp: 37, heroSp: 6, petHp: 12, outcome: "fled" });
   assert.equal(await api.dungeonAuthorityCarryState(db, "char-1", "older-id", 20), null);
+  assert.match(source("workers/thornie-dungeons-api.js"), /handleStartHalloweenBattle\(db, id, auth, body\.characterId, body\.previousBattleId \|\| null\)/);
 });
 
 test("H01 reward contract is one exclusive roll with fixed 5% threshold and chapter-boss XP", () => {
