@@ -1,6 +1,6 @@
 # Battle Scalability Audit & Staging Load Test Plan
 
-**Status:** ACTIVE-PLANNING / staging parity and data refresh NOT VERIFIED  
+**Status:** ACTIVE-PLANNING / Gate 0 verified; Gate 1 blocked by migration drift and unverified backup restore  
 **Baseline inspected:** `main` `841a4ca19915dbedf0a321791d8b76ac333fb100`  
 **App version at baseline:** `1.1.44`  
 **Scope:** Read-only audit, isolated staging preparation, and 10–100 concurrent-player Battle load testing. This document does not authorize production changes or a load test against Production.
@@ -153,27 +153,65 @@ No optimization may be implemented by weakening server authority, removing recei
 - Battle Core parity, relevant Worker tests, migration QA if applicable, and staging regression pass.
 - No Production deploy until separate Owner release approval.
 
-## 10. Findings and current blockers (2026-11-04)
+## 10. Gate 0 live evidence (2026-11-04)
+
+Read-only Cloudflare inspection completed against account `72a2af0ff5c5e4a83d037953f8a35356` on 2026-11-04. No D1 writes, export, import, Worker mutation, or deployment was performed.
+
+### Account and D1 identity
+
+- Production D1: `thornie-dungeons-db` / `2f6d52b4-3de7-4e78-98d4-fc143a4d29e2`
+- Staging D1: `thornie-dungeons-staging` / `c16e0b11-cf83-468c-a533-0ecbf522082f`
+- Both are in the same Cloudflare account; IDs are distinct.
+- Production D1 is 6,496,256 bytes / 62 tables; Staging D1 is 1,155,072 bytes / 62 tables.
+- Both have D1 read replication disabled. Production is running in ENAM; Staging is running in APAC.
+
+### Schema and migration comparison
+
+- Table/column comparison: 62 tables and 480 columns on each side; no column-level differences found.
+- Foreign-key checks: zero violations on Production and zero violations on Staging.
+- Migration history differs: Production has `0033_battle_checkpoint_recovery_reset_v1.sql`; Staging stops at `0032_battle_action_idempotency_v1.sql`.
+- Therefore Gate 1 schema parity is **BLOCKED** until the approved Staging migration path is resolved. Do not copy data or deploy current Worker source over this drift.
+
+### Current data differences
+
+Staging is not a current sanitized copy. Production has materially more rows in gameplay, battle, arena, social, inventory, mailbox, raid, and configuration tables. Examples: `players` 17 vs 9, `characters` 23 vs 8, `items` 160 vs 40, `battle_checkpoints` 473 vs 13, `battle_completions` 446 vs 9, and `arena_matches` 41 vs 0. Exact row-count reconciliation must be recorded after an approved copy.
+
+### Worker identity and isolation
+
+- Production Worker `thornie-dungeons-api` is bound to Production D1 and has secret binding `ADMIN_API_KEY`; it has one live cron schedule `0 17 * * *`.
+- Existing `thornie-dungeons-api-staging` is bound only to Staging D1, has no secret binding returned, and has no cron schedules. Its latest active version was deployed 2026-11-01, before current `main`; no current-main commit annotation was present.
+- Existing `thornie-dungeons-p0-staging` is bound only to Staging D1, has no cron schedules, but is explicitly tagged to historical source SHA `d128b96f3a652325de77592b3f5a859ad319dc5b`.
+- `thornie-dungeons-h01-staging` is also bound only to Staging D1 and has no cron schedules, but its workers.dev subdomain is disabled.
+- Account worker domains and zones returned no custom domain/zone route records for this account. Worker subdomains are enabled for Production and the two API/P0 staging Workers; this does not by itself prove application-level URL isolation.
+- No Production secret values were read or exposed.
+
+### Backup and rollback capability
+
+- Cloudflare D1 Time Travel is available as the platform point-in-time recovery mechanism; the connected API exposes restore by bookmark or timestamp.
+- D1 SQL export is available, but no new Staging export was started because export can temporarily make the database unavailable and must be treated as a controlled backup operation.
+- No verified, task-specific Staging backup artifact and restore test exists yet. Gate 1 remains blocked until one is created and verified.
+
+## 11. Findings and current blockers (2026-11-04)
 
 | Item | Repository evidence | Status |
 |---|---|---|
-| Latest main source | `841a4ca19915dbedf0a321791d8b76ac333fb100` | Verified via GitHub branch API |
+| Latest main source | `50c64b1a3152123294399d9d1f3c4b2f06a319da` | Verified via GitHub branch API |
 | App version | `1.1.44` | Verified from current project context/release commit |
-| Production D1 ID | `2f6d52b4-3de7-4e78-98d4-fc143a4d29e2` | Config reference only; not live-queried in this audit |
-| Staging D1 ID | `c16e0b11-cf83-468c-a533-0ecbf522082f` | Config reference only; not live-queried in this audit |
-| D1 separation | IDs differ | Config-level separation only; live account/resource ownership not verified |
+| Production D1 ID | `2f6d52b4-3de7-4e78-98d4-fc143a4d29e2` | Live-verified in account `72a2af0ff5c5e4a83d037953f8a35356` |
+| Staging D1 ID | `c16e0b11-cf83-468c-a533-0ecbf522082f` | Live-verified in account `72a2af0ff5c5e4a83d037953f8a35356` |
+| D1 separation | IDs differ | PASS at live account/resource identity level |
 | Existing staging workflow | `.github/workflows/p0-isolated-staging-deploy.yml` | Pins old source SHA `d128b96f3a652325de77592b3f5a859ad319dc5b`, targets Worker `thornie-dungeons-p0-staging`, and refuses to overwrite an existing Worker |
 | Historical staging Worker evidence | `docs/ADMIN-V2-W2FG-STAGING-QA-PLAN.md` | Historical, retired workflow; references Worker `thornie-dungeons-api-staging` and same Staging D1 ID. Not proof of current deployment |
-| Live schema parity | No live Cloudflare D1 access available in this audit | NOT VERIFIED |
-| Current Worker parity | No live Cloudflare Worker settings/deployment access available in this audit | NOT VERIFIED |
-| Sanitized Production data copy | No live D1 export/import access available in this audit | NOT STARTED |
-| 100-player load test | Must wait for Gates 0–3 | NOT STARTED |
+| Live schema parity | 62 tables / 480 columns match; FK checks are clean; Production has migration 0033 while Staging stops at 0032 | BLOCKED — migration drift |
+| Current Worker parity | Production and existing staging Workers inspected; staging is Staging-D1-only but latest staging source predates current main | BLOCKED — current-main parity not deployed/verified |
+| Sanitized Production data copy | Live query access available; no export/import/write performed | NOT STARTED — classification/backup approval gate pending |
+| 100-player load test | Must wait for Gates 0–3 | NOT STARTED — correctly blocked |
 
 ### Immediate blockers
 
-1. The available connected tools in this session expose GitHub read/write but no Cloudflare D1/Workers inspection, export/import, or deployment action. Do not substitute guesses or run an unverified workflow.
-2. The existing staging deploy workflow is pinned to a historical source SHA and a named Worker target; it is not a safe deploy path for current `main` without review and an explicit new staging deployment plan.
-3. The existing staging Worker may already exist. The workflow explicitly refuses to overwrite it, which is a useful safety guard; current live existence/state still needs Cloudflare verification.
-4. `docs/ADMIN-V2-W2FG-STAGING-QA-PLAN.md` contains historical staging setup notes that prohibit copying production player data. The Owner's newer 2026-11-04 approval supersedes that policy for this task only, with anonymization and the controls in §5; the historical document itself is not modified here.
+1. Staging is one migration behind Production (`0033` missing), so data copy and current Worker deployment remain blocked.
+2. No task-specific Staging backup artifact and verified restore test exists yet. Time Travel/export are available, but the rollback gate is not satisfied.
+3. The exact table/column sanitization map still requires review of all JSON/free-text and identifier-bearing columns before any import. Credentials, passwords, sessions, tokens, admin records, audit/security records, and operational secrets remain excluded.
+4. Existing staging Workers are isolated at the D1-binding level, but neither `thornie-dungeons-api-staging` nor `thornie-dungeons-p0-staging` is verified as the current `main` Worker source.
 
-**Next required action:** obtain a Cloudflare-capable execution path with read access to Workers/D1 and staging-scoped write access. First complete Gate 0 read-only checks; then present the exact table/column sanitization map and copy/rollback plan for approval before writing any data. The Owner has approved the sanitized-copy direction, but this audit has not performed the copy or Worker deployment.
+**Next required action:** present and approve the exact table/column classification and anonymization map, then create and verify a recoverable Staging backup. Resolve the `0033` migration drift using an approved Staging-only migration path. Only after those gates pass may the sanitized copy and current-main Staging Worker deployment proceed. Production remains read-only and load testing remains blocked.
