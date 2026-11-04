@@ -11,6 +11,8 @@ on:
       - "refactor/**"
     paths:
       - "src/**"
+      - "workers/thornie-dungeons-api.js"
+      - "tests/battle-persistence.test.js"
       - "head.html"
       - "tail.html"
       - "build.js"
