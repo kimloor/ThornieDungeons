@@ -316,10 +316,11 @@ test("Worker-derived victory settles exactly once and ignores forged rewards", a
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_completions WHERE battle_id=?").get(started.body.battleId).c, 1);
 });
 
-test("Dungeon HP/SP carry accepts only the latest settled victory", async () => {
+test("Dungeon resource carry accepts the latest settled outcome across any unlocked floor", async () => {
   const api = worker(), db = database();
   const { token, characterId } = await account(api, db, "Battle_Carry_Latest");
-  db.raw.prepare("UPDATE characters SET str=1000,vit=1000,agi=1000,dex=1000,luk=1000 WHERE character_id=?").run(characterId);
+  const activePet = { instId: "carry-pet", defId: "sprout", level: 1, xp: 0, star: 1 };
+  db.raw.prepare("UPDATE characters SET str=1000,vit=1000,agi=1000,dex=1000,luk=1000,pets_json=?,active_pet_id=?,unlocked_floor=20 WHERE character_id=?").run(JSON.stringify({ list: [activePet] }), activePet.instId, characterId);
 
   const first = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
   assert.equal(first.body.ok, true, JSON.stringify(first.body));
@@ -328,6 +329,7 @@ test("Dungeon HP/SP carry accepts only the latest settled victory", async () => 
   const firstState = JSON.parse(firstStateRow.state_json);
   firstState.units[firstState.heroId].hp = 31;
   firstState.units[firstState.heroId].sp = 7;
+  firstState.units[firstState.petId].hp = 13;
   db.raw.prepare("UPDATE battle_authority SET state_json=? WHERE battle_id=?").run(JSON.stringify(firstState), first.body.battleId);
   const firstCommit = await post(api, db, token, {
     action: "completeBattle", characterId, battleId: first.body.battleId, result: { result: "victory" }
@@ -336,18 +338,21 @@ test("Dungeon HP/SP carry accepts only the latest settled victory", async () => 
 
   // Retrying the just-cleared floor may carry the latest completion's real HP/SP.
   const second = await post(api, db, token, {
-    action: "startDungeonBattle", characterId, floor: 1, previousBattleId: first.body.battleId
+    action: "startDungeonBattle", characterId, floor: 17, previousBattleId: first.body.battleId
   });
   assert.equal(second.body.ok, true, JSON.stringify(second.body));
   const secondHero = second.body.state.units[second.body.state.heroId];
   assert.equal(secondHero.hp, 31);
   assert.equal(secondHero.sp, 7);
+  assert.equal(second.body.context.floor, 17);
+  assert.equal(second.body.state.units[second.body.state.petId].hp, 13);
 
   forceAuthoritativeVictory(db, second.body.battleId);
   const secondStateRow = db.raw.prepare("SELECT state_json FROM battle_authority WHERE battle_id=?").get(second.body.battleId);
   const secondState = JSON.parse(secondStateRow.state_json);
   secondState.units[secondState.heroId].hp = 19;
   secondState.units[secondState.heroId].sp = 4;
+  secondState.units[secondState.petId].hp = 8;
   db.raw.prepare("UPDATE battle_authority SET state_json=? WHERE battle_id=?").run(JSON.stringify(secondState), second.body.battleId);
   const secondCommit = await post(api, db, token, {
     action: "completeBattle", characterId, battleId: second.body.battleId, result: { result: "victory" }
@@ -363,12 +368,13 @@ test("Dungeon HP/SP carry accepts only the latest settled victory", async () => 
 
   // The latest settled victory remains valid for the next floor.
   const latest = await post(api, db, token, {
-    action: "startDungeonBattle", characterId, floor: 2, previousBattleId: second.body.battleId
+    action: "startDungeonBattle", characterId, floor: 1, previousBattleId: second.body.battleId
   });
   assert.equal(latest.body.ok, true, JSON.stringify(latest.body));
   const latestHero = latest.body.state.units[latest.body.state.heroId];
   assert.equal(latestHero.hp, 19);
   assert.equal(latestHero.sp, 4);
+  assert.equal(latest.body.state.units[latest.body.state.petId].hp, 8);
 });
 
 test("legacy checkpoint uses restart-same-floor policy without rewards", async () => {
