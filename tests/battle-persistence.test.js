@@ -336,17 +336,32 @@ test("Dungeon resource carry accepts the latest settled outcome across any unloc
   });
   assert.equal(firstCommit.body.ok, true, JSON.stringify(firstCommit.body));
 
-  // Retrying the just-cleared floor may carry the latest completion's real HP/SP.
+  const sameFloor = await post(api, db, token, {
+    action: "startDungeonBattle", characterId, floor: 1, previousBattleId: first.body.battleId
+  });
+  assert.equal(sameFloor.body.ok, true, JSON.stringify(sameFloor.body));
+  assert.equal(sameFloor.body.state.units[sameFloor.body.state.heroId].hp, 31);
+  assert.equal(sameFloor.body.state.units[sameFloor.body.state.heroId].sp, 7);
+  assert.equal(sameFloor.body.state.units[sameFloor.body.state.petId].hp, 13);
+  forceAuthoritativeVictory(db, sameFloor.body.battleId);
+  const sameState = JSON.parse(db.raw.prepare("SELECT state_json FROM battle_authority WHERE battle_id=?").get(sameFloor.body.battleId).state_json);
+  sameState.units[sameState.heroId].hp = 27;
+  sameState.units[sameState.heroId].sp = 6;
+  sameState.units[sameState.petId].hp = 11;
+  db.raw.prepare("UPDATE battle_authority SET state_json=? WHERE battle_id=?").run(JSON.stringify(sameState), sameFloor.body.battleId);
+  const sameCommit = await post(api, db, token, { action: "completeBattle", characterId, battleId: sameFloor.body.battleId, result: { result: "victory" } });
+  assert.equal(sameCommit.body.ok, true, JSON.stringify(sameCommit.body));
+
   const second = await post(api, db, token, {
-    action: "startDungeonBattle", characterId, floor: 17, previousBattleId: first.body.battleId
+    action: "startDungeonBattle", characterId, floor: 17, previousBattleId: sameFloor.body.battleId
   });
   assert.equal(second.body.ok, true, JSON.stringify(second.body));
   const secondHero = second.body.state.units[second.body.state.heroId];
-  assert.equal(secondHero.hp, 31);
-  assert.equal(secondHero.sp, 7);
+  assert.equal(secondHero.hp, 27);
+  assert.equal(secondHero.sp, 6);
   assert.equal(second.body.context.floor, 17);
   assert.ok(second.body.context.enemies.every(enemy => enemy.modifierId === "golden"));
-  assert.equal(second.body.state.units[second.body.state.petId].hp, 13);
+  assert.equal(second.body.state.units[second.body.state.petId].hp, 11);
 
   forceAuthoritativeVictory(db, second.body.battleId);
   const secondStateRow = db.raw.prepare("SELECT state_json FROM battle_authority WHERE battle_id=?").get(second.body.battleId);
@@ -367,7 +382,7 @@ test("Dungeon resource carry accepts the latest settled outcome across any unloc
   assert.equal(stale.status, 409);
   assert.equal(stale.body.error, "battle_carry_source_invalid");
 
-  // The latest settled victory remains valid for the next floor.
+  // The latest settled victory remains valid when moving back to a previous floor.
   const latest = await post(api, db, token, {
     action: "startDungeonBattle", characterId, floor: 1, previousBattleId: second.body.battleId
   });
@@ -376,6 +391,14 @@ test("Dungeon resource carry accepts the latest settled outcome across any unloc
   assert.equal(latestHero.hp, 19);
   assert.equal(latestHero.sp, 4);
   assert.equal(latest.body.state.units[latest.body.state.petId].hp, 8);
+  forceAuthoritativeVictory(db, latest.body.battleId);
+  const latestCommit = await post(api, db, token, { action: "completeBattle", characterId, battleId: latest.body.battleId, result: { result: "victory" } });
+  assert.equal(latestCommit.body.ok, true, JSON.stringify(latestCommit.body));
+  const nextFloor = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 2, previousBattleId: latest.body.battleId });
+  assert.equal(nextFloor.body.ok, true, JSON.stringify(nextFloor.body));
+  assert.equal(nextFloor.body.state.units[nextFloor.body.state.heroId].hp, 19);
+  assert.equal(nextFloor.body.state.units[nextFloor.body.state.heroId].sp, 4);
+  assert.equal(nextFloor.body.state.units[nextFloor.body.state.petId].hp, 8);
 
   const other = await account(api, db, "CarryOther");
   const foreignStart = await post(api, db, other.token, { action: "startDungeonBattle", characterId: other.characterId, floor: 1 });
