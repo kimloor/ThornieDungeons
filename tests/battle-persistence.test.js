@@ -376,6 +376,15 @@ test("Dungeon resource carry accepts the latest settled outcome across any unloc
   assert.equal(latestHero.hp, 19);
   assert.equal(latestHero.sp, 4);
   assert.equal(latest.body.state.units[latest.body.state.petId].hp, 8);
+
+  const other = await account(api, db, "CarryOther");
+  const foreignStart = await post(api, db, other.token, { action: "startDungeonBattle", characterId: other.characterId, floor: 1 });
+  const crossCharacter = await post(api, db, other.token, { action: "startDungeonBattle", characterId: other.characterId, floor: 1, previousBattleId: second.body.battleId });
+  assert.equal(crossCharacter.status, 409);
+  assert.equal(crossCharacter.body.error, "battle_carry_source_invalid");
+  const inProgress = await post(api, db, other.token, { action: "startDungeonBattle", characterId: other.characterId, floor: 1, previousBattleId: foreignStart.body.battleId });
+  assert.equal(inProgress.status, 409);
+  assert.equal(inProgress.body.error, "active_battle_conflict");
 });
 
 test("Fled carries settled Hero/Pet resources and Defeat resets them to full", async () => {
