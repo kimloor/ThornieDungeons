@@ -130,7 +130,7 @@ jobs:
           test -n "$url" || { echo "Could not resolve staging URL"; exit 1; }
           echo "url=$url" >> "$GITHUB_OUTPUT"; echo "version=${ver:-unknown}" >> "$GITHUB_OUTPUT"
 
-      - name: Actual D1 handler QA (33 scenarios: W2-F/G 19 + W2F-1 + H1 13)
+      - name: "Actual D1 handler QA (33 scenarios, W2-F/G 19 + W2F-1 + H1 13)"
         shell: bash
         env:
           QA_BASE_URL: ${{ steps.deploy.outputs.url }}
