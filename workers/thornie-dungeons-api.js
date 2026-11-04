@@ -1977,6 +1977,9 @@ async function handleStartDungeonBattle(db, id, session, characterId, requestedF
     const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
     const authority = await db.prepare(`SELECT state_rev, state_json, outcome, settled_at FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`)
       .bind(existing.battle_id, characterId).first();
+    if (authority && !authority.outcome && previousBattleId && String(previousBattleId) === String(existing.battle_id)) {
+      return json({ error: "battle_carry_source_invalid" }, 409);
+    }
     if (authority && !authority.outcome && context && context.floor === floor) {
       return json({ ok: true, battleId: existing.battle_id, context, state: { ...parseJsonColumn(authority.state_json, {}), authorityRev: Number(authority.state_rev) || 0 }, stateRev: Number(authority.state_rev) || 0, authoritative: true });
     }
@@ -2254,7 +2257,12 @@ async function handleStartHalloweenBattle(db, id, session, characterId, previous
     const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
     if (context?.eventId === HALLOWEEN_EVENT_ID) {
       const current = await halloweenAuthorityStartResult(db, owned.row, existing.battle_id, context);
-      if (current.body) return json(current.body);
+      if (current.body) {
+        if (previousBattleId && String(previousBattleId) === String(existing.battle_id)) {
+          return json({ error: "battle_carry_source_invalid" }, 409);
+        }
+        return json(current.body);
+      }
       if (current.settled) {
         await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
           .bind(nowIso(), existing.battle_id, characterId).run();
