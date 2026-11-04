@@ -1,6 +1,6 @@
 # Battle Scalability Audit & Staging Load Test Plan
 
-**Status:** ACTIVE-PLANNING / Gate 0 verified; Gate 1 blocked by migration drift and unverified backup restore  
+**Status:** ACTIVE-PLANNING / Gate 0 verified; Gate 1 partially verified; sanitized copy and current-main Worker deployment blocked by import validation  
 **Baseline inspected:** `main` `841a4ca19915dbedf0a321791d8b76ac333fb100`  
 **App version at baseline:** `1.1.44`  
 **Scope:** Read-only audit, isolated staging preparation, and 10–100 concurrent-player Battle load testing. This document does not authorize production changes or a load test against Production.
@@ -155,7 +155,7 @@ No optimization may be implemented by weakening server authority, removing recei
 
 ## 10. Gate 0 live evidence (2026-11-04)
 
-Read-only Cloudflare inspection completed against account `72a2af0ff5c5e4a83d037953f8a35356` on 2026-11-04. No D1 writes, export, import, Worker mutation, or deployment was performed.
+Cloudflare inspection and controlled Staging-only preparation completed against account `72a2af0ff5c5e4a83d037953f8a35356` on 2026-11-04. Production remained read-only; no Production export, import, Worker mutation, or deployment was performed.
 
 ### Account and D1 identity
 
@@ -169,8 +169,8 @@ Read-only Cloudflare inspection completed against account `72a2af0ff5c5e4a83d037
 
 - Table/column comparison: 62 tables and 480 columns on each side; no column-level differences found.
 - Foreign-key checks: zero violations on Production and zero violations on Staging.
-- Migration history differs: Production has `0033_battle_checkpoint_recovery_reset_v1.sql`; Staging stops at `0032_battle_action_idempotency_v1.sql`.
-- Therefore Gate 1 schema parity is **BLOCKED** until the approved Staging migration path is resolved. Do not copy data or deploy current Worker source over this drift.
+- Migration history initially differed: Production had `0033_battle_checkpoint_recovery_reset_v1.sql`; Staging stopped at `0032_battle_action_idempotency_v1.sql`.
+- Migration 0033 was executed on Staging only after preflight (2 authorities abandoned, 2 checkpoints closed), verified, then the database was restored to the task-specific backup while the sanitized-copy importer was being validated. Final Staging state is therefore safely back at 0032; do not deploy the current Worker until the migration and copy are rerun as one verified release transaction.
 
 ### Current data differences
 
@@ -188,8 +188,8 @@ Staging is not a current sanitized copy. Production has materially more rows in 
 ### Backup and rollback capability
 
 - Cloudflare D1 Time Travel is available as the platform point-in-time recovery mechanism; the connected API exposes restore by bookmark or timestamp.
-- D1 SQL export is available, but no new Staging export was started because export can temporarily make the database unavailable and must be treated as a controlled backup operation.
-- No verified, task-specific Staging backup artifact and restore test exists yet. Gate 1 remains blocked until one is created and verified.
+- A task-specific Staging D1 export completed successfully before writes: bookmark `00000038-00000000-00005119-386f115ca82f29d2be657635a55b851c` and the corresponding D1 SQL export filename were recorded out-of-band; the signed URL is intentionally not recorded here.
+- Restore from that bookmark was exercised twice after importer failures and verified by row counts and `PRAGMA foreign_key_check` (zero violations). Staging rollback capability is therefore verified for this task.
 
 ## 11. Findings and current blockers (2026-11-04)
 
@@ -204,14 +204,15 @@ Staging is not a current sanitized copy. Production has materially more rows in 
 | Historical staging Worker evidence | `docs/ADMIN-V2-W2FG-STAGING-QA-PLAN.md` | Historical, retired workflow; references Worker `thornie-dungeons-api-staging` and same Staging D1 ID. Not proof of current deployment |
 | Live schema parity | 62 tables / 480 columns match; FK checks are clean; Production has migration 0033 while Staging stops at 0032 | BLOCKED — migration drift |
 | Current Worker parity | Production and existing staging Workers inspected; staging is Staging-D1-only but latest staging source predates current main | BLOCKED — current-main parity not deployed/verified |
-| Sanitized Production data copy | Live query access available; no export/import/write performed | NOT STARTED — classification/backup approval gate pending |
+| Sanitized Production data copy | Classification defined; Staging export/restore verified; two importer attempts stopped on FK validation and were rolled back | BLOCKED — importer must be corrected and rerun with per-table validation |
 | 100-player load test | Must wait for Gates 0–3 | NOT STARTED — correctly blocked |
 
 ### Immediate blockers
 
-1. Staging is one migration behind Production (`0033` missing), so data copy and current Worker deployment remain blocked.
-2. No task-specific Staging backup artifact and verified restore test exists yet. Time Travel/export are available, but the rollback gate is not satisfied.
-3. The exact table/column sanitization map still requires review of all JSON/free-text and identifier-bearing columns before any import. Credentials, passwords, sessions, tokens, admin records, audit/security records, and operational secrets remain excluded.
-4. Existing staging Workers are isolated at the D1-binding level, but neither `thornie-dungeons-api-staging` nor `thornie-dungeons-p0-staging` is verified as the current `main` Worker source.
+1. Final Staging state is safely restored to migration 0032; migration 0033 must be applied again only as part of the verified copy/deploy run.
+2. Backup/rollback is now verified for this task via the recorded Staging export bookmark and two successful restores.
+3. The exact classification excludes `auth_sessions`, `auth_rate_limits`, `admin_users`, `admin_sessions`, `admin_audit_log`, battle/arena/character/mailbox/raid idempotency receipts, and `w6_legacy_item_cleanup_audit`; `players.password`, `password_hash`, and `recovery_code_hash` are replaced with empty non-credential values. Player, character, item, guild, battle, arena, raid, mailbox, leaderboard, and social foreign keys use deterministic `stg_*` surrogate IDs; names, descriptions, messages, mail body/title, and JSON references are sanitized.
+4. The generic importer reached partial writes but stopped on a live FK constraint before completion; it was rolled back to the verified Staging backup. A per-table importer with explicit schema/constraint handling is required before any further write.
+5. Existing staging Workers are isolated at the D1-binding level, but neither `thornie-dungeons-api-staging` nor `thornie-dungeons-p0-staging` is verified as the current `main` Worker source.
 
-**Next required action:** present and approve the exact table/column classification and anonymization map, then create and verify a recoverable Staging backup. Resolve the `0033` migration drift using an approved Staging-only migration path. Only after those gates pass may the sanitized copy and current-main Staging Worker deployment proceed. Production remains read-only and load testing remains blocked.
+**Next required action:** correct and dry-run the per-table sanitized importer against an isolated disposable D1 or a restored Staging copy, record per-table row/relationship checks, then rerun migration 0033 + import + current-main Worker deployment as a single staged change. Production remains read-only and load testing remains blocked.
