@@ -20,6 +20,9 @@ on:
       - "tests/dungeon-v2-event-floor.test.js"
       - "tests/h01-halloween-event.test.js"
       - "tests/inventory-order.test.js"
+      - "scripts/staging-battle-load-test.mjs"
+      - "tests/staging-battle-load-test.test.js"
+      - "docs/STAGING-BATTLE-LOAD-TEST-HARNESS.md"
       - "tests/raid-wings-v2.test.js"
       - "tests/p0-rollback-staging-workflow.test.js"
       - ".github/workflows/p0-rollback-fault-staging-deploy.yml"
@@ -82,7 +85,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/battle-ui-contract.test.js tests/dungeon-v2-foundation.test.js tests/dungeon-v2-event-floor.test.js tests/raid-wings-v2.test.js tests/h01-halloween-event.test.js tests/inventory-order.test.js
+          node --test tests/battle-ui-contract.test.js tests/dungeon-v2-foundation.test.js tests/dungeon-v2-event-floor.test.js tests/raid-wings-v2.test.js tests/h01-halloween-event.test.js tests/inventory-order.test.js tests/staging-battle-load-test.test.js
+          node --check scripts/staging-battle-load-test.mjs
           node --check workers/thornie-dungeons-api.js
 
       - name: Verify formatting
