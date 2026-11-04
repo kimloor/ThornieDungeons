@@ -8424,8 +8424,11 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
 
   const auditId = `adm-del-${requestId}`;
   // Idempotent replay: the audit row id is the request id, so a replay can never delete twice.
-  const prior = await db.prepare(`SELECT player_id FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
-  if (prior) return json({ ok: true, already_applied: true });
+  // The requestId is bound to the exact request (player, character, item, requested quantity): an identical
+  // replay is already_applied, anything else with the same requestId is 409 request_id_conflict (W2F-1).
+  const requestHash = await adminItemSnapshotHash({ request: JSON.stringify(adminSeedCanonical({ playerId, characterId, itemId, quantity: quantity ?? null })) });
+  const prior = await db.prepare(`SELECT target_id, metadata_json FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
+  if (prior) return adminDeleteReplayResponse(prior, requestHash, itemId);
 
   const row = await loadAdminItemTriple(db, playerId, characterId, itemId);
   if (!row) return json({ error: "item_not_found" }, 404);
@@ -8442,12 +8445,12 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
   const remaining = stack.quantity - qty;
   const provenance = await db.prepare(`SELECT * FROM item_provenance WHERE item_id = ?`).bind(itemId).first();
   const events = (await db.prepare(`SELECT * FROM item_ownership_events WHERE item_id = ? ORDER BY occurred_at DESC LIMIT 5`).bind(itemId).all()).results || [];
-  const metadata = buildAdminAuditMetadata({
+  const metadata = { ...buildAdminAuditMetadata({
     before: { playerId, characterId, itemId, quantityRequested: qty, item: sanitizeAdminItemRow(row), provenance: provenance ? redactAdminAuditValue(provenance) : null, recentEvents: events.map((e) => redactAdminAuditValue(e)) },
     after: remaining > 0 ? { quantityRemaining: remaining } : null,
     changedKeys: remaining > 0 ? ["quantity"] : ["deleted"],
     reason: check.reason,
-  });
+  }), requestHash };
   // Every statement carries the same guard against the observed row; if it no longer matches,
   // nothing is inserted and the item statement affects 0 rows -> 409, nothing written.
   const guard = `EXISTS (SELECT 1 FROM items WHERE item_id = ? AND player_id = ? AND character_id = ? AND equipped = 0 AND updated_at = ? AND COALESCE(extra_json, '') = ?)
@@ -8468,15 +8471,17 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
       itemStatement,
     ]);
   } catch (error) {
-    if (isAdminAuditDuplicate(error) && (await db.prepare(`SELECT 1 AS x FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first())) {
-      return json({ ok: true, already_applied: true });
+    if (isAdminAuditDuplicate(error)) {
+      const settled = await db.prepare(`SELECT target_id, metadata_json FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
+      if (settled) return adminDeleteReplayResponse(settled, requestHash, itemId);
     }
     console.error("admin_audit_failed", "ADMIN_ITEM_DELETE", error && error.message);
     return json({ error: "admin_audit_failed" }, 500);
   }
   if (Number(results?.[2]?.meta?.changes) !== 1) {
     // The guard refused. If a concurrent request with the same id already applied, say so.
-    if (await db.prepare(`SELECT 1 AS x FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first()) return json({ ok: true, already_applied: true });
+    const settled = await db.prepare(`SELECT target_id, metadata_json FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
+    if (settled) return adminDeleteReplayResponse(settled, requestHash, itemId);
     // Otherwise report the precise reason when it is an activity block, else a state change.
     const now2 = await loadAdminItemTriple(db, playerId, characterId, itemId);
     const reason2 = now2 ? await adminItemBlockedReason(db, now2, characterId) : null;
@@ -8786,6 +8791,15 @@ function adminSeedCanonical(value) {
 async function adminSeedRequestHash(body) {
   return adminItemSnapshotHash({ request: JSON.stringify(adminSeedCanonical({ playerId: body?.playerId, characterId: body?.characterId, ops: body?.ops })) });
 }
+// W2-F replay: identical request -> already_applied; same requestId for another item/quantity -> 409 request_id_conflict.
+// Audit rows written before requestHash existed fall back to comparing the target item only.
+function adminDeleteReplayResponse(prior, requestHash, itemId) {
+  let recorded = null;
+  try { recorded = JSON.parse(prior.metadata_json || "{}").requestHash || null; } catch (_) { recorded = null; }
+  const same = recorded ? recorded === requestHash : prior.target_id === itemId;
+  return same ? json({ ok: true, already_applied: true }) : json({ error: "request_id_conflict" }, 409);
+}
+
 // requestId already used: identical request -> already_applied, anything else -> 409 request_id_conflict.
 function adminSeedReplayResponse(prior, requestHash, characterId) {
   let recorded = null;
