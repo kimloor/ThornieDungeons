@@ -108,7 +108,13 @@ test("H01 context snapshots progress into the next chapter-boss profile and reje
 test("H01 carry validator accepts only the latest settled Fled Battle", async () => {
   const api = workerApi();
   const state = {
-    serverContext: { version: 3, mode: "dungeon", floor: 10, referenceFloor: 10, role: "chapter_boss", packCount: 1, encounterSeed: 1, rewardSeed: 2, enemies: [{ id: "boss", instanceId: "enemy-1", modifierId: null }] },
+    serverContext: {
+      version: 3, mode: "dungeon", eventId: "halloween_v1", floor: 10, referenceFloor: 10,
+      progressFloor: 9, role: "chapter_boss", packCount: 1, encounterSeed: 1, rewardSeed: 2,
+      startedAt: "2026-11-04T00:00:00.000Z", eventEndsAt: "2026-12-04T00:00:00.000Z",
+      enemies: [{ id: "haloween_nightmare", instanceId: "enemy-1", modifierId: null,
+        statProfileId: api.dungeonV2ServerBossForFloor(10), skillCycle: api.halloweenServerSkillCycle(1), kind: "boss", isBoss: true }]
+    },
     heroId: "hero", petId: "pet", units: { hero: { hp: 37, sp: 6 }, pet: { hp: 12 } }
   };
   const db = {
