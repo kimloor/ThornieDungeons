@@ -50,6 +50,8 @@ jobs:
           set -euo pipefail
           wrangler d1 time-travel info "${{ steps.db.outputs.name }}" --json > "$RUNNER_TEMP/bookmark.json"
           cat "$RUNNER_TEMP/bookmark.json"
+          # annotations are readable through the checks API (run logs/artifacts are not reachable from the QA sandbox)
+          echo "::notice title=Production D1 restore point::$(jq -c . "$RUNNER_TEMP/bookmark.json" | head -c 1500)"
           {
             echo "## Production D1 restore point"
             echo "database: ${{ steps.db.outputs.name }} ($PROD_DB_ID)"
