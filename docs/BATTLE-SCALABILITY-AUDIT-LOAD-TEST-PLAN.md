@@ -1,6 +1,6 @@
 # Battle Scalability Audit & Staging Load Test Plan
 
-**Status:** ACTIVE-PLANNING / Gate 0 verified; Gate 1 partially verified; sanitized copy and current-main Worker deployment blocked by import validation  
+**Status:** READY-FOR-STAGING-QA / Gates 0–3 verified; Gate 4 load test not yet run  
 **Baseline inspected:** `main` `841a4ca19915dbedf0a321791d8b76ac333fb100`  
 **App version at baseline:** `1.1.44`  
 **Scope:** Read-only audit, isolated staging preparation, and 10–100 concurrent-player Battle load testing. This document does not authorize production changes or a load test against Production.
@@ -170,16 +170,16 @@ Cloudflare inspection and controlled Staging-only preparation completed against 
 - Table/column comparison: 62 tables and 480 columns on each side; no column-level differences found.
 - Foreign-key checks: zero violations on Production and zero violations on Staging.
 - Migration history initially differed: Production had `0033_battle_checkpoint_recovery_reset_v1.sql`; Staging stopped at `0032_battle_action_idempotency_v1.sql`.
-- Migration 0033 was executed on Staging only after preflight (2 authorities abandoned, 2 checkpoints closed), verified, then the database was restored to the task-specific backup while the sanitized-copy importer was being validated. Final Staging state is therefore safely back at 0032; do not deploy the current Worker until the migration and copy are rerun as one verified release transaction.
+- Migration 0033 was applied on Staging after preflight (2 authorities abandoned, 2 checkpoints closed) and is recorded as migration id 22. Final Staging state is verified at migration 0033.
 
 ### Current data differences
 
-Staging is not a current sanitized copy. Production has materially more rows in gameplay, battle, arena, social, inventory, mailbox, raid, and configuration tables. Examples: `players` 17 vs 9, `characters` 23 vs 8, `items` 160 vs 40, `battle_checkpoints` 473 vs 13, `battle_completions` 446 vs 9, and `arena_matches` 41 vs 0. Exact row-count reconciliation must be recorded after an approved copy.
+Final sanitized Staging refresh matches the approved Production core-data counts: `players` 17, `characters` 23, `items` 160, `battle_checkpoints` 473, `battle_completions` 446, and `arena_matches` 41. Excluded security/social data is intentionally zeroed and recorded below.
 
 ### Worker identity and isolation
 
 - Production Worker `thornie-dungeons-api` is bound to Production D1 and has secret binding `ADMIN_API_KEY`; it has one live cron schedule `0 17 * * *`.
-- Existing `thornie-dungeons-api-staging` is bound only to Staging D1, has no secret binding returned, and has no cron schedules. Its latest active version was deployed 2026-11-01, before current `main`; no current-main commit annotation was present.
+- Existing `thornie-dungeons-api-staging` is bound only to Staging D1, has no secret binding returned, and has no cron schedules. It now runs the current `main` source with version annotation `main-50c64b1a3152123294399d9d1f3c4b2f06a319da`; live settings and routes were rechecked after upload.
 - Existing `thornie-dungeons-p0-staging` is bound only to Staging D1, has no cron schedules, but is explicitly tagged to historical source SHA `d128b96f3a652325de77592b3f5a859ad319dc5b`.
 - `thornie-dungeons-h01-staging` is also bound only to Staging D1 and has no cron schedules, but its workers.dev subdomain is disabled.
 - Account worker domains and zones returned no custom domain/zone route records for this account. Worker subdomains are enabled for Production and the two API/P0 staging Workers; this does not by itself prove application-level URL isolation.
@@ -188,8 +188,8 @@ Staging is not a current sanitized copy. Production has materially more rows in 
 ### Backup and rollback capability
 
 - Cloudflare D1 Time Travel is available as the platform point-in-time recovery mechanism; the connected API exposes restore by bookmark or timestamp.
-- A task-specific Staging D1 export completed successfully before writes: bookmark `00000038-00000000-00005119-386f115ca82f29d2be657635a55b851c` and the corresponding D1 SQL export filename were recorded out-of-band; the signed URL is intentionally not recorded here.
-- Restore from that bookmark was exercised twice after importer failures and verified by row counts and `PRAGMA foreign_key_check` (zero violations). Staging rollback capability is therefore verified for this task.
+- A task-specific Staging D1 export completed before writes: bookmark `00000038-00000000-00005119-386f115ca82f29d2be657635a55b851c`; the signed URL is intentionally not recorded here.
+- Restore from that bookmark was exercised repeatedly during importer validation and verified by row counts and `PRAGMA foreign_key_check` (zero violations). Staging rollback capability is verified.
 
 ## 11. Findings and current blockers (2026-11-04)
 
@@ -202,17 +202,17 @@ Staging is not a current sanitized copy. Production has materially more rows in 
 | D1 separation | IDs differ | PASS at live account/resource identity level |
 | Existing staging workflow | `.github/workflows/p0-isolated-staging-deploy.yml` | Pins old source SHA `d128b96f3a652325de77592b3f5a859ad319dc5b`, targets Worker `thornie-dungeons-p0-staging`, and refuses to overwrite an existing Worker |
 | Historical staging Worker evidence | `docs/ADMIN-V2-W2FG-STAGING-QA-PLAN.md` | Historical, retired workflow; references Worker `thornie-dungeons-api-staging` and same Staging D1 ID. Not proof of current deployment |
-| Live schema parity | 62 tables / 480 columns match; FK checks are clean; Production has migration 0033 while Staging stops at 0032 | BLOCKED — migration drift |
-| Current Worker parity | Production and existing staging Workers inspected; staging is Staging-D1-only but latest staging source predates current main | BLOCKED — current-main parity not deployed/verified |
-| Sanitized Production data copy | Classification defined; Staging export/restore verified; two importer attempts stopped on FK validation and were rolled back | BLOCKED — importer must be corrected and rerun with per-table validation |
+| Live schema parity | 62 tables / 480 columns match; FK checks are clean; both now record migration 0033 | PASS |
+| Current Worker parity | Staging version 6 is annotated with current main SHA, Staging D1-only, routes empty, schedules empty; smoke GET returned HTTP 200 | PASS |
+| Sanitized Production data copy | 1,669 sanitized core rows inserted; credentials/sessions/admin/social optional data excluded; FK/orphan/CHECK validation passed | PASS with documented exclusions |
 | 100-player load test | Must wait for Gates 0–3 | NOT STARTED — correctly blocked |
 
 ### Immediate blockers
 
-1. Final Staging state is safely restored to migration 0032; migration 0033 must be applied again only as part of the verified copy/deploy run.
-2. Backup/rollback is now verified for this task via the recorded Staging export bookmark and two successful restores.
-3. The exact classification excludes `auth_sessions`, `auth_rate_limits`, `admin_users`, `admin_sessions`, `admin_audit_log`, battle/arena/character/mailbox/raid idempotency receipts, and `w6_legacy_item_cleanup_audit`; `players.password`, `password_hash`, and `recovery_code_hash` are replaced with empty non-credential values. Player, character, item, guild, battle, arena, raid, mailbox, leaderboard, and social foreign keys use deterministic `stg_*` surrogate IDs; names, descriptions, messages, mail body/title, and JSON references are sanitized.
-4. The generic importer reached partial writes but stopped on a live FK constraint before completion; it was rolled back to the verified Staging backup. A per-table importer with explicit schema/constraint handling is required before any further write.
-5. Existing staging Workers are isolated at the D1-binding level, but neither `thornie-dungeons-api-staging` nor `thornie-dungeons-p0-staging` is verified as the current `main` Worker source.
+1. Backup/rollback is verified for this task via the recorded Staging export bookmark and repeated successful restores.
+2. The final classification excludes `auth_sessions`, `auth_rate_limits`, `admin_users`, `admin_sessions`, `admin_audit_log`, battle/arena/character/mailbox/raid idempotency receipts, all optional social conversation/application/membership data, and `w6_legacy_item_cleanup_audit`; `players.password`, `password_hash`, and `recovery_code_hash` contain no copied credential values. Core foreign keys use deterministic `stg_*` surrogate IDs; names, descriptions, and JSON references are sanitized.
+3. Final validation: 1,669 inserted rows, zero foreign-key violations, zero orphan items/characters, zero invalid arena pairs, zero credential values, zero sessions/admin accounts, and exact core counts recorded above.
+4. Current-main Worker source is deployed to `thornie-dungeons-api-staging` with only the Staging D1 binding; routes and cron schedules are empty; smoke GET returned HTTP 200.
+5. No load test has been run yet; Gate 4 remains pending staging QA sign-off.
 
-**Next required action:** correct and dry-run the per-table sanitized importer against an isolated disposable D1 or a restored Staging copy, record per-table row/relationship checks, then rerun migration 0033 + import + current-main Worker deployment as a single staged change. Production remains read-only and load testing remains blocked.
+**Next required action:** run the approved staging QA smoke/regression suite, then execute the §4 load matrix only against Staging. Production remains read-only.
