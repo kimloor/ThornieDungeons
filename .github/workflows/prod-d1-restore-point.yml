@@ -1,0 +1,63 @@
+name: Production D1 restore point (read-only bookmark)
+
+# READ-ONLY. Records the current D1 Time Travel bookmark of the PRODUCTION database so a restore point exists
+# before any Owner-supervised first use of Admin item delete / QA seed. Never writes, never restores.
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: "Why this restore point is taken"
+        required: false
+        default: "Before W2-F/W2-G and W2-H H1 first use"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prod-d1-restore-point
+  cancel-in-progress: false
+
+jobs:
+  bookmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      PROD_DB_ID: 2f6d52b4-3de7-4e78-98d4-fc143a4d29e2
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+      - name: Resolve the production database name by id
+        id: db
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "Missing CF_API_TOKEN"; exit 1; }
+          wrangler d1 list --json > "$RUNNER_TEMP/d1.json"
+          name="$(jq -r --arg id "$PROD_DB_ID" '.[] | select((.uuid // .id // "") == $id) | .name' "$RUNNER_TEMP/d1.json")"
+          test -n "$name" || { echo "Production database id not found"; exit 1; }
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+      - name: Read the current Time Travel bookmark (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler d1 time-travel info "${{ steps.db.outputs.name }}" --json > "$RUNNER_TEMP/bookmark.json"
+          cat "$RUNNER_TEMP/bookmark.json"
+          {
+            echo "## Production D1 restore point"
+            echo "database: ${{ steps.db.outputs.name }} ($PROD_DB_ID)"
+            echo "note: ${{ inputs.note }}"
+            echo "taken at: $(date -u +%Y-%m-%dT%H:%M:%SZ)  run: ${{ github.run_id }}"
+            echo '```json'
+            cat "$RUNNER_TEMP/bookmark.json"
+            echo '```'
+            echo "Restore (Owner only, destructive): wrangler d1 time-travel restore ${{ steps.db.outputs.name }} --bookmark=<bookmark above>"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prod-d1-restore-point
+          path: ${{ runner.temp }}/bookmark.json
