@@ -1892,7 +1892,7 @@ async function dungeonAuthorityCarryState(db, characterId, previousBattleId, tar
   const hero = state?.units?.[state.heroId];
   const pet = state?.petId ? state?.units[state.petId] : null;
   if (!hero || !Number.isFinite(Number(hero.hp)) || !Number.isFinite(Number(hero.sp))) return null;
-  return { heroHp: hero.hp, heroSp: hero.sp, petHp: pet?.hp, outcome: row.outcome };
+  return { heroHp: hero.hp, heroSp: hero.sp, petHp: pet?.hp, petInstId: pet?.instId || null, outcome: row.outcome };
 }
 
 async function dungeonAuthorityInitialState(db, character, context, battleId, carry) {
@@ -1903,7 +1903,9 @@ async function dungeonAuthorityInitialState(db, character, context, battleId, ca
   const items = itemsResult?.results || [];
   const parsedPets = parsePetsJson(character);
   const resourceCarry = carry?.reset ? null : carry;
-  const pet = dungeonAuthorityPetUnit(character, resourceCarry?.petHp);
+  const activePetId = parsedPets.active?.instId || "";
+  const carryPetHp = resourceCarry?.petInstId && resourceCarry.petInstId === activePetId ? resourceCarry.petHp : null;
+  const pet = dungeonAuthorityPetUnit(character, carryPetHp);
   const stats = dungeonAuthorityStats(character, items, pet?.defId || "", parsedPets.skillLevels || {});
   const skills = parsedPets.skillLevels || {};
   const state = globalThis.BATTLE_CORE_V1.createDungeonBattle({
