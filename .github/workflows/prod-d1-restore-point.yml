@@ -3,6 +3,9 @@ name: Production D1 restore point (read-only bookmark)
 # READ-ONLY. Records the current D1 Time Travel bookmark of the PRODUCTION database so a restore point exists
 # before any Owner-supervised first use of Admin item delete / QA seed. Never writes, never restores.
 on:
+  push:
+    branches: [qa/h1-w2fg-staging-d1]
+    paths: [".github/workflows/prod-d1-restore-point.yml"]
   workflow_dispatch:
     inputs:
       note:
@@ -50,7 +53,7 @@ jobs:
           {
             echo "## Production D1 restore point"
             echo "database: ${{ steps.db.outputs.name }} ($PROD_DB_ID)"
-            echo "note: ${{ inputs.note }}"
+            echo "note: ${{ inputs.note || 'Before W2-F/W2-G and W2-H H1 first use' }}"
             echo "taken at: $(date -u +%Y-%m-%dT%H:%M:%SZ)  run: ${{ github.run_id }}"
             echo '```json'
             cat "$RUNNER_TEMP/bookmark.json"
