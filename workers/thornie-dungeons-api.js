@@ -1881,18 +1881,18 @@ async function dungeonAuthorityCarryState(db, characterId, previousBattleId, tar
     LIMIT 1`)
     .bind(characterId).first();
   if (!row || String(row.battle_id) !== String(previousBattleId)
-      || row.outcome !== "victory" || !row.settled_at) return null;
+      || !["victory", "fled", "defeat"].includes(row.outcome) || !row.settled_at) return null;
   const result = parseJsonColumn(row.result_json, null);
   const state = parseJsonColumn(row.state_json, null);
   const context = dungeonV2ServerNormalizeContext(state?.serverContext);
   const completedFloor = Math.floor(Number(result?.floor) || 0);
-  const nextFloor = Math.floor(Number(targetFloor) || 0);
-  if (!context || context.floor !== completedFloor
-      || (nextFloor !== completedFloor && nextFloor !== completedFloor + 1)) return null;
+  const requestedFloor = Math.floor(Number(targetFloor) || 0);
+  if (!context || context.floor !== completedFloor || result?.result !== row.outcome || requestedFloor < 1) return null;
+  if (row.outcome === "defeat") return { reset: true, outcome: row.outcome };
   const hero = state?.units?.[state.heroId];
-  const pet = state?.petId ? state?.units?.[state.petId] : null;
+  const pet = state?.petId ? state?.units[state.petId] : null;
   if (!hero || !Number.isFinite(Number(hero.hp)) || !Number.isFinite(Number(hero.sp))) return null;
-  return { heroHp: hero.hp, heroSp: hero.sp, petHp: pet?.hp };
+  return { heroHp: hero.hp, heroSp: hero.sp, petHp: pet?.hp, petInstId: pet?.instId || null, outcome: row.outcome };
 }
 
 async function dungeonAuthorityInitialState(db, character, context, battleId, carry) {
@@ -1902,7 +1902,10 @@ async function dungeonAuthorityInitialState(db, character, context, battleId, ca
   ]);
   const items = itemsResult?.results || [];
   const parsedPets = parsePetsJson(character);
-  const pet = dungeonAuthorityPetUnit(character, carry?.petHp);
+  const resourceCarry = carry?.reset ? null : carry;
+  const activePetId = parsedPets.active?.instId || "";
+  const carryPetHp = resourceCarry?.petInstId && resourceCarry.petInstId === activePetId ? resourceCarry.petHp : null;
+  const pet = dungeonAuthorityPetUnit(character, carryPetHp);
   const stats = dungeonAuthorityStats(character, items, pet?.defId || "", parsedPets.skillLevels || {});
   const skills = parsedPets.skillLevels || {};
   const state = globalThis.BATTLE_CORE_V1.createDungeonBattle({
@@ -1910,8 +1913,8 @@ async function dungeonAuthorityInitialState(db, character, context, battleId, ca
     dungeonEventId: context.enemies.map(entry => entry.modifierId).find(Boolean) || null,
     hero: {
       id: "hero", kind: "hero", side: "ally", name: character.name || "Hero",
-      maxHp: stats.maxHp, hp: carry ? Math.max(0, Math.min(stats.maxHp, Number(carry.heroHp) || 0)) : stats.maxHp,
-      maxSp: stats.maxMp, sp: carry ? Math.max(0, Math.min(stats.maxMp, Number(carry.heroSp) || 0)) : stats.maxMp,
+      maxHp: stats.maxHp, hp: resourceCarry ? Math.max(0, Math.min(stats.maxHp, Number(resourceCarry.heroHp) || 0)) : stats.maxHp,
+      maxSp: stats.maxMp, sp: resourceCarry ? Math.max(0, Math.min(stats.maxMp, Number(resourceCarry.heroSp) || 0)) : stats.maxMp,
       atk: stats.atk, def: stats.def, speed: stats.speed, accuracy: stats.accuracy,
       dodge: stats.dodge, crit: stats.critChance, critDamage: 1 + stats.critDamage / 100,
       agi: Number(character.agi) || 0, skills,
@@ -1976,6 +1979,9 @@ async function handleStartDungeonBattle(db, id, session, characterId, requestedF
     const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
     const authority = await db.prepare(`SELECT state_rev, state_json, outcome, settled_at FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`)
       .bind(existing.battle_id, characterId).first();
+    if (authority && !authority.outcome && previousBattleId && String(previousBattleId) === String(existing.battle_id)) {
+      return json({ error: "battle_carry_source_invalid" }, 409);
+    }
     if (authority && !authority.outcome && context && context.floor === floor) {
       return json({ ok: true, battleId: existing.battle_id, context, state: { ...parseJsonColumn(authority.state_json, {}), authorityRev: Number(authority.state_rev) || 0 }, stateRev: Number(authority.state_rev) || 0, authoritative: true });
     }
@@ -2237,7 +2243,7 @@ async function halloweenAuthorityStartResult(db, character, battleId, context) {
   };
 }
 
-async function handleStartHalloweenBattle(db, id, session, characterId) {
+async function handleStartHalloweenBattle(db, id, session, characterId, previousBattleId = null) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error }, 401);
   const owned = await verifyOwnedCharacter(db, id, characterId);
@@ -2253,7 +2259,12 @@ async function handleStartHalloweenBattle(db, id, session, characterId) {
     const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
     if (context?.eventId === HALLOWEEN_EVENT_ID) {
       const current = await halloweenAuthorityStartResult(db, owned.row, existing.battle_id, context);
-      if (current.body) return json(current.body);
+      if (current.body) {
+        if (previousBattleId && String(previousBattleId) === String(existing.battle_id)) {
+          return json({ error: "battle_carry_source_invalid" }, 409);
+        }
+        return json(current.body);
+      }
       if (current.settled) {
         await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
           .bind(nowIso(), existing.battle_id, characterId).run();
@@ -2306,10 +2317,12 @@ async function handleStartHalloweenBattle(db, id, session, characterId) {
     }]
   });
   if (!context) return json({ error: "halloween_context_invalid" }, 500);
+  const carry = previousBattleId ? await dungeonAuthorityCarryState(db, characterId, previousBattleId, referenceFloor) : null;
+  if (previousBattleId && !carry) return json({ error: "battle_carry_source_invalid" }, 409);
 
   const battleId = `halloween-${randomToken(16)}`;
   const now = nowIso();
-  const state = await dungeonAuthorityInitialState(db, owned.row, context, battleId, null);
+  const state = await dungeonAuthorityInitialState(db, owned.row, context, battleId, carry);
   const authorization = JSON.stringify({
     version: 1,
     battleId,
@@ -8928,7 +8941,7 @@ async function apiFetch(request, env) {
           case "submitDungeonBattleAction":
             return await handleSubmitDungeonBattleAction(db, id, auth, body.characterId, body.battleId, body.actionKey, body.expectedRev, body.command);
           case "startHalloweenBattle":
-            return await handleStartHalloweenBattle(db, id, auth, body.characterId);
+            return await handleStartHalloweenBattle(db, id, auth, body.characterId, body.previousBattleId || null);
           case "saveBattleCheckpoint":
             return await handleSaveBattleCheckpoint(db, id, auth, body.characterId, body.battleId, body.checkpointSeq, body.payload);
           case "clearBattleCheckpoint":
