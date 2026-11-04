@@ -1887,7 +1887,7 @@ async function dungeonAuthorityCarryState(db, characterId, previousBattleId, tar
   const context = dungeonV2ServerNormalizeContext(state?.serverContext);
   const completedFloor = Math.floor(Number(result?.floor) || 0);
   const requestedFloor = Math.floor(Number(targetFloor) || 0);
-  if (!context || context.floor !== completedFloor || requestedFloor < 1) return null;
+  if (!context || context.floor !== completedFloor || result?.result !== row.outcome || requestedFloor < 1) return null;
   if (row.outcome === "defeat") return { reset: true, outcome: row.outcome };
   const hero = state?.units?.[state.heroId];
   const pet = state?.petId ? state?.units[state.petId] : null;
