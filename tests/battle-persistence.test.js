@@ -379,7 +379,7 @@ test("Dungeon resource carry accepts the latest settled outcome across any unloc
 
 test("Fled carries settled Hero/Pet resources and Defeat resets them to full", async () => {
   const api = worker({ eventId: null }), db = database();
-  const { token, characterId } = await account(api, db, "Battle_Carry_Fled_Defeat");
+  const { token, characterId } = await account(api, db, "CarryFledDefeat");
   const activePet = { instId: "carry-pet-fd", defId: "sprout", level: 1, xp: 0, star: 1 };
   db.raw.prepare("UPDATE characters SET unlocked_floor=20,pets_json=?,active_pet_id=? WHERE character_id=?")
     .run(JSON.stringify({ list: [activePet] }), activePet.instId, characterId);
