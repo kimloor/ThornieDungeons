@@ -115,7 +115,7 @@ test("H01 carry validator accepts only the latest settled Fled Battle", async ()
       enemies: [{ id: "haloween_nightmare", instanceId: "enemy-1", modifierId: null,
         statProfileId: api.dungeonV2ServerBossForFloor(10), skillCycle: api.halloweenServerSkillCycle(1), kind: "boss", isBoss: true }]
     },
-    heroId: "hero", petId: "pet", units: { hero: { hp: 37, sp: 6 }, pet: { hp: 12 } }
+    heroId: "hero", petId: "pet", units: { hero: { hp: 37, sp: 6 }, pet: { hp: 12, instId: "pet-instance" } }
   };
   const db = {
     prepare(sql) {
@@ -130,7 +130,7 @@ test("H01 carry validator accepts only the latest settled Fled Battle", async ()
     }
   };
   const carry = await api.dungeonAuthorityCarryState(db, "char-1", "latest-settled", 20);
-  assert.deepEqual(JSON.parse(JSON.stringify(carry)), { heroHp: 37, heroSp: 6, petHp: 12, outcome: "fled" });
+  assert.deepEqual(JSON.parse(JSON.stringify(carry)), { heroHp: 37, heroSp: 6, petHp: 12, petInstId: "pet-instance", outcome: "fled" });
   assert.equal(await api.dungeonAuthorityCarryState(db, "char-1", "older-id", 20), null);
   assert.match(source("workers/thornie-dungeons-api.js"), /handleStartHalloweenBattle\(db, id, auth, body\.characterId, body\.previousBattleId \|\| null\)/);
 });
