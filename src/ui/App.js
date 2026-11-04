@@ -2936,13 +2936,10 @@ function ThornieDungeons() {
       setPetReturnPhase("map");
       setPhase("pets");
     },
-    // Carry authoritative resources only after a settled victory, and only
-    // when retrying that floor or entering the immediately following floor.
-    // Selecting another unlocked floor intentionally starts a fresh battle.
+    // Only a settled Battle ID is forwarded. The Worker validates it and supplies
+    // all carried resources; client HP/SP/Pet HP are never authoritative.
     onSelectFloor: (floorNum, encounter, previewContext) => {
       const previousBattle = battleStateRef.current;
-      const previousFloor = Math.max(1, Math.floor(Number(previousBattle?.floor) || Number(selectedFloor) || 1));
-      const targetFloor = Math.floor(Number(floorNum) || 0);
       const carryBattleId = ["victory", "fled", "defeat"].includes(previousBattle?.result)
         && previousBattle?.battleId
         ? previousBattle.battleId
