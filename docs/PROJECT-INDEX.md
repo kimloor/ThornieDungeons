@@ -33,7 +33,8 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 | [`CHARACTER-PROGRESSION.md`](CHARACTER-PROGRESSION.md) | Character Status and Skills page behavior, progression direction, shared status rules, and anti-loop rules. |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Cloudflare frontend/API, D1 migration, R2, release, and deployment safety flow. |
 | [`D1-LATENCY-BUDGET-V1.md`](D1-LATENCY-BUDGET-V1.md) | **ACTIVE-PRODUCTION** — D1 round-trip budgets, Server-Timing measurement, and shared mutation helper rule. |
-| [`BATTLE-SCALABILITY-AUDIT-LOAD-TEST-PLAN.md`](BATTLE-SCALABILITY-AUDIT-LOAD-TEST-PLAN.md) | **ACTIVE-PLANNING** — Battle latency/scalability baseline, sanitized Staging D1 refresh, isolated Worker parity, and 10–100 concurrent-player load-test gates. |\n| [`PRODUCTION-DIAGNOSTIC-LOGGING-V1.md`](PRODUCTION-DIAGNOSTIC-LOGGING-V1.md) | **ACTIVE-PRODUCTION** — shared Production diagnostic logging, structured reason codes, privacy/redaction, correlation, severity/volume, and QA rules. |
+| [`BATTLE-SCALABILITY-AUDIT-LOAD-TEST-PLAN.md`](BATTLE-SCALABILITY-AUDIT-LOAD-TEST-PLAN.md) | **ACTIVE-PLANNING** — Battle latency/scalability baseline, sanitized Staging D1 refresh, isolated Worker parity, and 10–100 concurrent-player load-test gates. |
+| [`STAGING-BULK-TEST-ACCOUNT-PROVISIONER.md`](STAGING-BULK-TEST-ACCOUNT-PROVISIONER.md) | **ACTIVE-TOOLING** — guarded Staging-only synthetic account and character provisioning, credential manifest handling, duplicate protection, and disable controls. |\n| [`PRODUCTION-DIAGNOSTIC-LOGGING-V1.md`](PRODUCTION-DIAGNOSTIC-LOGGING-V1.md) | **ACTIVE-PRODUCTION** — shared Production diagnostic logging, structured reason codes, privacy/redaction, correlation, severity/volume, and QA rules. |
 | [`DUNGEON-FLOOR-V1.md`](DUNGEON-FLOOR-V1.md) | Dungeon Floor Select, Floor Detail, floor event/modifier presentation, monster pool by floor and fixed boss assignment, monster preview, door states, and responsive entry flow. |
 | [`DUNGEON-STAT-SCALING-V2.md`](DUNGEON-STAT-SCALING-V2.md) | **ACTIVE-PRODUCTION** Dungeon V2 Normal/Elite/Boss combat-stat scaling, monster identity profiles, pack scaling, Boss profiles, and Enrage. |
 | [`DUNGEON-MONSTER-SKILLS-V2.md`](DUNGEON-MONSTER-SKILLS-V2.md) | **ACTIVE-PRODUCTION** WAVE 1.5 Normal/Elite Monster skill cycles, Boss skills/phases, targeting and checkpoint/Skip determinism. |
@@ -177,6 +178,15 @@ Read only the documents relevant to the requested scope. Do not load unrelated s
 - [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md)
 - [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) when player persistence is involved
 - [`DEPLOYMENT.md`](DEPLOYMENT.md) for backend or deployment work
+
+### Staging Battle Load Test / Test Accounts
+
+- [`AGENTS.md`](../AGENTS.md)
+- [`BATTLE-SCALABILITY-AUDIT-LOAD-TEST-PLAN.md`](BATTLE-SCALABILITY-AUDIT-LOAD-TEST-PLAN.md)
+- [`STAGING-BATTLE-LOAD-TEST-HARNESS.md`](STAGING-BATTLE-LOAD-TEST-HARNESS.md)
+- [`STAGING-BULK-TEST-ACCOUNT-PROVISIONER.md`](STAGING-BULK-TEST-ACCOUNT-PROVISIONER.md)
+- [`LOGIN-AUTH-V2.md`](LOGIN-AUTH-V2.md) when account/session creation or credentials are involved
+- [`SAVE-RELIABILITY-V1.md`](SAVE-RELIABILITY-V1.md) when account/character persistence is involved
 
 ### Save / Backend
 

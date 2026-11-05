@@ -12,6 +12,11 @@ on:
     paths:
       - "src/**"
       - "workers/thornie-dungeons-api.js"
+      - "workers/modules/auth.js"
+      - "scripts/staging-bulk-test-account-provisioner.mjs"
+      - "tests/auth-v2.test.js"
+      - "tests/staging-bulk-test-account-provisioner.test.js"
+      - "docs/STAGING-BULK-TEST-ACCOUNT-PROVISIONER.md"
       - "tests/battle-persistence.test.js"
       - "head.html"
       - "tail.html"
@@ -85,8 +90,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/battle-ui-contract.test.js tests/dungeon-v2-foundation.test.js tests/dungeon-v2-event-floor.test.js tests/raid-wings-v2.test.js tests/h01-halloween-event.test.js tests/inventory-order.test.js tests/staging-battle-load-test.test.js
+          node --test tests/battle-ui-contract.test.js tests/dungeon-v2-foundation.test.js tests/dungeon-v2-event-floor.test.js tests/raid-wings-v2.test.js tests/h01-halloween-event.test.js tests/inventory-order.test.js tests/staging-battle-load-test.test.js tests/auth-v2.test.js tests/staging-bulk-test-account-provisioner.test.js
           node --check scripts/staging-battle-load-test.mjs
+          node --check scripts/staging-bulk-test-account-provisioner.mjs
+          node --check workers/modules/auth.js
           node --check workers/thornie-dungeons-api.js
 
       - name: Verify formatting

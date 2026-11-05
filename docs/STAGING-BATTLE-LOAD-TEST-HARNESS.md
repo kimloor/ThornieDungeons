@@ -6,7 +6,7 @@
 
 Dry-run is the default. Live execution requires `--execute`, `--confirm-staging-load`, and `ALLOW_STAGING_LOAD_TEST=YES`. The URL must be HTTPS and exactly match the Staging Worker hostname. Production API/frontend hosts, arbitrary hosts, redirects, URL credentials, query strings, and non-root paths are rejected.
 
-The harness never registers accounts, creates/deletes characters, seeds data, deploys Workers, runs migrations, or retries failed requests. It requires pre-created unique player/character credentials through `STAGING_BATTLE_TEST_ACCOUNTS`. Never commit credentials or place them in shell history; use protected environment secrets.
+The Battle Load Test Harness itself never registers accounts, creates/deletes characters, seeds data, deploys Workers, runs migrations, or retries failed requests. It requires pre-created unique player/character credentials through `STAGING_BATTLE_TEST_ACCOUNTS`. The separate guarded [Staging Bulk Test Account Provisioner](STAGING-BULK-TEST-ACCOUNT-PROVISIONER.md) can prepare synthetic accounts, but it is a distinct action, is not enabled/deployed by this documentation update, and must be used only after Staging isolation and separate Owner approval. Never commit credentials or place them in shell history; use protected environment secrets and the provisioner's private credential-manifest output.
 
 ## Current functionality
 
