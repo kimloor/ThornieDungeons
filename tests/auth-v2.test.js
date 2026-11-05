@@ -22,7 +22,7 @@ class D1Database {
 function loadWorkerInternals() {
   let source = loadWorkerSource(path.resolve(__dirname, ".."));
   source = source.replace("export default {", "const workerDefault = {");
-  source += `\nglobalThis.__worker = workerDefault; globalThis.__auth = { validPlayerId, validPassword, hashPassword, verifyPasswordHash, handleRegister, handleLogin, handleValidateSession, handleLogout, handleCreateRecoveryCode, handleForgotPassword, handleChangePassword, verifySession, verifyOwnedCharacter };`;
+  source += `\nglobalThis.__worker = workerDefault; globalThis.__auth = { validPlayerId, validPassword, hashPassword, verifyPasswordHash, recoveryCodeHash, handleRegister, handleLogin, handleValidateSession, handleLogout, handleCreateRecoveryCode, handleForgotPassword, handleChangePassword, verifySession, verifyOwnedCharacter };`;
   const sandbox = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
   vm.createContext(sandbox);
   vm.runInContext(source, sandbox);
