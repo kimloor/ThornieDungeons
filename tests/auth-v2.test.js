@@ -303,6 +303,12 @@ test("staging bulk provisioner is unreachable on Production and disabled when it
   assert.equal(production.status, 404);
   assert.equal((await body(production)).error, "not_found");
 
+  const alternatePort = await worker.fetch(
+    stagingProvisionRequest(bodyValue, undefined, "thornie-dungeons-api-staging.ekqtjl.workers.dev:8443"),
+    stagingProvisionEnv(db)
+  );
+  assert.equal(alternatePort.status, 404);
+
   const disabled = await worker.fetch(
     stagingProvisionRequest(bodyValue),
     stagingProvisionEnv(db, "false")
