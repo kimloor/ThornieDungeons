@@ -447,7 +447,7 @@ async function main() {
     const rs = c.rec("reason too short", await sApply(G(5), { previewHash: p.body.previewHash, reason: "abcd" })); c.expect("invalid_reason", rs.status === 400 && rs.body?.error === "invalid_reason", rs.body);
     const rn = c.rec("no previewHash", await call("POST", { action: "adminSeedApply", playerId: state.pid, characterId: state.cid, ops: G(5), reason: "valid reason", requestId: newSeedReq() }, state.token)); c.expect("preview_required", rn.status === 400 && rn.body?.error === "preview_required", rn.body);
     const ri = c.rec("bad requestId", await sApply(G(5), { previewHash: p.body.previewHash, requestId: "short" })); c.expect("invalid_request_id", ri.status === 400 && ri.body?.error === "invalid_request_id", ri.body);
-    const na = c.rec("no auth", await sPreview(G(5), {}, undefined)); c.expect("401 without session", na.status === 401, na.body);
+    const na = c.rec("no auth", await sPreview(G(5), {}, null)); c.expect("401 without session", na.status === 401, na.body);
     c.expect("nothing written", goldNow() === 100 && seedAudits().length === 0);
   });
   await scenario(32, "H1: flags are independent (seed vs item delete)", async (c) => {
