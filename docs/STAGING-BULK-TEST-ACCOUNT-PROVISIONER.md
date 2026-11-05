@@ -33,14 +33,14 @@ The input is a JSON file containing only explicit Test IDs and optional characte
 ## Account and character creation
 
 - Passwords are generated using cryptographic randomness and the accepted alphanumeric password policy.
-- A shared `createPlayerAccountRow` helper is used by normal registration and the provisioner, including the same password hash, Recovery Code hash, and Player row fields.
+- A shared `createPlayerAccountRow` helper is used by normal registration and the provisioner, including the same password hash, an internally generated-and-hashed Recovery Code value, and Player row fields. The generated Recovery Code plaintext is discarded.
 - The provisioner creates a temporary normal session, verifies it, and creates each requested character through `handleCreateCharacter` so existing authentication, slot, and name checks remain in force.
 - The temporary session is revoked after the account's character operations, including failure cleanup.
 - No schema migration or direct D1 write path that bypasses the shared account/character business logic is introduced.
 
 ## Credential manifest and failure handling
 
-The Worker returns a one-time credential manifest for attempted accounts. It contains generated Player ID, password, Recovery Code, account status, and created character IDs/names; it never returns a session token.
+The Worker returns a one-time credential manifest for attempted accounts. It contains generated Player ID, password, account status, and created character IDs/names; Recovery Code plaintext is never returned or stored in the manifest, and session tokens are never returned.
 
 The local CLI:
 
@@ -50,7 +50,7 @@ The local CLI:
 - Creates the directory with restrictive permissions, writes the file as mode `0600`, and refuses to overwrite an existing manifest.
 - Saves a manifest for partial results before reporting a non-success exit status.
 
-All input validation and existing-ID preflight happen before writes. A runtime error can still leave a partial batch; the Worker stops at the first such failure and returns HTTP 207 with statuses and credentials for attempted accounts. Inspect the manifest and Staging state before taking further action. Do not blindly retry or delete accounts; cleanup is intentionally not automatic.
+All input validation and existing-ID preflight happen before writes. A runtime error can still leave a partial batch; the Worker stops at the first such failure and returns HTTP 207 with statuses and passwords for attempted accounts. Inspect the manifest and Staging state before taking further action. Do not blindly retry or delete accounts; cleanup is intentionally not automatic.
 
 ## CLI
 
