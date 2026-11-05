@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   STAGING_PROVISIONER_ORIGIN,
   validateTarget,
@@ -73,6 +74,31 @@ test("client execution requires explicit confirmation before any network request
         STAGING_PROVISIONER_SECRET: "staging-provisioner-secret-value-0123456789"
       }),
       /explicit_staging_confirmation_required/
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+
+test("client rejects an in-repository credential manifest path before network access", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "thornie-provisioner-test-"));
+  try {
+    const inputPath = path.join(directory, "accounts.json");
+    await writeFile(inputPath, JSON.stringify({ accounts: [{ testId: "STG_LOAD_01", characterNames: [] }] }));
+    const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+    const unsafeOutput = path.join(repoRoot, "credentials-must-not-be-written.json");
+    await assert.rejects(
+      main([
+        "--input", inputPath,
+        "--batch-id", "batch_20261105",
+        "--out", unsafeOutput,
+        "--execute",
+        "--confirm-staging-provisioning"
+      ], {
+        STAGING_PROVISIONER_SECRET: "staging-provisioner-secret-value-0123456789"
+      }),
+      /manifest_must_be_outside_repository/
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
