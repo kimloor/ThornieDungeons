@@ -89,7 +89,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          runtime_config="$RUNNER_TEMP/wrangler.api.staging.runtime.jsonc"
+          runtime_config="$GITHUB_WORKSPACE/.wrangler.api.staging.runtime.jsonc"
           jq -n \
             --arg name "$WORKER_NAME" \
             --arg db_name "$STAGING_DB_NAME" \
