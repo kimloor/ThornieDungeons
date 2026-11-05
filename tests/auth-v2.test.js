@@ -408,7 +408,8 @@ test("staging bulk provisioner creates hashed accounts and characters through th
   const player = db.raw.prepare("SELECT * FROM players WHERE id = ?").get(credentials.testId);
   assert.equal(player.password, "");
   assert.match(player.password_hash, /^pbkdf2_sha256\$100000\$/);
-  assert.match(player.recovery_code_hash, /^[a-f0-9]{64}$/i);
+  assert.match(player.recovery_code_hash, /^[A-Za-z0-9_-]+$/);
+  assert.equal(player.recovery_code_hash.length, 43);
 
   const characters = db.raw.prepare("SELECT * FROM characters WHERE player_id = ? ORDER BY slot_index").all(credentials.testId);
   assert.equal(characters.length, 2);
