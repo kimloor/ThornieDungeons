@@ -1,0 +1,1278 @@
+TAP version 13
+# (node:2433) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: A1 deterministic: delete whole gear + pending between preflight and batch -> 409 operation_pending, zero mutation
+ok 1 - A1 deterministic: delete whole gear + pending between preflight and batch -> 409 operation_pending, zero mutation
+  ---
+  duration_ms: 52.354333
+  type: 'test'
+  ...
+# Subtest: A1 deterministic: delete whole gear + activeRun between preflight and batch -> 409 character_in_run, zero mutation
+ok 2 - A1 deterministic: delete whole gear + activeRun between preflight and batch -> 409 character_in_run, zero mutation
+  ---
+  duration_ms: 22.388533
+  type: 'test'
+  ...
+# Subtest: A1 deterministic: delete whole gear + invalidRunTimestamp between preflight and batch -> 409 character_in_run, zero mutation
+ok 3 - A1 deterministic: delete whole gear + invalidRunTimestamp between preflight and batch -> 409 character_in_run, zero mutation
+  ---
+  duration_ms: 20.968475
+  type: 'test'
+  ...
+# Subtest: A1 control: delete whole gear + settledReceipt at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+ok 4 - A1 control: delete whole gear + settledReceipt at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+  ---
+  duration_ms: 15.106817
+  type: 'test'
+  ...
+# Subtest: A1 control: delete whole gear + staleRun at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+ok 5 - A1 control: delete whole gear + staleRun at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+  ---
+  duration_ms: 16.659893
+  type: 'test'
+  ...
+# Subtest: A1 sensitivity: delete whole gear with the in-statement guard removed WOULD mutate under a late pending operation (the test detects a missing guard)
+ok 6 - A1 sensitivity: delete whole gear with the in-statement guard removed WOULD mutate under a late pending operation (the test detects a missing guard)
+  ---
+  duration_ms: 16.79693
+  type: 'test'
+  ...
+# Subtest: A1 deterministic: delete partial stack (3 of 7) + pending between preflight and batch -> 409 operation_pending, zero mutation
+ok 7 - A1 deterministic: delete partial stack (3 of 7) + pending between preflight and batch -> 409 operation_pending, zero mutation
+  ---
+  duration_ms: 10.297468
+  type: 'test'
+  ...
+# Subtest: A1 deterministic: delete partial stack (3 of 7) + activeRun between preflight and batch -> 409 character_in_run, zero mutation
+ok 8 - A1 deterministic: delete partial stack (3 of 7) + activeRun between preflight and batch -> 409 character_in_run, zero mutation
+  ---
+  duration_ms: 10.575208
+  type: 'test'
+  ...
+# Subtest: A1 deterministic: delete partial stack (3 of 7) + invalidRunTimestamp between preflight and batch -> 409 character_in_run, zero mutation
+ok 9 - A1 deterministic: delete partial stack (3 of 7) + invalidRunTimestamp between preflight and batch -> 409 character_in_run, zero mutation
+  ---
+  duration_ms: 8.359792
+  type: 'test'
+  ...
+# Subtest: A1 control: delete partial stack (3 of 7) + settledReceipt at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+ok 10 - A1 control: delete partial stack (3 of 7) + settledReceipt at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+  ---
+  duration_ms: 10.620923
+  type: 'test'
+  ...
+# Subtest: A1 control: delete partial stack (3 of 7) + staleRun at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+ok 11 - A1 control: delete partial stack (3 of 7) + staleRun at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+  ---
+  duration_ms: 5.448926
+  type: 'test'
+  ...
+# Subtest: A1 sensitivity: delete partial stack (3 of 7) with the in-statement guard removed WOULD mutate under a late pending operation (the test detects a missing guard)
+ok 12 - A1 sensitivity: delete partial stack (3 of 7) with the in-statement guard removed WOULD mutate under a late pending operation (the test detects a missing guard)
+  ---
+  duration_ms: 14.861929
+  type: 'test'
+  ...
+# Subtest: A1 deterministic: restore whole gear + pending between preflight and batch -> 409 operation_pending, zero mutation
+ok 13 - A1 deterministic: restore whole gear + pending between preflight and batch -> 409 operation_pending, zero mutation
+  ---
+  duration_ms: 10.893944
+  type: 'test'
+  ...
+# Subtest: A1 deterministic: restore whole gear + activeRun between preflight and batch -> 409 character_in_run, zero mutation
+ok 14 - A1 deterministic: restore whole gear + activeRun between preflight and batch -> 409 character_in_run, zero mutation
+  ---
+  duration_ms: 10.152527
+  type: 'test'
+  ...
+# Subtest: A1 deterministic: restore whole gear + invalidRunTimestamp between preflight and batch -> 409 character_in_run, zero mutation
+ok 15 - A1 deterministic: restore whole gear + invalidRunTimestamp between preflight and batch -> 409 character_in_run, zero mutation
+  ---
+  duration_ms: 8.377997
+  type: 'test'
+  ...
+# Subtest: A1 control: restore whole gear + settledReceipt at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+ok 16 - A1 control: restore whole gear + settledReceipt at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+  ---
+  duration_ms: 11.68269
+  type: 'test'
+  ...
+# Subtest: A1 control: restore whole gear + staleRun at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+ok 17 - A1 control: restore whole gear + staleRun at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+  ---
+  duration_ms: 9.65709
+  type: 'test'
+  ...
+# Subtest: A1 sensitivity: restore whole gear with the in-statement guard removed WOULD mutate under a late pending operation (the test detects a missing guard)
+ok 18 - A1 sensitivity: restore whole gear with the in-statement guard removed WOULD mutate under a late pending operation (the test detects a missing guard)
+  ---
+  duration_ms: 6.965464
+  type: 'test'
+  ...
+# Subtest: A1 deterministic: restore partial stack into remaining row + pending between preflight and batch -> 409 operation_pending, zero mutation
+ok 19 - A1 deterministic: restore partial stack into remaining row + pending between preflight and batch -> 409 operation_pending, zero mutation
+  ---
+  duration_ms: 27.432571
+  type: 'test'
+  ...
+# Subtest: A1 deterministic: restore partial stack into remaining row + activeRun between preflight and batch -> 409 character_in_run, zero mutation
+ok 20 - A1 deterministic: restore partial stack into remaining row + activeRun between preflight and batch -> 409 character_in_run, zero mutation
+  ---
+  duration_ms: 7.132877
+  type: 'test'
+  ...
+# Subtest: A1 deterministic: restore partial stack into remaining row + invalidRunTimestamp between preflight and batch -> 409 character_in_run, zero mutation
+ok 21 - A1 deterministic: restore partial stack into remaining row + invalidRunTimestamp between preflight and batch -> 409 character_in_run, zero mutation
+  ---
+  duration_ms: 6.553333
+  type: 'test'
+  ...
+# Subtest: A1 control: restore partial stack into remaining row + settledReceipt at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+ok 22 - A1 control: restore partial stack into remaining row + settledReceipt at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+  ---
+  duration_ms: 6.759188
+  type: 'test'
+  ...
+# Subtest: A1 control: restore partial stack into remaining row + staleRun at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+ok 23 - A1 control: restore partial stack into remaining row + staleRun at the same boundary -> still allowed (proves the hook is active and the guard is selective)
+  ---
+  duration_ms: 11.727685
+  type: 'test'
+  ...
+# Subtest: A1 sensitivity: restore partial stack into remaining row with the in-statement guard removed WOULD mutate under a late pending operation (the test detects a missing guard)
+ok 24 - A1 sensitivity: restore partial stack into remaining row with the in-statement guard removed WOULD mutate under a late pending operation (the test detects a missing guard)
+  ---
+  duration_ms: 9.054943
+  type: 'test'
+  ...
+# (node:2434) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: requires an Admin session
+ok 25 - requires an Admin session
+  ---
+  duration_ms: 13.042284
+  type: 'test'
+  ...
+# Subtest: default page is 25, max is 50, newest first
+ok 26 - default page is 25, max is 50, newest first
+  ---
+  duration_ms: 7.680381
+  type: 'test'
+  ...
+# Subtest: cursor pagination on (created_at, audit_id) has no gaps or duplicates, including identical timestamps
+ok 27 - cursor pagination on (created_at, audit_id) has no gaps or duplicates, including identical timestamps
+  ---
+  duration_ms: 33.536142
+  type: 'test'
+  ...
+# Subtest: filters: event_type, actor, target_type, target_id, date range (combinable)
+ok 28 - filters: event_type, actor, target_type, target_id, date range (combinable)
+  ---
+  duration_ms: 6.522394
+  type: 'test'
+  ...
+# Subtest: invalid dates or cursors are rejected with invalid_filter (400)
+ok 29 - invalid dates or cursors are rejected with invalid_filter (400)
+  ---
+  duration_ms: 2.197602
+  type: 'test'
+  ...
+# Subtest: output is re-sanitized with the denylist so old rows cannot leak secrets
+ok 30 - output is re-sanitized with the denylist so old rows cannot leak secrets
+  ---
+  duration_ms: 1.743031
+  type: 'test'
+  ...
+# Subtest: viewing is audited with filter names and counts only, never filter values
+ok 31 - viewing is audited with filter names and counts only, never filter values
+  ---
+  duration_ms: 1.622606
+  type: 'test'
+  ...
+# Subtest: audit failure on the view write fails closed
+ok 32 - audit failure on the view write fails closed
+  ---
+  duration_ms: 3.089611
+  type: 'test'
+  ...
+# Subtest: read-only: only the one GET action is routed and the UI has no edit/delete controls
+ok 33 - read-only: only the one GET action is routed and the UI has no edit/delete controls
+  ---
+  duration_ms: 6.738889
+  type: 'test'
+  ...
+# (node:2440) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Admin V2 migration is additive and provisions the approved admin owner when the account exists
+ok 34 - Admin V2 migration is additive and provisions the approved admin owner when the account exists
+  ---
+  duration_ms: 4.122854
+  type: 'test'
+  ...
+# Subtest: allowlisted Auth V2 credentials issue a dedicated 8-hour Admin session only
+ok 35 - allowlisted Auth V2 credentials issue a dedicated 8-hour Admin session only
+  ---
+  duration_ms: 66.447615
+  type: 'test'
+  ...
+# Subtest: non-admin and wrong-password attempts return the same generic Admin failure
+ok 36 - non-admin and wrong-password attempts return the same generic Admin failure
+  ---
+  duration_ms: 56.768382
+  type: 'test'
+  ...
+# Subtest: gameplay and Admin session tokens are not interchangeable
+ok 37 - gameplay and Admin session tokens are not interchangeable
+  ---
+  duration_ms: 61.057688
+  type: 'test'
+  ...
+# Subtest: second Admin login revokes the previous Admin session and audits the replacement
+ok 38 - second Admin login revokes the previous Admin session and audits the replacement
+  ---
+  duration_ms: 97.823553
+  type: 'test'
+  ...
+# Subtest: disabled Admin allowlist blocks login and invalidates an existing Admin session
+ok 39 - disabled Admin allowlist blocks login and invalidates an existing Admin session
+  ---
+  duration_ms: 57.171547
+  type: 'test'
+  ...
+# Subtest: Admin login has an independent brute-force rate limit
+ok 40 - Admin login has an independent brute-force rate limit
+  ---
+  duration_ms: 159.628269
+  type: 'test'
+  ...
+# Subtest: Admin Bearer session authorizes existing Admin reads without adminKey
+ok 41 - Admin Bearer session authorizes existing Admin reads without adminKey
+  ---
+  duration_ms: 66.361002
+  type: 'test'
+  ...
+# Subtest: Admin Phase 1 player search/viewer is server-side, sanitized, audited, and session-only
+ok 42 - Admin Phase 1 player search/viewer is server-side, sanitized, audited, and session-only
+  ---
+  duration_ms: 123.535394
+  type: 'test'
+  ...
+# Subtest: Admin Phase 1 UI exposes dashboard/search/viewer without player mutation controls
+ok 43 - Admin Phase 1 UI exposes dashboard/search/viewer without player mutation controls
+  ---
+  duration_ms: 3.290437
+  type: 'test'
+  ...
+# Subtest: legacy ADMIN_API_KEY compatibility is retired while Admin V2 UI remains session-only
+ok 44 - legacy ADMIN_API_KEY compatibility is retired while Admin V2 UI remains session-only
+  ---
+  duration_ms: 34.768477
+  type: 'test'
+  ...
+# Subtest: player password change and recovery reset revoke active Admin sessions
+ok 45 - player password change and recovery reset revoke active Admin sessions
+  ---
+  duration_ms: 221.263877
+  type: 'test'
+  ...
+# Subtest: Admin audit records auth events without raw password/session token fields
+ok 46 - Admin audit records auth events without raw password/session token fields
+  ---
+  duration_ms: 39.956322
+  type: 'test'
+  ...
+# (node:2465) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: ships disabled: absent or non-true flag blocks preview and delete (403 feature_disabled)
+ok 47 - ships disabled: absent or non-true flag blocks preview and delete (403 feature_disabled)
+  ---
+  duration_ms: 16.300782
+  type: 'test'
+  ...
+# Subtest: detail is read-only and reports provenance, events and the deletable verdict
+ok 48 - detail is read-only and reports provenance, events and the deletable verdict
+  ---
+  duration_ms: 5.266785
+  type: 'test'
+  ...
+# Subtest: success: row deleted, audit row with full snapshot, admin_deleted ownership event
+ok 49 - success: row deleted, audit row with full snapshot, admin_deleted ownership event
+  ---
+  duration_ms: 24.168675
+  type: 'test'
+  ...
+# Subtest: stale snapshot hash: 409 item_state_changed, nothing written
+ok 50 - stale snapshot hash: 409 item_state_changed, nothing written
+  ---
+  duration_ms: 6.334182
+  type: 'test'
+  ...
+# Subtest: state changed between re-read and batch: guarded statements write nothing (409)
+ok 51 - state changed between re-read and batch: guarded statements write nothing (409)
+  ---
+  duration_ms: 6.026994
+  type: 'test'
+  ...
+# Subtest: blocked: equipped, pending operation, recent run (stale run rows do not block)
+ok 52 - blocked: equipped, pending operation, recent run (stale run rows do not block)
+  ---
+  duration_ms: 17.407855
+  type: 'test'
+  ...
+# Subtest: wrong owner / wrong character / unknown item: item_not_found, nothing written
+ok 53 - wrong owner / wrong character / unknown item: item_not_found, nothing written
+  ---
+  duration_ms: 17.67322
+  type: 'test'
+  ...
+# Subtest: partial stack decrements quantity; full quantity deletes; invalid quantities rejected
+ok 54 - partial stack decrements quantity; full quantity deletes; invalid quantities rejected
+  ---
+  duration_ms: 15.738527
+  type: 'test'
+  ...
+# Subtest: replay with the same requestId returns already_applied and never deletes twice
+ok 55 - replay with the same requestId returns already_applied and never deletes twice
+  ---
+  duration_ms: 6.465017
+  type: 'test'
+  ...
+# Subtest: injected audit failure rolls back: item intact, no ownership event, admin_audit_failed
+ok 56 - injected audit failure rolls back: item intact, no ownership event, admin_audit_failed
+  ---
+  duration_ms: 19.616435
+  type: 'test'
+  ...
+# Subtest: validation: reason, confirmText, requestId and ids are required; 401 without a session
+ok 57 - validation: reason, confirmText, requestId and ids are required; 401 without a session
+  ---
+  duration_ms: 10.636192
+  type: 'test'
+  ...
+# Subtest: no per-Admin delete rate limit (Owner decision): 25 consecutive deletes all succeed
+ok 58 - no per-Admin delete rate limit (Owner decision): 25 consecutive deletes all succeed
+  ---
+  duration_ms: 96.627157
+  type: 'test'
+  ...
+# Subtest: worker source: single-target guarded statements, no bulk or generic SQL, routed through Admin auth
+ok 59 - worker source: single-target guarded statements, no bulk or generic SQL, routed through Admin auth
+  ---
+  duration_ms: 10.457278
+  type: 'test'
+  ...
+# Subtest: A1 race: a pending operation starts after the preflight -> nothing deleted, no success audit, no ownership event
+ok 60 - A1 race: a pending operation starts after the preflight -> nothing deleted, no success audit, no ownership event
+  ---
+  duration_ms: 11.106131
+  type: 'test'
+  ...
+# Subtest: A1 race: a run starts (fresh character_run_state row) after the preflight -> nothing deleted, no success audit, no ownership event
+ok 61 - A1 race: a run starts (fresh character_run_state row) after the preflight -> nothing deleted, no success audit, no ownership event
+  ---
+  duration_ms: 4.762682
+  type: 'test'
+  ...
+# Subtest: A1 race: a stale run row is refreshed after the preflight -> nothing deleted, no success audit, no ownership event
+ok 62 - A1 race: a stale run row is refreshed after the preflight -> nothing deleted, no success audit, no ownership event
+  ---
+  duration_ms: 5.395015
+  type: 'test'
+  ...
+# Subtest: A1: a run row older than 30 minutes (including unparseable timestamps handled as active) is judged at the SQL guard too
+ok 63 - A1: a run row older than 30 minutes (including unparseable timestamps handled as active) is judged at the SQL guard too
+  ---
+  duration_ms: 4.567506
+  type: 'test'
+  ...
+# Subtest: A1: stale run (>30 min) and settled receipts still allow the delete via the guarded batch
+ok 64 - A1: stale run (>30 min) and settled receipts still allow the delete via the guarded batch
+  ---
+  duration_ms: 5.270211
+  type: 'test'
+  ...
+# Subtest: A1: every item mutation moves updated_at (optimistic-concurrency contract): partial stack delete
+ok 65 - A1: every item mutation moves updated_at (optimistic-concurrency contract): partial stack delete
+  ---
+  duration_ms: 24.313113
+  type: 'test'
+  ...
+# Subtest: A1: a concurrent duplicate request (same requestId) cannot delete twice: loser is already_applied, one audit row
+ok 66 - A1: a concurrent duplicate request (same requestId) cannot delete twice: loser is already_applied, one audit row
+  ---
+  duration_ms: 7.704096
+  type: 'test'
+  ...
+# Subtest: W2F-1: a requestId is bound to its request; reuse for another item or quantity is 409 request_id_conflict and deletes nothing
+ok 67 - W2F-1: a requestId is bound to its request; reuse for another item or quantity is 409 request_id_conflict and deletes nothing
+  ---
+  duration_ms: 6.839788
+  type: 'test'
+  ...
+# Subtest: W2F-1: same item with a different quantity under one requestId is request_id_conflict
+ok 68 - W2F-1: same item with a different quantity under one requestId is request_id_conflict
+  ---
+  duration_ms: 4.939022
+  type: 'test'
+  ...
+# Subtest: W2F-1: legacy audit rows without requestHash fall back to comparing the target item
+ok 69 - W2F-1: legacy audit rows without requestHash fall back to comparing the target item
+  ---
+  duration_ms: 4.417637
+  type: 'test'
+  ...
+# (node:2477) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: recipe delete: old client without reason gets reason_required (400), nothing deleted
+ok 70 - recipe delete: old client without reason gets reason_required (400), nothing deleted
+  ---
+  duration_ms: 8.742739
+  type: 'test'
+  ...
+# Subtest: recipe delete: reason length 5-300 (trimmed) enforced
+ok 71 - recipe delete: reason length 5-300 (trimmed) enforced
+  ---
+  duration_ms: 3.585048
+  type: 'test'
+  ...
+# Subtest: recipe delete: confirmId must equal the target id exactly
+ok 72 - recipe delete: confirmId must equal the target id exactly
+  ---
+  duration_ms: 4.823455
+  type: 'test'
+  ...
+# Subtest: recipe delete: missing target is rejected 404 and not audited
+ok 73 - recipe delete: missing target is rejected 404 and not audited
+  ---
+  duration_ms: 1.62476
+  type: 'test'
+  ...
+# Subtest: recipe delete: valid request deletes and stores the trimmed reason in the audit row
+ok 74 - recipe delete: valid request deletes and stores the trimmed reason in the audit row
+  ---
+  duration_ms: 4.851768
+  type: 'test'
+  ...
+# Subtest: monster loot delete: old client without reason gets reason_required (400), nothing deleted
+ok 75 - monster loot delete: old client without reason gets reason_required (400), nothing deleted
+  ---
+  duration_ms: 1.759743
+  type: 'test'
+  ...
+# Subtest: monster loot delete: reason length 5-300 (trimmed) enforced
+ok 76 - monster loot delete: reason length 5-300 (trimmed) enforced
+  ---
+  duration_ms: 2.532559
+  type: 'test'
+  ...
+# Subtest: monster loot delete: confirmId must equal the target id exactly
+ok 77 - monster loot delete: confirmId must equal the target id exactly
+  ---
+  duration_ms: 2.800049
+  type: 'test'
+  ...
+# Subtest: monster loot delete: missing target is rejected 404 and not audited
+ok 78 - monster loot delete: missing target is rejected 404 and not audited
+  ---
+  duration_ms: 4.500201
+  type: 'test'
+  ...
+# Subtest: monster loot delete: valid request deletes and stores the trimmed reason in the audit row
+ok 79 - monster loot delete: valid request deletes and stores the trimmed reason in the audit row
+  ---
+  duration_ms: 2.653545
+  type: 'test'
+  ...
+# Subtest: junk info delete: old client without reason gets reason_required (400), nothing deleted
+ok 80 - junk info delete: old client without reason gets reason_required (400), nothing deleted
+  ---
+  duration_ms: 2.631544
+  type: 'test'
+  ...
+# Subtest: junk info delete: reason length 5-300 (trimmed) enforced
+ok 81 - junk info delete: reason length 5-300 (trimmed) enforced
+  ---
+  duration_ms: 2.694492
+  type: 'test'
+  ...
+# Subtest: junk info delete: confirmId must equal the target id exactly
+ok 82 - junk info delete: confirmId must equal the target id exactly
+  ---
+  duration_ms: 4.627439
+  type: 'test'
+  ...
+# Subtest: junk info delete: missing target is rejected 404 and not audited
+ok 83 - junk info delete: missing target is rejected 404 and not audited
+  ---
+  duration_ms: 1.718987
+  type: 'test'
+  ...
+# Subtest: junk info delete: valid request deletes and stores the trimmed reason in the audit row
+ok 84 - junk info delete: valid request deletes and stores the trimmed reason in the audit row
+  ---
+  duration_ms: 5.311559
+  type: 'test'
+  ...
+# Subtest: unauthenticated delete is 401 before any validation or read
+ok 85 - unauthenticated delete is 401 before any validation or read
+  ---
+  duration_ms: 2.056177
+  type: 'test'
+  ...
+# Subtest: router passes reason and confirmId through; Admin UI never deletes without the dialog
+ok 86 - router passes reason and confirmId through; Admin UI never deletes without the dialog
+  ---
+  duration_ms: 5.097669
+  type: 'test'
+  ...
+# Subtest: Admin HTML guard: no inline script, inline handlers, or external resources
+ok 87 - Admin HTML guard: no inline script, inline handlers, or external resources
+  ---
+  duration_ms: 3.20142
+  type: 'test'
+  ...
+# Subtest: Admin script guard: no HTML string sinks and no legacy adminKey
+ok 88 - Admin script guard: no HTML string sinks and no legacy adminKey
+  ---
+  duration_ms: 9.180388
+  type: 'test'
+  ...
+# Subtest: Admin script only talks to the API origin allowed by the CSP
+ok 89 - Admin script only talks to the API origin allowed by the CSP
+  ---
+  duration_ms: 31.350602
+  type: 'test'
+  ...
+# Subtest: /admin, /admin/, /admin.html carry CSP and security headers
+ok 90 - /admin, /admin/, /admin.html carry CSP and security headers
+  ---
+  duration_ms: 4.347564
+  type: 'test'
+  ...
+# Subtest: game pages and R2 assets do not receive the Admin headers
+ok 91 - game pages and R2 assets do not receive the Admin headers
+  ---
+  duration_ms: 2.482385
+  type: 'test'
+  ...
+# Subtest: verifyAdminAccess no longer takes a legacy key argument
+ok 92 - verifyAdminAccess no longer takes a legacy key argument
+  ---
+  duration_ms: 4.434237
+  type: 'test'
+  ...
+# Subtest: Admin session is restored on load (restoreAdminSession is actually invoked)
+ok 93 - Admin session is restored on load (restoreAdminSession is actually invoked)
+  ---
+  duration_ms: 0.744413
+  type: 'test'
+  ...
+# (node:2491) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: prod DDL (FK on): delete -> restore round trip restores the identical row and writes audit + events
+ok 94 - prod DDL (FK on): delete -> restore round trip restores the identical row and writes audit + events
+  ---
+  duration_ms: 32.632218
+  type: 'test'
+  ...
+# Subtest: prod DDL: activity guards run inside the batch (pending receipt / fresh run after preflight)
+ok 95 - prod DDL: activity guards run inside the batch (pending receipt / fresh run after preflight)
+  ---
+  duration_ms: 11.468181
+  type: 'test'
+  ...
+# Subtest: prod DDL: partial stack delete then restore returns the stack to its original quantity; replay does not double-add
+ok 96 - prod DDL: partial stack delete then restore returns the stack to its original quantity; replay does not double-add
+  ---
+  duration_ms: 8.957752
+  type: 'test'
+  ...
+# Subtest: S1 on prod DDL: restore is blocked by a run or pending operation that starts after the preflight, and by a stale run that is refreshed
+ok 97 - S1 on prod DDL: restore is blocked by a run or pending operation that starts after the preflight, and by a stale run that is refreshed
+  ---
+  duration_ms: 38.672411
+  type: 'test'
+  ...
+# Subtest: S2/S3 on prod DDL: malformed quantity or extra_json snapshots fail closed and create nothing
+ok 98 - S2/S3 on prod DDL: malformed quantity or extra_json snapshots fail closed and create nothing
+  ---
+  duration_ms: 6.645915
+  type: 'test'
+  ...
+# (node:2502) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: saveGameConfig audits only changed keys, atomically, with actor
+ok 99 - saveGameConfig audits only changed keys, atomically, with actor
+  ---
+  duration_ms: 22.402461
+  type: 'test'
+  ...
+# Subtest: setGameConfigItem audits insert, change, and identical-value no-op
+ok 100 - setGameConfigItem audits insert, change, and identical-value no-op
+  ---
+  duration_ms: 5.07689
+  type: 'test'
+  ...
+# Subtest: recipe upsert/delete audit full before/after
+ok 101 - recipe upsert/delete audit full before/after
+  ---
+  duration_ms: 3.986209
+  type: 'test'
+  ...
+# Subtest: monster loot upsert/delete audit; after-state mirrors the stored row
+ok 102 - monster loot upsert/delete audit; after-state mirrors the stored row
+  ---
+  duration_ms: 4.520098
+  type: 'test'
+  ...
+# Subtest: junk info upsert/delete audit
+ok 103 - junk info upsert/delete audit
+  ---
+  duration_ms: 2.940382
+  type: 'test'
+  ...
+# Subtest: injected audit failure leaves every one of the 8 mutations unapplied
+ok 104 - injected audit failure leaves every one of the 8 mutations unapplied
+  ---
+  duration_ms: 8.300651
+  type: 'test'
+  ...
+# Subtest: secret-looking keys are redacted before they reach the audit row
+ok 105 - secret-looking keys are redacted before they reach the audit row
+  ---
+  duration_ms: 1.969365
+  type: 'test'
+  ...
+# Subtest: oversized metadata is capped at 16 KB and marked truncated
+ok 106 - oversized metadata is capped at 16 KB and marked truncated
+  ---
+  duration_ms: 2.420099
+  type: 'test'
+  ...
+# Subtest: validation rejections and unauthenticated calls write no audit row
+ok 107 - validation rejections and unauthenticated calls write no audit row
+  ---
+  duration_ms: 2.962754
+  type: 'test'
+  ...
+# Subtest: routed through worker.fetch: Admin Bearer session is the audit actor
+ok 108 - routed through worker.fetch: Admin Bearer session is the audit actor
+  ---
+  duration_ms: 29.153197
+  type: 'test'
+  ...
+# Subtest: worker source keeps Admin mutations on the shared atomic audit helper
+ok 109 - worker source keeps Admin mutations on the shared atomic audit helper
+  ---
+  duration_ms: 4.692401
+  type: 'test'
+  ...
+# (node:2514) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: round trip: delete then restore returns the identical row (id, enhance, empower, stats), by a different admin
+ok 110 - round trip: delete then restore returns the identical row (id, enhance, empower, stats), by a different admin
+  ---
+  duration_ms: 41.882467
+  type: 'test'
+  ...
+# Subtest: full carried inventory: restored into overflow (flag set, row otherwise intact)
+ok 111 - full carried inventory: restored into overflow (flag set, row otherwise intact)
+  ---
+  duration_ms: 10.457746
+  type: 'test'
+  ...
+# Subtest: overflow rows and equipped rows do not count toward the 30 carried slots
+ok 112 - overflow rows and equipped rows do not count toward the 30 carried slots
+  ---
+  duration_ms: 14.274209
+  type: 'test'
+  ...
+# Subtest: original item_id taken: restored under a deterministic new id, link kept in audit
+ok 113 - original item_id taken: restored under a deterministic new id, link kept in audit
+  ---
+  duration_ms: 16.710507
+  type: 'test'
+  ...
+# Subtest: partial stack: deleted quantity is added back to the remaining row; whole quantity restored
+ok 114 - partial stack: deleted quantity is added back to the remaining row; whole quantity restored
+  ---
+  duration_ms: 9.73745
+  type: 'test'
+  ...
+# Subtest: stack row gone since the partial delete: re-created with exactly the deleted quantity
+ok 115 - stack row gone since the partial delete: re-created with exactly the deleted quantity
+  ---
+  duration_ms: 10.821118
+  type: 'test'
+  ...
+# Subtest: stack merge that would exceed 99 becomes a separate restored row
+ok 116 - stack merge that would exceed 99 becomes a separate restored row
+  ---
+  duration_ms: 9.777585
+  type: 'test'
+  ...
+# Subtest: a delete can be restored only once; repeat returns already_applied and changes nothing
+ok 117 - a delete can be restored only once; repeat returns already_applied and changes nothing
+  ---
+  duration_ms: 12.898597
+  type: 'test'
+  ...
+# Subtest: preview reports the plan without writing
+ok 118 - preview reports the plan without writing
+  ---
+  duration_ms: 10.501159
+  type: 'test'
+  ...
+# Subtest: not restorable: unknown audit, wrong event type, truncated or redacted snapshot
+ok 119 - not restorable: unknown audit, wrong event type, truncated or redacted snapshot
+  ---
+  duration_ms: 3.707317
+  type: 'test'
+  ...
+# Subtest: character deleted since: character_not_found, nothing written
+ok 120 - character deleted since: character_not_found, nothing written
+  ---
+  duration_ms: 6.112467
+  type: 'test'
+  ...
+# Subtest: disabled by the kill switch; 401 without session; validation of reason and confirmText
+ok 121 - disabled by the kill switch; 401 without session; validation of reason and confirmText
+  ---
+  duration_ms: 15.432524
+  type: 'test'
+  ...
+# Subtest: injected audit failure rolls back: no item, no ownership event
+ok 122 - injected audit failure rolls back: no item, no ownership event
+  ---
+  duration_ms: 7.312755
+  type: 'test'
+  ...
+# Subtest: state changes between planning and batch: guarded statements write nothing (409)
+ok 123 - state changes between planning and batch: guarded statements write nothing (409)
+  ---
+  duration_ms: 8.728631
+  type: 'test'
+  ...
+# Subtest: audit list marks deletes as restored once restored
+ok 124 - audit list marks deletes as restored once restored
+  ---
+  duration_ms: 20.114858
+  type: 'test'
+  ...
+# Subtest: source: restore is routed through Admin auth, restore audit ids derive from the delete audit id, UI has one restore action
+ok 125 - source: restore is routed through Admin auth, restore audit ids derive from the delete audit id, UI has one restore action
+  ---
+  duration_ms: 3.232809
+  type: 'test'
+  ...
+# Subtest: B1: same id but a DIFFERENT stack (other junkId) is never merged into: safe insert under a new id
+ok 126 - B1: same id but a DIFFERENT stack (other junkId) is never merged into: safe insert under a new id
+  ---
+  duration_ms: 8.20909
+  type: 'test'
+  ...
+# Subtest: B1: identity fields must match to merge (slot_type, template, rarity, name, levels, bound, stats, extra other than quantity/overflow)
+ok 127 - B1: identity fields must match to merge (slot_type, template, rarity, name, levels, bound, stats, extra other than quantity/overflow)
+  ---
+  duration_ms: 51.318695
+  type: 'test'
+  ...
+# Subtest: B1: quantity/overflow differences alone do not block a merge (same item, different amount)
+ok 128 - B1: quantity/overflow differences alone do not block a merge (same item, different amount)
+  ---
+  duration_ms: 4.683935
+  type: 'test'
+  ...
+# Subtest: B1: merge is also refused when the id now belongs to another player or character (collision), data goes to a new id
+ok 129 - B1: merge is also refused when the id now belongs to another player or character (collision), data goes to a new id
+  ---
+  duration_ms: 4.302882
+  type: 'test'
+  ...
+# Subtest: B1: merge guard also holds at the mutation: the stack changes identity between planning and batch -> 409, nothing added
+ok 130 - B1: merge guard also holds at the mutation: the stack changes identity between planning and batch -> 409, nothing added
+  ---
+  duration_ms: 4.647185
+  type: 'test'
+  ...
+# Subtest: C: snapshot integrity is checked before restore (fail closed, no guessing)
+ok 131 - C: snapshot integrity is checked before restore (fail closed, no guessing)
+  ---
+  duration_ms: 4.11517
+  type: 'test'
+  ...
+# Subtest: C: delete writes a snapshot that covers every items column, ownership and provenance (round trip uses only the snapshot)
+ok 132 - C: delete writes a snapshot that covers every items column, ownership and provenance (round trip uses only the snapshot)
+  ---
+  duration_ms: 3.852608
+  type: 'test'
+  ...
+# Subtest: B2: a pending operation blocks restore (preflight and at the mutation)
+ok 133 - B2: a pending operation blocks restore (preflight and at the mutation)
+  ---
+  duration_ms: 6.615249
+  type: 'test'
+  ...
+# Subtest: B2: capacity is guarded at the mutation: the last carried slot is taken after planning -> 409, no 31st carried item
+ok 134 - B2: capacity is guarded at the mutation: the last carried slot is taken after planning -> 409, no 31st carried item
+  ---
+  duration_ms: 5.368755
+  type: 'test'
+  ...
+# Subtest: B2: overflow restore never needs a free carried slot and is unaffected by later capacity changes
+ok 135 - B2: overflow restore never needs a free carried slot and is unaffected by later capacity changes
+  ---
+  duration_ms: 5.452051
+  type: 'test'
+  ...
+# Subtest: B2: concurrent restore of the same delete: exactly one wins, the other is already_applied, no duplicate item or quantity
+ok 136 - B2: concurrent restore of the same delete: exactly one wins, the other is already_applied, no duplicate item or quantity
+  ---
+  duration_ms: 9.962451
+  type: 'test'
+  ...
+# Subtest: B2: restore does not duplicate an item when the original is already back (e.g. restored by hand): safe new id, single audit
+ok 137 - B2: restore does not duplicate an item when the original is already back (e.g. restored by hand): safe new id, single audit
+  ---
+  duration_ms: 6.067904
+  type: 'test'
+  ...
+# Subtest: S1: restore is blocked when a run starts after the preflight (fresh character_run_state row): 409 character_in_run, no item, no audit, no ownership event
+ok 138 - S1: restore is blocked when a run starts after the preflight (fresh character_run_state row): 409 character_in_run, no item, no audit, no ownership event
+  ---
+  duration_ms: 7.725926
+  type: 'test'
+  ...
+# Subtest: S1: restore is blocked when a stale run row is refreshed after the preflight: 409 character_in_run, no item, no audit, no ownership event
+ok 139 - S1: restore is blocked when a stale run row is refreshed after the preflight: 409 character_in_run, no item, no audit, no ownership event
+  ---
+  duration_ms: 6.687814
+  type: 'test'
+  ...
+# Subtest: S1: restore is blocked when a run row with an unparseable timestamp appears after the preflight: 409 character_in_run, no item, no audit, no ownership event
+ok 140 - S1: restore is blocked when a run row with an unparseable timestamp appears after the preflight: 409 character_in_run, no item, no audit, no ownership event
+  ---
+  duration_ms: 5.234066
+  type: 'test'
+  ...
+# Subtest: S1: restore is blocked when a pending operation starts after the preflight: 409 operation_pending, no item, no audit, no ownership event
+ok 141 - S1: restore is blocked when a pending operation starts after the preflight: 409 operation_pending, no item, no audit, no ownership event
+  ---
+  duration_ms: 5.031495
+  type: 'test'
+  ...
+# Subtest: S1: preflight (preview and restore) also blocks on a recent or unparseable run, and a stale run (>30 min) does not block
+ok 142 - S1: preflight (preview and restore) also blocks on a recent or unparseable run, and a stale run (>30 min) does not block
+  ---
+  duration_ms: 12.908314
+  type: 'test'
+  ...
+# Subtest: S1: the activity guard sits in every restore SQL statement (audit, ownership event, item insert/update)
+ok 143 - S1: the activity guard sits in every restore SQL statement (audit, ownership event, item insert/update)
+  ---
+  duration_ms: 7.466401
+  type: 'test'
+  ...
+# Subtest: S2: malformed or fractional quantityRequested is never truncated or guessed: 409 audit_not_restorable, snapshot untouched
+ok 144 - S2: malformed or fractional quantityRequested is never truncated or guessed: 409 audit_not_restorable, snapshot untouched
+  ---
+  duration_ms: 8.372516
+  type: 'test'
+  ...
+# Subtest: S2 boundaries: gear needs exactly 1; a stack may restore from 1 up to exactly its snapshot quantity but not above
+ok 145 - S2 boundaries: gear needs exactly 1; a stack may restore from 1 up to exactly its snapshot quantity but not above
+  ---
+  duration_ms: 5.125712
+  type: 'test'
+  ...
+# Subtest: S3: extra_json that is malformed JSON string fails closed (409 audit_not_restorable), no item created
+ok 146 - S3: extra_json that is malformed JSON string fails closed (409 audit_not_restorable), no item created
+  ---
+  duration_ms: 1.813714
+  type: 'test'
+  ...
+# Subtest: S3: extra_json that is empty string fails closed (409 audit_not_restorable), no item created
+ok 147 - S3: extra_json that is empty string fails closed (409 audit_not_restorable), no item created
+  ---
+  duration_ms: 1.460804
+  type: 'test'
+  ...
+# Subtest: S3: extra_json that is JSON null fails closed (409 audit_not_restorable), no item created
+ok 148 - S3: extra_json that is JSON null fails closed (409 audit_not_restorable), no item created
+  ---
+  duration_ms: 1.472936
+  type: 'test'
+  ...
+# Subtest: S3: extra_json that is JSON array fails closed (409 audit_not_restorable), no item created
+ok 149 - S3: extra_json that is JSON array fails closed (409 audit_not_restorable), no item created
+  ---
+  duration_ms: 1.436468
+  type: 'test'
+  ...
+# Subtest: S3: extra_json that is array of objects fails closed (409 audit_not_restorable), no item created
+ok 150 - S3: extra_json that is array of objects fails closed (409 audit_not_restorable), no item created
+  ---
+  duration_ms: 1.455463
+  type: 'test'
+  ...
+# Subtest: S3: extra_json that is primitive number fails closed (409 audit_not_restorable), no item created
+ok 151 - S3: extra_json that is primitive number fails closed (409 audit_not_restorable), no item created
+  ---
+  duration_ms: 1.418163
+  type: 'test'
+  ...
+# Subtest: S3: extra_json that is primitive boolean fails closed (409 audit_not_restorable), no item created
+ok 152 - S3: extra_json that is primitive boolean fails closed (409 audit_not_restorable), no item created
+  ---
+  duration_ms: 1.446636
+  type: 'test'
+  ...
+# Subtest: S3: extra_json that is string holding a JSON string fails closed (409 audit_not_restorable), no item created
+ok 153 - S3: extra_json that is string holding a JSON string fails closed (409 audit_not_restorable), no item created
+  ---
+  duration_ms: 1.42692
+  type: 'test'
+  ...
+# Subtest: S3: extra_json that is string holding a JSON array fails closed (409 audit_not_restorable), no item created
+ok 154 - S3: extra_json that is string holding a JSON array fails closed (409 audit_not_restorable), no item created
+  ---
+  duration_ms: 1.50706
+  type: 'test'
+  ...
+# Subtest: S3: extra_json that is string holding null fails closed (409 audit_not_restorable), no item created
+ok 155 - S3: extra_json that is string holding null fails closed (409 audit_not_restorable), no item created
+  ---
+  duration_ms: 1.380674
+  type: 'test'
+  ...
+# Subtest: S3: a JSON string that parses to an object is accepted and restored as that object
+ok 156 - S3: a JSON string that parses to an object is accepted and restored as that object
+  ---
+  duration_ms: 2.253847
+  type: 'test'
+  ...
+# Subtest: S3: stack identity, quantity types, overflow type, empower type and redaction/truncation markers are validated
+ok 157 - S3: stack identity, quantity types, overflow type, empower type and redaction/truncation markers are validated
+  ---
+  duration_ms: 12.586412
+  type: 'test'
+  ...
+# Subtest: S3: integer columns must hold integers (fractional atk/hp or string level is not restorable)
+ok 158 - S3: integer columns must hold integers (fractional atk/hp or string level is not restorable)
+  ---
+  duration_ms: 2.450675
+  type: 'test'
+  ...
+# Subtest: S3: a different-type stack is still never merged (stack identity kept) and valid stack snapshots still round-trip
+ok 159 - S3: a different-type stack is still never merged (stack identity kept) and valid stack snapshots still round-trip
+  ---
+  duration_ms: 9.925873
+  type: 'test'
+  ...
+# (node:2526) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: ships disabled: absent or non-true flag blocks lookup, preview and apply (403 feature_disabled)
+ok 160 - ships disabled: absent or non-true flag blocks lookup, preview and apply (403 feature_disabled)
+  ---
+  duration_ms: 16.466121
+  type: 'test'
+  ...
+# Subtest: requires an admin session on every entry point
+ok 161 - requires an admin session on every entry point
+  ---
+  duration_ms: 2.637795
+  type: 'test'
+  ...
+# Subtest: lookup lists every character of the username with account diamonds, blocks and warnings
+ok 162 - lookup lists every character of the username with account diamonds, blocks and warnings
+  ---
+  duration_ms: 4.460466
+  type: 'test'
+  ...
+# Subtest: preview is read-only and returns before/after plus a 64-hex hash
+ok 163 - preview is read-only and returns before/after plus a 64-hex hash
+  ---
+  duration_ms: 20.547999
+  type: 'test'
+  ...
+# Subtest: preview rejects bad amounts, unknown ops, empty ops and foreign characters
+ok 164 - preview rejects bad amounts, unknown ops, empty ops and foreign characters
+  ---
+  duration_ms: 9.588291
+  type: 'test'
+  ...
+# Subtest: pending operation or a run touched within 30 minutes blocks preview and apply; an old run does not
+ok 165 - pending operation or a run touched within 30 minutes blocks preview and apply; an old run does not
+  ---
+  duration_ms: 14.527503
+  type: 'test'
+  ...
+# Subtest: apply adds gold, writes exactly one ADMIN_SEED audit row and touches no other character
+ok 166 - apply adds gold, writes exactly one ADMIN_SEED audit row and touches no other character
+  ---
+  duration_ms: 6.875465
+  type: 'test'
+  ...
+# Subtest: apply is idempotent per requestId and refuses a requestId reused for another character
+ok 167 - apply is idempotent per requestId and refuses a requestId reused for another character
+  ---
+  duration_ms: 5.569602
+  type: 'test'
+  ...
+# Subtest: apply validates reason, requestId and previewHash before touching data
+ok 168 - apply validates reason, requestId and previewHash before touching data
+  ---
+  duration_ms: 11.785853
+  type: 'test'
+  ...
+# Subtest: a preview goes stale when the character changes before apply (409 preview_changed)
+ok 169 - a preview goes stale when the character changes before apply (409 preview_changed)
+  ---
+  duration_ms: 4.247238
+  type: 'test'
+  ...
+# admin_audit_failed ADMIN_SEED boom
+# Subtest: audit failure rolls the whole batch back (500 admin_audit_failed, gold unchanged)
+ok 170 - audit failure rolls the whole batch back (500 admin_audit_failed, gold unchanged)
+  ---
+  duration_ms: 4.634592
+  type: 'test'
+  ...
+# Subtest: P1-A: a pending gameplay operation that appears after preflight blocks the apply with no audit and no mutation
+ok 171 - P1-A: a pending gameplay operation that appears after preflight blocks the apply with no audit and no mutation
+  ---
+  duration_ms: 8.47114
+  type: 'test'
+  ...
+# Subtest: P1-A: a run that starts after preflight blocks the apply with no audit and no mutation
+ok 172 - P1-A: a run that starts after preflight blocks the apply with no audit and no mutation
+  ---
+  duration_ms: 4.058484
+  type: 'test'
+  ...
+# Subtest: P1-A: an unparseable run timestamp counts as an active run, both at preflight and inside the batch
+ok 173 - P1-A: an unparseable run timestamp counts as an active run, both at preflight and inside the batch
+  ---
+  duration_ms: 5.640484
+  type: 'test'
+  ...
+# Subtest: P1-A: without a race the same apply succeeds, and a writer that only touches last_active_at does not block it
+ok 174 - P1-A: without a race the same apply succeeds, and a writer that only touches last_active_at does not block it
+  ---
+  duration_ms: 4.421463
+  type: 'test'
+  ...
+# Subtest: P1-D: Gold changed by a writer that does NOT bump updated_at is still detected (field-level guard)
+ok 175 - P1-D: Gold changed by a writer that does NOT bump updated_at is still detected (field-level guard)
+  ---
+  duration_ms: 10.154979
+  type: 'test'
+  ...
+# Subtest: P1-D: preview hash also binds the guarded field values
+ok 176 - P1-D: preview hash also binds the guarded field values
+  ---
+  duration_ms: 2.27649
+  type: 'test'
+  ...
+# Subtest: P1-D writer coverage: every UPDATE characters that does not bump updated_at is a known, Gold-free writer
+ok 177 - P1-D writer coverage: every UPDATE characters that does not bump updated_at is a known, Gold-free writer
+  ---
+  duration_ms: 4.784784
+  type: 'test'
+  ...
+# Subtest: P1-B: replaying the identical request is already_applied (even with ops keys in another order) and never mutates twice
+ok 178 - P1-B: replaying the identical request is already_applied (even with ops keys in another order) and never mutates twice
+  ---
+  duration_ms: 4.591431
+  type: 'test'
+  ...
+# Subtest: P1-B: the same requestId with a different amount, player or character is 409 request_id_conflict and changes nothing
+ok 179 - P1-B: the same requestId with a different amount, player or character is 409 request_id_conflict and changes nothing
+  ---
+  duration_ms: 11.854221
+  type: 'test'
+  ...
+# Subtest: P1-B: a duplicate that races inside the batch is already_applied once and mutates once
+ok 180 - P1-B: a duplicate that races inside the batch is already_applied once and mutates once
+  ---
+  duration_ms: 6.659851
+  type: 'test'
+  ...
+# Subtest: P1-B: a different payload racing on the same requestId is request_id_conflict and does not mutate
+ok 181 - P1-B: a different payload racing on the same requestId is request_id_conflict and does not mutate
+  ---
+  duration_ms: 7.270534
+  type: 'test'
+  ...
+# admin_audit_failed ADMIN_SEED boom
+# Subtest: P1-B: after a failed batch the same requestId can be retried and applies exactly once
+ok 182 - P1-B: after a failed batch the same requestId can be retried and applies exactly once
+  ---
+  duration_ms: 5.52596
+  type: 'test'
+  ...
+# Subtest: P1-B: a mutation is gated on THIS attempt's audit row, not on any row sharing the audit_id
+ok 183 - P1-B: a mutation is gated on THIS attempt's audit row, not on any row sharing the audit_id
+  ---
+  duration_ms: 1.355206
+  type: 'test'
+  ...
+# admin_seed_mutation_mismatch ADMIN_SEED malformed JSON
+# Subtest: P1-C: audit insert succeeds but the mutation touches 0 rows -> whole batch rolled back, no success
+ok 184 - P1-C: audit insert succeeds but the mutation touches 0 rows -> whole batch rolled back, no success
+  ---
+  duration_ms: 4.872167
+  type: 'test'
+  ...
+# admin_seed_mutation_mismatch ADMIN_SEED malformed JSON
+# Subtest: P1-C: a mutation that touches more rows than expected rolls back everything
+ok 185 - P1-C: a mutation that touches more rows than expected rolls back everything
+  ---
+  duration_ms: 4.183698
+  type: 'test'
+  ...
+# Subtest: P1-C: an operation may declare a different expected row count and it is enforced
+ok 186 - P1-C: an operation may declare a different expected row count and it is enforced
+  ---
+  duration_ms: 4.202284
+  type: 'test'
+  ...
+# admin_audit_failed ADMIN_SEED no such column: no_such_column
+# Subtest: P1-C: a failing mutation statement leaves no partial commit
+ok 187 - P1-C: a failing mutation statement leaves no partial commit
+  ---
+  duration_ms: 3.00876
+  type: 'test'
+  ...
+# Subtest: P1-C: a guard column outside the allowlist is rejected before anything is written
+ok 188 - P1-C: a guard column outside the allowlist is rejected before anything is written
+  ---
+  duration_ms: 1.758
+  type: 'test'
+  ...
+# Subtest: P2-A: only the exact JSON value true enables Seed; every other stored value is OFF on all three endpoints
+ok 189 - P2-A: only the exact JSON value true enables Seed; every other stored value is OFF on all three endpoints
+  ---
+  duration_ms: 16.439661
+  type: 'test'
+  ...
+# Subtest: P2-A: order of checks is documented behaviour: invalid admin -> 401 even when OFF; valid admin + OFF -> 403
+ok 190 - P2-A: order of checks is documented behaviour: invalid admin -> 401 even when OFF; valid admin + OFF -> 403
+  ---
+  duration_ms: 1.85952
+  type: 'test'
+  ...
+# Subtest: P2-C: every error code the Seed endpoints can return has a specific Thai message and a catalog entry
+ok 191 - P2-C: every error code the Seed endpoints can return has a specific Thai message and a catalog entry
+  ---
+  duration_ms: 1.519042
+  type: 'test'
+  ...
+# Subtest: P2-C: unknown error codes fall back to a safe Thai message that never echoes odd server strings
+ok 192 - P2-C: unknown error codes fall back to a safe Thai message that never echoes odd server strings
+  ---
+  duration_ms: 2.721602
+  type: 'test'
+  ...
+# Subtest: P2-C: Seed UI never uses innerHTML-style sinks; requests have a 30 s timeout; retry keeps the requestId
+ok 193 - P2-C: Seed UI never uses innerHTML-style sinks; requests have a 30 s timeout; retry keeps the requestId
+  ---
+  duration_ms: 0.354212
+  type: 'test'
+  ...
+# Subtest: P2-C: Preview and Confirm are disabled while a request is in flight (double-submit guard)
+ok 194 - P2-C: Preview and Confirm are disabled while a request is in flight (double-submit guard)
+  ---
+  duration_ms: 0.395049
+  type: 'test'
+  ...
+# Subtest: P2-C: Seed pipeline shares the W2-F/W2-G activity implementation (single source of truth)
+ok 195 - P2-C: Seed pipeline shares the W2-F/W2-G activity implementation (single source of truth)
+  ---
+  duration_ms: 0.164909
+  type: 'test'
+  ...
+# Subtest: Error catalog: every error code the Worker can return is classified (drift guard)
+not ok 196 - Error catalog: every error code the Worker can return is classified (drift guard)
+  ---
+  duration_ms: 11.093608
+  type: 'test'
+  location: '/home/runner/work/ThornieDungeons/ThornieDungeons/tests/error-catalog.test.js:22:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    add these codes to src/state/errorCatalog.js: battle_action_in_progress, battle_authority_initialization_failed, battle_authority_state_invalid, battle_carry_source_invalid, battle_settlement_pending, potion_request_reused
+    + actual - expected
+    
+    + [
+    +   'battle_action_in_progress',
+    +   'battle_authority_initialization_failed',
+    +   'battle_authority_state_invalid',
+    +   'battle_carry_source_invalid',
+    +   'battle_settlement_pending',
+    +   'potion_request_reused'
+    + ]
+    - []
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    0: 'battle_action_in_progress'
+    1: 'battle_authority_initialization_failed'
+    2: 'battle_authority_state_invalid'
+    3: 'battle_carry_source_invalid'
+    4: 'battle_settlement_pending'
+    5: 'potion_request_reused'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (/home/runner/work/ThornieDungeons/ThornieDungeons/tests/error-catalog.test.js:24:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: Error catalog: kinds are from the allowed set and client-only codes are present
+ok 197 - Error catalog: kinds are from the allowed set and client-only codes are present
+  ---
+  duration_ms: 0.579033
+  type: 'test'
+  ...
+# Subtest: Error catalog: session kind matches the hand-written session sets (no drift)
+ok 198 - Error catalog: session kind matches the hand-written session sets (no drift)
+  ---
+  duration_ms: 1.813513
+  type: 'test'
+  ...
+# Subtest: Error catalog: errorMessage resolves override -> catalog -> fallback and never returns the raw code
+ok 199 - Error catalog: errorMessage resolves override -> catalog -> fallback and never returns the raw code
+  ---
+  duration_ms: 0.575948
+  type: 'test'
+  ...
+# Subtest: Error catalog: screen helpers render exactly the same text as before the refactor
+ok 200 - Error catalog: screen helpers render exactly the same text as before the refactor
+  ---
+  duration_ms: 9.046467
+  type: 'test'
+  ...
+# Subtest: Error catalog: session_revoked is the one intentional wording change (was a generic error)
+ok 201 - Error catalog: session_revoked is the one intentional wording change (was a generic error)
+  ---
+  duration_ms: 4.026183
+  type: 'test'
+  ...
+# Subtest: Error catalog: wired into the bundle before auth.js and the duplicated session text is gone
+ok 202 - Error catalog: wired into the bundle before auth.js and the duplicated session text is gone
+  ---
+  duration_ms: 3.480913
+  type: 'test'
+  ...
+1..202
+# tests 202
+# suites 0
+# pass 201
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1634.909927

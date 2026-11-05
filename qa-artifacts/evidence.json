@@ -1,0 +1,3239 @@
+{
+  "commit": "8453dd620c608a4cb2303bfca7bdf1061a42d717",
+  "workerVersion": "61acbe1d-3d15-4206-89a3-ac591cbc4653",
+  "baseUrl": "https://thornie-dungeons-api-staging.ekqtjl.workers.dev",
+  "mode": "remote",
+  "stagingDb": "c16e0b11-cf83-468c-a533-0ecbf522082f",
+  "at": "2026-11-05T08:06:23.746Z",
+  "pass": 33,
+  "total": 33,
+  "results": [
+    {
+      "n": 1,
+      "name": "Delete normal gear",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "delete",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-del-qa-req-mw38c15a000",
+            "deleted": true,
+            "quantity": 1,
+            "remaining": 0
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "200 ok",
+          "ok": true
+        },
+        {
+          "label": "item gone",
+          "ok": true
+        },
+        {
+          "label": "1 delete audit",
+          "ok": true
+        },
+        {
+          "label": "1 admin_deleted event",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38c15a000",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:34:04.440Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38c15a000",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_deleted"
+          }
+        ]
+      },
+      "ms": 45510
+    },
+    {
+      "n": 2,
+      "name": "Restore gear",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "delete",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-del-qa-req-mw38d0kx001",
+            "deleted": true,
+            "quantity": 1,
+            "remaining": 0
+          }
+        },
+        {
+          "label": "restore",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "restoreAuditId": "adm-res-adm-del-qa-req-mw38d0kx001",
+            "mode": "insert",
+            "itemId": "qa-gear-1",
+            "originalItemId": "qa-gear-1",
+            "quantity": 1,
+            "overflow": false,
+            "idChanged": false,
+            "resultingQuantity": 1,
+            "item": {
+              "item_id": "qa-gear-1",
+              "player_id": "QAP1cad926",
+              "slot_type": "weapon",
+              "equipped": 0,
+              "inventory_slot": "",
+              "item_template_id": "",
+              "rarity": "mythic",
+              "name": "QA Sword",
+              "item_level": 0,
+              "enhance_level": 7,
+              "bound": 0,
+              "quantity": 1,
+              "atk": 120,
+              "def": 0,
+              "hp": 0,
+              "mp": 0,
+              "extra_json": {
+                "empowerSlots": [
+                  null,
+                  "fire"
+                ],
+                "overflow": false
+              },
+              "created_at": "2026-10-01T00:00:00Z",
+              "updated_at": "2026-10-01T00:00:00Z",
+              "character_id": "char-1793864005784-tlyaipwz"
+            }
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "200 ok",
+          "ok": true
+        },
+        {
+          "label": "row back identical",
+          "ok": true
+        },
+        {
+          "label": "restore audit + event",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-gear-1",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":false}",
+            "updated_at": "2026-11-05T07:34:53.539Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38d0kx001",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:34:50.341Z"
+          },
+          {
+            "audit_id": "adm-res-adm-del-qa-req-mw38d0kx001",
+            "event_type": "ADMIN_ITEM_RESTORE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:34:53.539Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38d0kx001",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_deleted"
+          },
+          {
+            "event_id": "adm-res-adm-del-qa-req-mw38d0kx001",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_restored"
+          }
+        ]
+      },
+      "ms": 48274
+    },
+    {
+      "n": 3,
+      "name": "Duplicate restore / idempotency",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "restore again",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "200 already_applied",
+          "ok": true
+        },
+        {
+          "label": "no duplicate rows/audit/event",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-gear-1",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":false}",
+            "updated_at": "2026-11-05T07:35:39.978Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38e0fj002",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:35:36.809Z"
+          },
+          {
+            "audit_id": "adm-res-adm-del-qa-req-mw38e0fj002",
+            "event_type": "ADMIN_ITEM_RESTORE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:35:39.978Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38e0fj002",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_deleted"
+          },
+          {
+            "event_id": "adm-res-adm-del-qa-req-mw38e0fj002",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_restored"
+          }
+        ]
+      },
+      "ms": 47230
+    },
+    {
+      "n": 4,
+      "name": "Partial stack delete and restore",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "delete 3",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-del-qa-req-mw38ezrt003",
+            "deleted": false,
+            "quantity": 3,
+            "remaining": 4
+          }
+        },
+        {
+          "label": "restore",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "restoreAuditId": "adm-res-adm-del-qa-req-mw38ezrt003",
+            "mode": "merge",
+            "itemId": "qa-junk-1",
+            "originalItemId": "qa-junk-1",
+            "quantity": 3,
+            "overflow": false,
+            "idChanged": false,
+            "resultingQuantity": 7,
+            "item": {
+              "item_id": "qa-junk-1",
+              "player_id": "QAP1cad926",
+              "slot_type": "junk",
+              "equipped": 0,
+              "inventory_slot": "",
+              "item_template_id": "",
+              "rarity": "common",
+              "name": "QA Scrap",
+              "item_level": 0,
+              "enhance_level": 0,
+              "bound": 0,
+              "quantity": 1,
+              "atk": 0,
+              "def": 0,
+              "hp": 0,
+              "mp": 0,
+              "extra_json": {
+                "junkId": "scrap",
+                "quantity": 7,
+                "overflow": false
+              },
+              "created_at": "2026-10-01T00:00:00Z",
+              "updated_at": "2026-10-01T00:00:00Z",
+              "character_id": "char-1793864005784-tlyaipwz"
+            }
+          }
+        },
+        {
+          "label": "restore replay",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "qty 4 after delete",
+          "ok": true
+        },
+        {
+          "label": "qty 7 after restore",
+          "ok": true
+        },
+        {
+          "label": "replay does not add",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-junk-1",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"junkId\":\"scrap\",\"quantity\":7.0,\"overflow\":false}",
+            "updated_at": "2026-11-05T07:36:27.227Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38ezrt003",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-junk-1",
+            "created_at": "2026-11-05T07:36:22.650Z"
+          },
+          {
+            "audit_id": "adm-res-adm-del-qa-req-mw38ezrt003",
+            "event_type": "ADMIN_ITEM_RESTORE",
+            "target_id": "qa-junk-1",
+            "created_at": "2026-11-05T07:36:27.227Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38ezrt003",
+            "item_id": "qa-junk-1",
+            "event_type": "admin_deleted"
+          },
+          {
+            "event_id": "adm-res-adm-del-qa-req-mw38ezrt003",
+            "item_id": "qa-junk-1",
+            "event_type": "admin_restored"
+          }
+        ]
+      },
+      "ms": 45641
+    },
+    {
+      "n": 5,
+      "name": "Equipped item rejection",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "delete",
+          "status": 409,
+          "body": {
+            "error": "item_equipped"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "409 item_equipped",
+          "ok": true
+        },
+        {
+          "label": "nothing written",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-gear-eq",
+            "equipped": 1,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        ],
+        "audits": [],
+        "events": []
+      },
+      "ms": 39938
+    },
+    {
+      "n": 6,
+      "name": "Pending operation blocks delete/restore",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "delete",
+          "status": 409,
+          "body": {
+            "error": "operation_pending"
+          }
+        },
+        {
+          "label": "restore",
+          "status": 409,
+          "body": {
+            "error": "operation_pending"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "delete 409 operation_pending",
+          "ok": true
+        },
+        {
+          "label": "restore 409 operation_pending",
+          "ok": true
+        },
+        {
+          "label": "nothing written",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-gear-2",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38guzh005",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:37:49.698Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38guzh005",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_deleted"
+          }
+        ]
+      },
+      "ms": 52968
+    },
+    {
+      "n": 7,
+      "name": "Active run blocks delete/restore",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "delete",
+          "status": 409,
+          "body": {
+            "error": "character_in_run"
+          }
+        },
+        {
+          "label": "restore",
+          "status": 409,
+          "body": {
+            "error": "character_in_run"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "delete 409 character_in_run",
+          "ok": true
+        },
+        {
+          "label": "restore 409 character_in_run",
+          "ok": true
+        },
+        {
+          "label": "nothing written",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-gear-2",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38hzy5007",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:38:42.746Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38hzy5007",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_deleted"
+          }
+        ]
+      },
+      "ms": 53627
+    },
+    {
+      "n": 8,
+      "name": "Stale run permits operation",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "delete",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-del-qa-req-mw38jcj900a",
+            "deleted": true,
+            "quantity": 1,
+            "remaining": 0
+          }
+        },
+        {
+          "label": "restore",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "restoreAuditId": "adm-res-adm-del-qa-req-mw38j56l009",
+            "mode": "insert",
+            "itemId": "qa-gear-1",
+            "originalItemId": "qa-gear-1",
+            "quantity": 1,
+            "overflow": false,
+            "idChanged": false,
+            "resultingQuantity": 1,
+            "item": {
+              "item_id": "qa-gear-1",
+              "player_id": "QAP1cad926",
+              "slot_type": "weapon",
+              "equipped": 0,
+              "inventory_slot": "",
+              "item_template_id": "",
+              "rarity": "mythic",
+              "name": "QA Sword",
+              "item_level": 0,
+              "enhance_level": 7,
+              "bound": 0,
+              "quantity": 1,
+              "atk": 120,
+              "def": 0,
+              "hp": 0,
+              "mp": 0,
+              "extra_json": {
+                "empowerSlots": [
+                  null,
+                  "fire"
+                ],
+                "overflow": false
+              },
+              "created_at": "2026-10-01T00:00:00Z",
+              "updated_at": "2026-10-01T00:00:00Z",
+              "character_id": "char-1793864005784-tlyaipwz"
+            }
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "delete 200",
+          "ok": true
+        },
+        {
+          "label": "restore 200",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-gear-1",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":false}",
+            "updated_at": "2026-11-05T07:39:47.618Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38j56l009",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:39:36.207Z"
+          },
+          {
+            "audit_id": "adm-del-qa-req-mw38jcj900a",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-2",
+            "created_at": "2026-11-05T07:39:44.489Z"
+          },
+          {
+            "audit_id": "adm-res-adm-del-qa-req-mw38j56l009",
+            "event_type": "ADMIN_ITEM_RESTORE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:39:47.618Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38j56l009",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_deleted"
+          },
+          {
+            "event_id": "adm-del-qa-req-mw38jcj900a",
+            "item_id": "qa-gear-2",
+            "event_type": "admin_deleted"
+          },
+          {
+            "event_id": "adm-res-adm-del-qa-req-mw38j56l009",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_restored"
+          }
+        ]
+      },
+      "ms": 49929
+    },
+    {
+      "n": 9,
+      "name": "Invalid run timestamp blocks operation",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "delete",
+          "status": 409,
+          "body": {
+            "error": "character_in_run"
+          }
+        },
+        {
+          "label": "restore",
+          "status": 409,
+          "body": {
+            "error": "character_in_run"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "delete 409 character_in_run",
+          "ok": true
+        },
+        {
+          "label": "restore 409 character_in_run",
+          "ok": true
+        },
+        {
+          "label": "nothing written",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-gear-2",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38k7iu00b",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:40:25.902Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38k7iu00b",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_deleted"
+          }
+        ]
+      },
+      "ms": 53201
+    },
+    {
+      "n": 10,
+      "name": "Stale snapshot hash rejection",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "delete",
+          "status": 409,
+          "body": {
+            "error": "item_state_changed"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "409 item_state_changed",
+          "ok": true
+        },
+        {
+          "label": "nothing written",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-gear-1",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":false}",
+            "updated_at": "2026-10-02T00:00:00Z"
+          }
+        ],
+        "audits": [],
+        "events": []
+      },
+      "ms": 44489
+    },
+    {
+      "n": 11,
+      "name": "Inventory capacity and overflow",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "restore",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "restoreAuditId": "adm-res-adm-del-qa-req-mw38mavc00e",
+            "mode": "insert",
+            "itemId": "qa-gear-1",
+            "originalItemId": "qa-gear-1",
+            "quantity": 1,
+            "overflow": true,
+            "idChanged": false,
+            "resultingQuantity": 1,
+            "item": {
+              "item_id": "qa-gear-1",
+              "player_id": "QAP1cad926",
+              "slot_type": "weapon",
+              "equipped": 0,
+              "inventory_slot": "",
+              "item_template_id": "",
+              "rarity": "mythic",
+              "name": "QA Sword",
+              "item_level": 0,
+              "enhance_level": 7,
+              "bound": 0,
+              "quantity": 1,
+              "atk": 120,
+              "def": 0,
+              "hp": 0,
+              "mp": 0,
+              "extra_json": {
+                "empowerSlots": [
+                  null,
+                  "fire"
+                ],
+                "overflow": false
+              },
+              "created_at": "2026-10-01T00:00:00Z",
+              "updated_at": "2026-10-01T00:00:00Z",
+              "character_id": "char-1793864005784-tlyaipwz"
+            }
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "200 ok",
+          "ok": true
+        },
+        {
+          "label": "restored into overflow",
+          "ok": true
+        },
+        {
+          "label": "carried count stays 30",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-gear-1",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":true}",
+            "updated_at": "2026-11-05T07:42:54.756Z"
+          },
+          {
+            "item_id": "qa-pad-0",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-1",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-10",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-11",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-12",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-13",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-14",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-15",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-16",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-17",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-18",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-19",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-2",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-20",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-21",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-22",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-23",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-24",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-25",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-26",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-27",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-28",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-29",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-3",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-4",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-5",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-6",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-7",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-8",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "item_id": "qa-pad-9",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38mavc00e",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:42:03.543Z"
+          },
+          {
+            "audit_id": "adm-res-adm-del-qa-req-mw38mavc00e",
+            "event_type": "ADMIN_ITEM_RESTORE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:42:54.756Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38mavc00e",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_deleted"
+          },
+          {
+            "event_id": "adm-res-adm-del-qa-req-mw38mavc00e",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_restored"
+          }
+        ]
+      },
+      "ms": 92578
+    },
+    {
+      "n": 12,
+      "name": "Item ID collision",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "restore",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "restoreAuditId": "adm-res-adm-del-qa-req-mw38oagq00f",
+            "mode": "insert",
+            "itemId": "adm-res-72c7e78b6689a85c6d0e",
+            "originalItemId": "qa-gear-1",
+            "quantity": 1,
+            "overflow": false,
+            "idChanged": true,
+            "resultingQuantity": 1,
+            "item": {
+              "item_id": "qa-gear-1",
+              "player_id": "QAP1cad926",
+              "slot_type": "weapon",
+              "equipped": 0,
+              "inventory_slot": "",
+              "item_template_id": "",
+              "rarity": "mythic",
+              "name": "QA Sword",
+              "item_level": 0,
+              "enhance_level": 7,
+              "bound": 0,
+              "quantity": 1,
+              "atk": 120,
+              "def": 0,
+              "hp": 0,
+              "mp": 0,
+              "extra_json": {
+                "empowerSlots": [
+                  null,
+                  "fire"
+                ],
+                "overflow": false
+              },
+              "created_at": "2026-10-01T00:00:00Z",
+              "updated_at": "2026-10-01T00:00:00Z",
+              "character_id": "char-1793864005784-tlyaipwz"
+            }
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "200 with new adm-res id",
+          "ok": true
+        },
+        {
+          "label": "new adm-res-<20hex> row",
+          "ok": true
+        },
+        {
+          "label": "existing row untouched",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "adm-res-72c7e78b6689a85c6d0e",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":false}",
+            "updated_at": "2026-11-05T07:43:44.189Z"
+          },
+          {
+            "item_id": "qa-gear-1",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":false,\"note\":\"collider\"}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38oagq00f",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:43:36.293Z"
+          },
+          {
+            "audit_id": "adm-res-adm-del-qa-req-mw38oagq00f",
+            "event_type": "ADMIN_ITEM_RESTORE",
+            "target_id": "adm-res-72c7e78b6689a85c6d0e",
+            "created_at": "2026-11-05T07:43:44.189Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38oagq00f",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_deleted"
+          },
+          {
+            "event_id": "adm-res-adm-del-qa-req-mw38oagq00f",
+            "item_id": "adm-res-72c7e78b6689a85c6d0e",
+            "event_type": "admin_restored"
+          }
+        ]
+      },
+      "ms": 51055
+    },
+    {
+      "n": 13,
+      "name": "Different stack identity",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "delete 3",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-del-qa-req-mw38pcpr00g",
+            "deleted": false,
+            "quantity": 3,
+            "remaining": 4
+          }
+        },
+        {
+          "label": "restore",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "restoreAuditId": "adm-res-adm-del-qa-req-mw38pcpr00g",
+            "mode": "insert",
+            "itemId": "adm-res-06f26874afe38136f920",
+            "originalItemId": "qa-junk-1",
+            "quantity": 3,
+            "overflow": false,
+            "idChanged": true,
+            "resultingQuantity": 3,
+            "item": {
+              "item_id": "qa-junk-1",
+              "player_id": "QAP1cad926",
+              "slot_type": "junk",
+              "equipped": 0,
+              "inventory_slot": "",
+              "item_template_id": "",
+              "rarity": "common",
+              "name": "QA Scrap",
+              "item_level": 0,
+              "enhance_level": 0,
+              "bound": 0,
+              "quantity": 1,
+              "atk": 0,
+              "def": 0,
+              "hp": 0,
+              "mp": 0,
+              "extra_json": {
+                "junkId": "scrap",
+                "quantity": 7,
+                "overflow": false
+              },
+              "created_at": "2026-10-01T00:00:00Z",
+              "updated_at": "2026-10-01T00:00:00Z",
+              "character_id": "char-1793864005784-tlyaipwz"
+            }
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "200 ok",
+          "ok": true
+        },
+        {
+          "label": "existing stack unchanged",
+          "ok": true
+        },
+        {
+          "label": "new row with original junkId qty 3",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "adm-res-06f26874afe38136f920",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"junkId\":\"scrap\",\"quantity\":3,\"overflow\":false}",
+            "updated_at": "2026-11-05T07:44:30.617Z"
+          },
+          {
+            "item_id": "qa-junk-1",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"junkId\":\"cloth\",\"quantity\":4,\"overflow\":false}",
+            "updated_at": "2026-11-05T07:44:25.885Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38pcpr00g",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-junk-1",
+            "created_at": "2026-11-05T07:44:25.885Z"
+          },
+          {
+            "audit_id": "adm-res-adm-del-qa-req-mw38pcpr00g",
+            "event_type": "ADMIN_ITEM_RESTORE",
+            "target_id": "adm-res-06f26874afe38136f920",
+            "created_at": "2026-11-05T07:44:30.617Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38pcpr00g",
+            "item_id": "qa-junk-1",
+            "event_type": "admin_deleted"
+          },
+          {
+            "event_id": "adm-res-adm-del-qa-req-mw38pcpr00g",
+            "item_id": "adm-res-06f26874afe38136f920",
+            "event_type": "admin_restored"
+          }
+        ]
+      },
+      "ms": 46477
+    },
+    {
+      "n": 14,
+      "name": "Malformed audit snapshot rejection",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "adm-del-qa-malformed-q19",
+          "status": 409,
+          "body": {
+            "error": "audit_not_restorable"
+          }
+        },
+        {
+          "label": "adm-del-qa-malformed-qstr",
+          "status": 409,
+          "body": {
+            "error": "audit_not_restorable"
+          }
+        },
+        {
+          "label": "adm-del-qa-malformed-qnull",
+          "status": 409,
+          "body": {
+            "error": "audit_not_restorable"
+          }
+        },
+        {
+          "label": "adm-del-qa-malformed-xarr",
+          "status": 409,
+          "body": {
+            "error": "audit_not_restorable"
+          }
+        },
+        {
+          "label": "adm-del-qa-malformed-xnull",
+          "status": 409,
+          "body": {
+            "error": "audit_not_restorable"
+          }
+        },
+        {
+          "label": "adm-del-qa-malformed-xbad",
+          "status": 409,
+          "body": {
+            "error": "audit_not_restorable"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "adm-del-qa-malformed-q19 -> 409 audit_not_restorable",
+          "ok": true
+        },
+        {
+          "label": "adm-del-qa-malformed-qstr -> 409 audit_not_restorable",
+          "ok": true
+        },
+        {
+          "label": "adm-del-qa-malformed-qnull -> 409 audit_not_restorable",
+          "ok": true
+        },
+        {
+          "label": "adm-del-qa-malformed-xarr -> 409 audit_not_restorable",
+          "ok": true
+        },
+        {
+          "label": "adm-del-qa-malformed-xnull -> 409 audit_not_restorable",
+          "ok": true
+        },
+        {
+          "label": "adm-del-qa-malformed-xbad -> 409 audit_not_restorable",
+          "ok": true
+        },
+        {
+          "label": "nothing created",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-malformed-q19",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "gx",
+            "created_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "audit_id": "adm-del-qa-malformed-qnull",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "gx",
+            "created_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "audit_id": "adm-del-qa-malformed-qstr",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "gx",
+            "created_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "audit_id": "adm-del-qa-malformed-xarr",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "gx",
+            "created_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "audit_id": "adm-del-qa-malformed-xbad",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "gx",
+            "created_at": "2026-10-01T00:00:00Z"
+          },
+          {
+            "audit_id": "adm-del-qa-malformed-xnull",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "gx",
+            "created_at": "2026-10-01T00:00:00Z"
+          }
+        ],
+        "events": []
+      },
+      "ms": 52968
+    },
+    {
+      "n": 15,
+      "name": "Feature flag disabled rejection",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "preview",
+          "status": 403,
+          "body": {
+            "error": "feature_disabled"
+          }
+        },
+        {
+          "label": "delete",
+          "status": 403,
+          "body": {
+            "error": "feature_disabled"
+          }
+        },
+        {
+          "label": "restore",
+          "status": 403,
+          "body": {
+            "error": "feature_disabled"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "preview 403 feature_disabled",
+          "ok": true
+        },
+        {
+          "label": "delete 403 feature_disabled",
+          "ok": true
+        },
+        {
+          "label": "restore 403 feature_disabled",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38rjin00h",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:46:07.996Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38rjin00h",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_deleted"
+          }
+        ]
+      },
+      "ms": 44706
+    },
+    {
+      "n": 16,
+      "name": "Concurrent duplicate delete (real D1)",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "parallel 0",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-del-qa-req-mw38sglu00j",
+            "deleted": false,
+            "quantity": 3,
+            "remaining": 4
+          }
+        },
+        {
+          "label": "parallel 1",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        },
+        {
+          "label": "parallel 2",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        },
+        {
+          "label": "parallel 3",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "exactly one applied, others already_applied",
+          "ok": true
+        },
+        {
+          "label": "exactly one audit row",
+          "ok": true
+        },
+        {
+          "label": "quantity reduced once (4)",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-junk-1",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"junkId\":\"scrap\",\"quantity\":4.0,\"overflow\":false}",
+            "updated_at": "2026-11-05T07:46:49.632Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38sglu00j",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-junk-1",
+            "created_at": "2026-11-05T07:46:49.632Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38sglu00j",
+            "item_id": "qa-junk-1",
+            "event_type": "admin_deleted"
+          }
+        ]
+      },
+      "ms": 42089
+    },
+    {
+      "n": 17,
+      "name": "Concurrent duplicate restore (real D1)",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "parallel 0",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "restoreAuditId": "adm-res-adm-del-qa-req-mw38tc6s00k",
+            "mode": "merge",
+            "itemId": "qa-junk-1",
+            "originalItemId": "qa-junk-1",
+            "quantity": 3,
+            "overflow": false,
+            "idChanged": false,
+            "resultingQuantity": 7,
+            "item": {
+              "item_id": "qa-junk-1",
+              "player_id": "QAP1cad926",
+              "slot_type": "junk",
+              "equipped": 0,
+              "inventory_slot": "",
+              "item_template_id": "",
+              "rarity": "common",
+              "name": "QA Scrap",
+              "item_level": 0,
+              "enhance_level": 0,
+              "bound": 0,
+              "quantity": 1,
+              "atk": 0,
+              "def": 0,
+              "hp": 0,
+              "mp": 0,
+              "extra_json": {
+                "junkId": "scrap",
+                "quantity": 7,
+                "overflow": false
+              },
+              "created_at": "2026-10-01T00:00:00Z",
+              "updated_at": "2026-10-01T00:00:00Z",
+              "character_id": "char-1793864005784-tlyaipwz"
+            }
+          }
+        },
+        {
+          "label": "parallel 1",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        },
+        {
+          "label": "parallel 2",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        },
+        {
+          "label": "parallel 3",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "one applied, rest already_applied",
+          "ok": true
+        },
+        {
+          "label": "no duplicate item, quantity added once (7)",
+          "ok": true
+        },
+        {
+          "label": "one restore audit/event",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-junk-1",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"junkId\":\"scrap\",\"quantity\":7.0,\"overflow\":false}",
+            "updated_at": "2026-11-05T07:47:34.647Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw38tc6s00k",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-junk-1",
+            "created_at": "2026-11-05T07:47:31.766Z"
+          },
+          {
+            "audit_id": "adm-res-adm-del-qa-req-mw38tc6s00k",
+            "event_type": "ADMIN_ITEM_RESTORE",
+            "target_id": "qa-junk-1",
+            "created_at": "2026-11-05T07:47:34.647Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw38tc6s00k",
+            "item_id": "qa-junk-1",
+            "event_type": "admin_deleted"
+          },
+          {
+            "event_id": "adm-res-adm-del-qa-req-mw38tc6s00k",
+            "item_id": "qa-junk-1",
+            "event_type": "admin_restored"
+          }
+        ]
+      },
+      "ms": 44432
+    },
+    {
+      "n": 18,
+      "name": "Pending-operation race during mutation (real D1)",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "tally",
+          "status": 0,
+          "body": {
+            "deleted": 0,
+            "blocked": 20,
+            "other": 0,
+            "inconsistent": 0
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "no partial/inconsistent mutation over 20 iterations",
+          "ok": true
+        },
+        {
+          "label": "both outcomes legitimate (delete won OR pending blocked)",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-race-19",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        ],
+        "audits": [],
+        "events": []
+      },
+      "ms": 405591
+    },
+    {
+      "n": 19,
+      "name": "Forced audit failure and atomic rollback (real D1)",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "delete w/ forced failure",
+          "status": 500,
+          "body": {
+            "error": "admin_audit_failed"
+          }
+        },
+        {
+          "label": "restore w/ forced failure",
+          "status": 500,
+          "body": {
+            "error": "admin_audit_failed"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "500 admin_audit_failed",
+          "ok": true
+        },
+        {
+          "label": "item still present, no delete event for it",
+          "ok": true
+        },
+        {
+          "label": "restore 500 admin_audit_failed",
+          "ok": true
+        },
+        {
+          "label": "no restored row/event",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-gear-2",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw3931ra015",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:55:04.849Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw3931ra015",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_deleted"
+          }
+        ]
+      },
+      "ms": 65754
+    },
+    {
+      "n": 20,
+      "name": "W2F-1: requestId bound to the exact delete request",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "delete gear",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-del-qa-req-mw394gsf017",
+            "deleted": true,
+            "quantity": 1,
+            "remaining": 0
+          }
+        },
+        {
+          "label": "reuse requestId for the junk stack",
+          "status": 409,
+          "body": {
+            "error": "request_id_conflict"
+          }
+        },
+        {
+          "label": "identical replay",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "first delete ok",
+          "ok": true
+        },
+        {
+          "label": "409 request_id_conflict",
+          "ok": true
+        },
+        {
+          "label": "junk untouched",
+          "ok": true
+        },
+        {
+          "label": "identical replay is already_applied or state-changed-safe",
+          "ok": true
+        },
+        {
+          "label": "exactly one delete audit and one event",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-junk-1",
+            "equipped": 0,
+            "enhance_level": 0,
+            "atk": 0,
+            "extra_json": "{\"junkId\":\"scrap\",\"quantity\":7,\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        ],
+        "audits": [
+          {
+            "audit_id": "adm-del-qa-req-mw394gsf017",
+            "event_type": "ADMIN_ITEM_DELETE",
+            "target_id": "qa-gear-1",
+            "created_at": "2026-11-05T07:56:10.945Z"
+          }
+        ],
+        "events": [
+          {
+            "event_id": "adm-del-qa-req-mw394gsf017",
+            "item_id": "qa-gear-1",
+            "event_type": "admin_deleted"
+          }
+        ]
+      },
+      "ms": 49608
+    },
+    {
+      "n": 21,
+      "name": "H1: flag absent blocks lookup/preview/apply (403); invalid token is 401",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "lookup",
+          "status": 403,
+          "body": {
+            "error": "feature_disabled"
+          }
+        },
+        {
+          "label": "preview",
+          "status": 403,
+          "body": {
+            "error": "feature_disabled"
+          }
+        },
+        {
+          "label": "apply",
+          "status": 403,
+          "body": {
+            "error": "feature_disabled"
+          }
+        },
+        {
+          "label": "lookup bad token",
+          "status": 401,
+          "body": {
+            "error": "admin_session_invalid"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "lookup/preview/apply 403 feature_disabled",
+          "ok": true
+        },
+        {
+          "label": "bad token 401",
+          "ok": true
+        },
+        {
+          "label": "no mutation, no audit",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "ms": 37766
+    },
+    {
+      "n": 22,
+      "name": "H1: lookup returns all characters of the username with diamonds",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "lookup",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "account": {
+              "playerId": "QAP1cad926",
+              "diamonds": 0
+            },
+            "characters": [
+              {
+                "characterId": "char-1793864005784-tlyaipwz",
+                "name": "QAcad926",
+                "level": 1,
+                "gold": 100,
+                "unlockedFloor": 1,
+                "statPoints": 0,
+                "createdAt": "2026-11-05T07:33:25.784Z",
+                "lastActiveAt": null,
+                "blocked": null,
+                "warnings": []
+              }
+            ],
+            "limits": {
+              "gold": 100000
+            },
+            "operations": [
+              "gold"
+            ]
+          }
+        },
+        {
+          "label": "unknown username",
+          "status": 404,
+          "body": {
+            "error": "player_not_found"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "200 + account + character",
+          "ok": true
+        },
+        {
+          "label": "operations = [gold]",
+          "ok": true
+        },
+        {
+          "label": "no secrets in payload",
+          "ok": true
+        },
+        {
+          "label": "404 player_not_found",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "ms": 35715
+    },
+    {
+      "n": 23,
+      "name": "H1: preview is read-only; apply adds Gold with one audit row (readback)",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "preview",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 600,
+                "amount": 500
+              }
+            ],
+            "checks": {
+              "noPendingOperation": true,
+              "noActiveRun": true
+            },
+            "warnings": [],
+            "previewHash": "d7efdd84fe5d0424551ed818e7dba658050539911fe83568db62a3fd37a8da66"
+          }
+        },
+        {
+          "label": "apply",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-seed-qa-seed-mw39763o001x",
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 600,
+                "amount": 500
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "preview 200 with before/after + 64-hex hash",
+          "ok": true
+        },
+        {
+          "label": "preview wrote nothing",
+          "ok": true
+        },
+        {
+          "label": "apply 200 ok",
+          "ok": true
+        },
+        {
+          "label": "gold 100 -> 600",
+          "ok": true
+        },
+        {
+          "label": "one ADMIN_SEED audit with reason, before/after, requestHash, target",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "ms": 44978
+    },
+    {
+      "n": 24,
+      "name": "H1: requestId replay / payload binding",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "apply",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-seed-qa-seed-mw39802p002x",
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 600,
+                "amount": 500
+              }
+            ]
+          }
+        },
+        {
+          "label": "identical replay",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        },
+        {
+          "label": "different amount",
+          "status": 409,
+          "body": {
+            "error": "request_id_conflict"
+          }
+        },
+        {
+          "label": "different character (unknown)",
+          "status": 409,
+          "body": {
+            "error": "request_id_conflict"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "first applied",
+          "ok": true
+        },
+        {
+          "label": "identical replay already_applied",
+          "ok": true
+        },
+        {
+          "label": "different amount -> 409 request_id_conflict",
+          "ok": true
+        },
+        {
+          "label": "different character -> 409 request_id_conflict",
+          "ok": true
+        },
+        {
+          "label": "gold +500 exactly once, one audit",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "ms": 42414
+    },
+    {
+      "n": 25,
+      "name": "H1: stale preview (Gold changed without touching updated_at) is refused",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "preview",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 600,
+                "amount": 500
+              }
+            ],
+            "checks": {
+              "noPendingOperation": true,
+              "noActiveRun": true
+            },
+            "warnings": [],
+            "previewHash": "ceb62c5f547210329f6bd37c317c5f0e468090ba920769d2286551e10022bf05"
+          }
+        },
+        {
+          "label": "apply with stale hash",
+          "status": 409,
+          "body": {
+            "error": "preview_changed"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "409 preview_changed",
+          "ok": true
+        },
+        {
+          "label": "gold untouched by the seed, no audit",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "ms": 41375
+    },
+    {
+      "n": 26,
+      "name": "H1: pending operation and recent run block; old run does not",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "pending",
+          "status": 409,
+          "body": {
+            "error": "operation_pending"
+          }
+        },
+        {
+          "label": "recent run",
+          "status": 409,
+          "body": {
+            "error": "character_in_run"
+          }
+        },
+        {
+          "label": "unparseable run timestamp",
+          "status": 409,
+          "body": {
+            "error": "character_in_run"
+          }
+        },
+        {
+          "label": "old run (31 min)",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-seed-qa-seed-mw39a1sa007x",
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 105,
+                "amount": 5
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "operation_pending",
+          "ok": true
+        },
+        {
+          "label": "character_in_run",
+          "ok": true
+        },
+        {
+          "label": "treated as active",
+          "ok": true
+        },
+        {
+          "label": "applies",
+          "ok": true
+        },
+        {
+          "label": "blocked attempts wrote nothing; final gold 105; one audit",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "ms": 51904
+    },
+    {
+      "n": 27,
+      "name": "H1 P1-C: row-count assertion fires on real D1 and rolls the whole batch back",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "preview",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 600,
+                "amount": 500
+              }
+            ],
+            "checks": {
+              "noPendingOperation": true,
+              "noActiveRun": true
+            },
+            "warnings": [],
+            "previewHash": "5015526282326ae8532b3a935c1ead433979c880d9b6f0de5d380afc027c34d7"
+          }
+        },
+        {
+          "label": "apply while the UPDATE is silently ignored (0 rows)",
+          "status": 500,
+          "body": {
+            "error": "seed_mutation_failed"
+          }
+        },
+        {
+          "label": "same requestId after the fault is removed",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-seed-qa-seed-mw39axmr008x",
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 600,
+                "amount": 500
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "500 seed_mutation_failed",
+          "ok": true
+        },
+        {
+          "label": "audit INSERT rolled back with the batch (no ADMIN_SEED row)",
+          "ok": true
+        },
+        {
+          "label": "gold unchanged",
+          "ok": true
+        },
+        {
+          "label": "positive control: assertion passes when exactly 1 row changes",
+          "ok": true
+        },
+        {
+          "label": "gold 600, exactly one audit",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "ms": 51075
+    },
+    {
+      "n": 28,
+      "name": "H1: forced audit failure rolls back; retry applies exactly once",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "preview",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 600,
+                "amount": 500
+              }
+            ],
+            "checks": {
+              "noPendingOperation": true,
+              "noActiveRun": true
+            },
+            "warnings": [],
+            "previewHash": "2c883ce34a56307567bd251ba07f7ec0977d60126b9a261131fbff0deab22312"
+          }
+        },
+        {
+          "label": "apply with failing audit insert",
+          "status": 500,
+          "body": {
+            "error": "admin_audit_failed"
+          }
+        },
+        {
+          "label": "retry same requestId",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-seed-qa-seed-mw39c0j0009x",
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 600,
+                "amount": 500
+              }
+            ]
+          }
+        },
+        {
+          "label": "retry again",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "500 admin_audit_failed",
+          "ok": true
+        },
+        {
+          "label": "gold unchanged, no audit",
+          "ok": true
+        },
+        {
+          "label": "retry applies once, then already_applied",
+          "ok": true
+        },
+        {
+          "label": "gold 600, one audit",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "ms": 50000
+    },
+    {
+      "n": 29,
+      "name": "H1: concurrent identical requests (same requestId) mutate once",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "preview",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 600,
+                "amount": 500
+              }
+            ],
+            "checks": {
+              "noPendingOperation": true,
+              "noActiveRun": true
+            },
+            "warnings": [],
+            "previewHash": "1039489811a20751ee59d42bd9716984738030cdc3ddd31cf4109497d590655f"
+          }
+        },
+        {
+          "label": "concurrent 0",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        },
+        {
+          "label": "concurrent 1",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-seed-qa-seed-mw39d37e00ax",
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 600,
+                "amount": 500
+              }
+            ]
+          }
+        },
+        {
+          "label": "concurrent 2",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        },
+        {
+          "label": "concurrent 3",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        },
+        {
+          "label": "concurrent 4",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        },
+        {
+          "label": "concurrent 5",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "already_applied": true
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "exactly one applied, the rest already_applied",
+          "ok": true
+        },
+        {
+          "label": "gold +500 once, one audit",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "ms": 41209
+    },
+    {
+      "n": 30,
+      "name": "H1: concurrent different requestIds on one preview: one wins, the rest refused",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "preview",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 600,
+                "amount": 500
+              }
+            ],
+            "checks": {
+              "noPendingOperation": true,
+              "noActiveRun": true
+            },
+            "warnings": [],
+            "previewHash": "a1e26d6729a08bc0668bf4dbe1ebbf3a6d08920c7234fcc5d4f6d8c1fb4409eb"
+          }
+        },
+        {
+          "label": "concurrent 0",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-seed-qa-seed-mw39dzts00bx",
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 600,
+                "amount": 500
+              }
+            ]
+          }
+        },
+        {
+          "label": "concurrent 1",
+          "status": 409,
+          "body": {
+            "error": "character_state_changed"
+          }
+        },
+        {
+          "label": "concurrent 2",
+          "status": 409,
+          "body": {
+            "error": "character_state_changed"
+          }
+        },
+        {
+          "label": "concurrent 3",
+          "status": 409,
+          "body": {
+            "error": "character_state_changed"
+          }
+        },
+        {
+          "label": "concurrent 4",
+          "status": 409,
+          "body": {
+            "error": "character_state_changed"
+          }
+        },
+        {
+          "label": "concurrent 5",
+          "status": 409,
+          "body": {
+            "error": "character_state_changed"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "exactly one applied, others 409",
+          "ok": true
+        },
+        {
+          "label": "gold +500 once, one audit",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "ms": 41444
+    },
+    {
+      "n": 31,
+      "name": "H1: input validation and identity checks",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "amount 0",
+          "status": 400,
+          "body": {
+            "error": "invalid_seed_amount",
+            "op": "gold"
+          }
+        },
+        {
+          "label": "amount -5",
+          "status": 400,
+          "body": {
+            "error": "invalid_seed_amount",
+            "op": "gold"
+          }
+        },
+        {
+          "label": "amount 100001",
+          "status": 400,
+          "body": {
+            "error": "invalid_seed_amount",
+            "op": "gold"
+          }
+        },
+        {
+          "label": "amount 1.5",
+          "status": 400,
+          "body": {
+            "error": "invalid_seed_amount",
+            "op": "gold"
+          }
+        },
+        {
+          "label": "amount \"9\"",
+          "status": 400,
+          "body": {
+            "error": "invalid_seed_amount",
+            "op": "gold"
+          }
+        },
+        {
+          "label": "amount null",
+          "status": 400,
+          "body": {
+            "error": "invalid_seed_amount",
+            "op": "gold"
+          }
+        },
+        {
+          "label": "unknown op",
+          "status": 400,
+          "body": {
+            "error": "unknown_seed_op"
+          }
+        },
+        {
+          "label": "empty ops",
+          "status": 400,
+          "body": {
+            "error": "no_seed_ops"
+          }
+        },
+        {
+          "label": "wrong player for character",
+          "status": 404,
+          "body": {
+            "error": "character_not_found"
+          }
+        },
+        {
+          "label": "reason too short",
+          "status": 400,
+          "body": {
+            "error": "invalid_reason",
+            "min": 5,
+            "max": 300
+          }
+        },
+        {
+          "label": "no previewHash",
+          "status": 400,
+          "body": {
+            "error": "preview_required"
+          }
+        },
+        {
+          "label": "bad requestId",
+          "status": 400,
+          "body": {
+            "error": "invalid_request_id"
+          }
+        },
+        {
+          "label": "no auth",
+          "status": 401,
+          "body": {
+            "error": "admin_session_required"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "invalid amount 0 -> 400",
+          "ok": true
+        },
+        {
+          "label": "invalid amount -5 -> 400",
+          "ok": true
+        },
+        {
+          "label": "invalid amount 100001 -> 400",
+          "ok": true
+        },
+        {
+          "label": "invalid amount 1.5 -> 400",
+          "ok": true
+        },
+        {
+          "label": "invalid amount \"9\" -> 400",
+          "ok": true
+        },
+        {
+          "label": "invalid amount null -> 400",
+          "ok": true
+        },
+        {
+          "label": "unknown_seed_op",
+          "ok": true
+        },
+        {
+          "label": "no_seed_ops",
+          "ok": true
+        },
+        {
+          "label": "404 character_not_found",
+          "ok": true
+        },
+        {
+          "label": "invalid_reason",
+          "ok": true
+        },
+        {
+          "label": "preview_required",
+          "ok": true
+        },
+        {
+          "label": "invalid_request_id",
+          "ok": true
+        },
+        {
+          "label": "401 without session",
+          "ok": true
+        },
+        {
+          "label": "nothing written",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "ms": 49773
+    },
+    {
+      "n": 32,
+      "name": "H1: flags are independent (seed vs item delete)",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "seed lookup with delete flag OFF",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "account": {
+              "playerId": "QAP1cad926",
+              "diamonds": 0
+            },
+            "characters": [
+              {
+                "characterId": "char-1793864005784-tlyaipwz",
+                "name": "QAcad926",
+                "level": 1,
+                "gold": 100,
+                "unlockedFloor": 1,
+                "statPoints": 0,
+                "createdAt": "2026-11-05T07:33:25.784Z",
+                "lastActiveAt": null,
+                "blocked": null,
+                "warnings": []
+              }
+            ],
+            "limits": {
+              "gold": 100000
+            },
+            "operations": [
+              "gold"
+            ]
+          }
+        },
+        {
+          "label": "delete preview with delete flag OFF",
+          "status": 403,
+          "body": {
+            "error": "feature_disabled"
+          }
+        },
+        {
+          "label": "seed lookup with seed flag OFF",
+          "status": 403,
+          "body": {
+            "error": "feature_disabled"
+          }
+        },
+        {
+          "label": "delete preview with delete flag ON",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "item": {
+              "item_id": "qa-gear-1",
+              "player_id": "QAP1cad926",
+              "slot_type": "weapon",
+              "equipped": 0,
+              "inventory_slot": "",
+              "item_template_id": "",
+              "rarity": "mythic",
+              "name": "QA Sword",
+              "item_level": 0,
+              "enhance_level": 7,
+              "bound": 0,
+              "quantity": 1,
+              "atk": 120,
+              "def": 0,
+              "hp": 0,
+              "mp": 0,
+              "extra_json": {
+                "empowerSlots": [
+                  null,
+                  "fire"
+                ],
+                "overflow": false
+              },
+              "created_at": "2026-10-01T00:00:00Z",
+              "updated_at": "2026-10-01T00:00:00Z",
+              "character_id": "char-1793864005784-tlyaipwz"
+            },
+            "stackable": false,
+            "observedQuantity": 1,
+            "quantity": 1,
+            "remaining": 0,
+            "snapshotHash": "8cde35aac20d7ed8d75fe92e180d6e52a67594a9a463be9c94d2c6f0d678f58a"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "seed works, delete preview 403",
+          "ok": true
+        },
+        {
+          "label": "seed 403, delete preview 200",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [
+          {
+            "item_id": "qa-gear-1",
+            "equipped": 0,
+            "enhance_level": 7,
+            "atk": 120,
+            "extra_json": "{\"empowerSlots\":[null,\"fire\"],\"overflow\":false}",
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        ],
+        "audits": [],
+        "events": []
+      },
+      "ms": 46115
+    },
+    {
+      "n": 33,
+      "name": "H1: any-player target accepted; audit actor is the Admin, target is the character",
+      "status": "PASS",
+      "http": [
+        {
+          "label": "apply",
+          "status": 200,
+          "body": {
+            "ok": true,
+            "auditId": "adm-seed-qa-seed-mw39gweg00jx",
+            "target": {
+              "playerId": "QAP1cad926",
+              "characterId": "char-1793864005784-tlyaipwz",
+              "name": "QAcad926"
+            },
+            "changes": [
+              {
+                "op": "gold",
+                "label": "Gold",
+                "before": 100,
+                "after": 110,
+                "amount": 10
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "label": "applied",
+          "ok": true
+        },
+        {
+          "label": "audit actor is the admin session player (player_id column), target is the character",
+          "ok": true
+        },
+        {
+          "label": "actor recorded",
+          "ok": true
+        }
+      ],
+      "before": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "after": {
+        "items": [],
+        "audits": [],
+        "events": []
+      },
+      "ms": 39961
+    }
+  ]
+}
