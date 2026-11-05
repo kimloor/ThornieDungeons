@@ -1,0 +1,145 @@
+name: Deploy Staging API provisioner
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/deploy-staging-provisioner.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thornie-dungeons-staging-api-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_STAGING_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_STAGING_ACCOUNT_ID }}
+      EXPECTED_ACCOUNT_ID: 72a2af0ff5c5e4a83d037953f8a35356
+      STAGING_DB_NAME: thornie-dungeons-staging
+      STAGING_DB_ID: c16e0b11-cf83-468c-a533-0ecbf522082f
+      PRODUCTION_DB_ID: 2f6d52b4-3de7-4e78-98d4-fc143a4d29e2
+      WORKER_NAME: thornie-dungeons-api-staging
+      WRANGLER_VERSION: 4.102.0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pinned Wrangler
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global "wrangler@$WRANGLER_VERSION"
+          test "$(wrangler --version | awk '{print $1}')" = "$WRANGLER_VERSION"
+
+      - name: Validate Staging credentials and D1 identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "Missing GitHub secret CF_STAGING_API_TOKEN"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Missing GitHub secret CF_STAGING_ACCOUNT_ID"; exit 1; }
+          test "$CLOUDFLARE_ACCOUNT_ID" = "$EXPECTED_ACCOUNT_ID" || { echo "Staging account mismatch"; exit 1; }
+          test "$STAGING_DB_ID" != "$PRODUCTION_DB_ID" || { echo "Refusing Production D1"; exit 1; }
+          wrangler whoami >/dev/null
+          wrangler d1 list --json > "$RUNNER_TEMP/d1-list.json"
+          jq -e --arg id "$STAGING_DB_ID" --arg name "$STAGING_DB_NAME" \
+            'any(.[]; ((.uuid // .id // "") == $id and .name == $name))' \
+            "$RUNNER_TEMP/d1-list.json" >/dev/null
+
+      - name: Verify existing Staging Worker target before overwrite
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/settings" \
+            > "$RUNNER_TEMP/target.json"
+          jq -e --arg db "$STAGING_DB_ID" '
+            .success == true and
+            (.result.bindings | length == 1) and
+            any(.result.bindings[]; .name == "DB" and .type == "d1" and ((.database_id // .id // "") == $db))
+          ' "$RUNNER_TEMP/target.json" >/dev/null || {
+            echo "Existing Worker binding mismatch; refusing overwrite."
+            exit 1
+          }
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/schedules" \
+            > "$RUNNER_TEMP/schedules.json"
+          jq -e '.success == true and (.result.schedules | length == 0)' "$RUNNER_TEMP/schedules.json" >/dev/null || {
+            echo "Unexpected Staging cron schedule; refusing overwrite."
+            exit 1
+          }
+
+      - name: Build isolated Staging Wrangler config
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_config="$RUNNER_TEMP/wrangler.api.staging.runtime.jsonc"
+          jq -n \
+            --arg name "$WORKER_NAME" \
+            --arg db_name "$STAGING_DB_NAME" \
+            --arg db_id "$STAGING_DB_ID" \
+            '{
+              name: $name,
+              main: "workers/thornie-dungeons-api-entry.js",
+              compatibility_date: "2026-08-25",
+              workers_dev: true,
+              d1_databases: [{binding: "DB", database_name: $db_name, database_id: $db_id}],
+              vars: {STAGING_PROVISIONER_ENABLED: "true"}
+            }' > "$runtime_config"
+          jq -e --arg worker "$WORKER_NAME" --arg db "$STAGING_DB_ID" --arg prod "$PRODUCTION_DB_ID" '
+            .name == $worker and
+            .workers_dev == true and
+            (.d1_databases | length == 1) and
+            .d1_databases[0].binding == "DB" and
+            .d1_databases[0].database_id == $db and
+            .d1_databases[0].database_id != $prod and
+            .vars.STAGING_PROVISIONER_ENABLED == "true" and
+            (has("routes") | not) and (has("triggers") | not)
+          ' "$runtime_config" >/dev/null
+          echo "runtime_config=$runtime_config" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Staging API Worker only
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler deploy \
+            --strict \
+            --config "${{ steps.config.outputs.runtime_config }}" \
+            --keep-vars \
+            --tag "$GITHUB_SHA" \
+            --message "Staging bulk provisioner enablement; source_sha=$GITHUB_SHA"
+
+      - name: Verify Staging Worker binding and enable flag
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/settings" \
+            > "$RUNNER_TEMP/after.json"
+          jq -e --arg db "$STAGING_DB_ID" '
+            .success == true and
+            (.result.bindings | length == 2) and
+            any(.result.bindings[]; .name == "DB" and .type == "d1" and ((.database_id // .id // "") == $db)) and
+            any(.result.bindings[]; .name == "STAGING_PROVISIONER_ENABLED" and .type == "plain_text" and .text == "true")
+          ' "$RUNNER_TEMP/after.json" >/dev/null || {
+            echo "Staging Worker binding or enable flag mismatch."
+            exit 1
+          }
+          echo "Staging Worker deployed. Dedicated secret is intentionally not configured by this workflow."
