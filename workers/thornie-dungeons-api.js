@@ -238,6 +238,19 @@ async function handleGetJunkInfo(db) {
 }
 
 // ---------- player / auth handlers ----------
+// Shared account-row creation used by normal registration and the guarded Staging provisioner.
+// Keep credential hashing and the persisted player shape identical across both entry points.
+async function createPlayerAccountRow(db, id, password, recoveryCode) {
+  const now = nowIso();
+  const passwordHash = await hashPassword(password);
+  const recoveryHash = await recoveryCodeHash(recoveryCode);
+  await db.prepare(
+    `INSERT INTO players (id, password, password_hash, recovery_code_hash, auth_version, diamonds, active_slot, created_at)
+     VALUES (?, '', ?, ?, 2, 0, NULL, ?)`
+  ).bind(id, passwordHash, recoveryHash, now).run();
+  return { createdAt: now };
+}
+
 async function handleRegister(db, id, password, confirmPassword, rememberLogin, ip) {
   const failedKey = rateKey("register_failed", ip);
   const successKey = rateKey("register_success", ip);
