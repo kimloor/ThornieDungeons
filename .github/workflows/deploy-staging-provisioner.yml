@@ -2,7 +2,9 @@ name: Deploy Staging API provisioner
 on:
   push:
     branches:
-      - ops/deploy-staging-provisioner-20261105
+      - main
+    paths:
+      - .github/workflows/deploy-staging-provisioner.yml
 
 permissions:
   contents: read
