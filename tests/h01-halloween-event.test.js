@@ -15,7 +15,7 @@ function workerApi() {
     bangkokCalendarMonthEnd,halloweenEventWindow,halloweenServerSkillCycle,
     dungeonV2ServerNormalizeContext,dungeonV2ServerRng,dungeonV2ServerGold,
     dungeonV2ServerExp,dungeonV2ServerTierForFloor,dungeonV2ServerBossForFloor,
-    handleStartHalloweenBattle
+    handleStartHalloweenBattle,dungeonAuthorityCarryState
   };`;
   const context = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, Uint32Array, crypto, atob, btoa, setTimeout, clearTimeout };
   vm.createContext(context);
@@ -103,6 +103,36 @@ test("H01 context snapshots progress into the next chapter-boss profile and reje
     tampered.enemies[0].skillCycle[1].mult = 99;
     assert.equal(api.dungeonV2ServerNormalizeContext(tampered), null);
   }
+});
+
+test("H01 carry validator accepts only the latest settled Fled Battle", async () => {
+  const api = workerApi();
+  const state = {
+    serverContext: {
+      version: 3, mode: "dungeon", eventId: "halloween_v1", floor: 10, referenceFloor: 10,
+      progressFloor: 9, role: "chapter_boss", packCount: 1, encounterSeed: 1, rewardSeed: 2,
+      startedAt: "2026-11-04T00:00:00.000Z", eventEndsAt: "2026-12-04T00:00:00.000Z",
+      enemies: [{ id: "haloween_nightmare", instanceId: "enemy-1", modifierId: null,
+        statProfileId: api.dungeonV2ServerBossForFloor(10), skillCycle: api.halloweenServerSkillCycle(1), kind: "boss", isBoss: true }]
+    },
+    heroId: "hero", petId: "pet", units: { hero: { hp: 37, sp: 6 }, pet: { hp: 12, instId: "pet-instance" } }
+  };
+  const db = {
+    prepare(sql) {
+      return {
+        bind() { return this; },
+        async first() {
+          return sql.includes("FROM battle_completions")
+            ? { battle_id: "latest-settled", result_json: JSON.stringify({ result: "fled", floor: 10 }), state_json: JSON.stringify(state), outcome: "fled", settled_at: "2026-11-04T00:00:00.000Z" }
+            : null;
+        }
+      };
+    }
+  };
+  const carry = await api.dungeonAuthorityCarryState(db, "char-1", "latest-settled", 20);
+  assert.deepEqual(JSON.parse(JSON.stringify(carry)), { heroHp: 37, heroSp: 6, petHp: 12, petInstId: "pet-instance", outcome: "fled" });
+  assert.equal(await api.dungeonAuthorityCarryState(db, "char-1", "older-id", 20), null);
+  assert.match(source("workers/thornie-dungeons-api.js"), /handleStartHalloweenBattle\(db, id, auth, body\.characterId, body\.previousBattleId \|\| null\)/);
 });
 
 test("H01 reward contract is one exclusive roll with fixed 5% threshold and chapter-boss XP", () => {

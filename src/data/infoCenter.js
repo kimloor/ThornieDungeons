@@ -119,11 +119,10 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.44", date: "2026-11-03", title: "เตรียมเครื่องมือทดสอบหลังบ้าน",
-      items: ["เตรียมเครื่องมือสำหรับผู้ดูแลระบบเพื่อใช้ทดสอบระบบกับบัญชีทดสอบ (ยังปิดใช้งานอยู่) ไม่มีการเปลี่ยนแปลงต่อการเล่นหรือข้อมูลตัวละครของผู้เล่น"]
+      version: "1.1.44", date: "2026-11-04", title: "ขยายการส่งต่อทรัพยากรทุกด่านและ Halloween",
+      items: ["ส่งต่อ HP/SP/Pet HP จาก Victory/Fled ไปยังด่านเดิม ด่านก่อนหน้า ด่านถัดไป ด่านที่ปลดล็อก และ Halloween", "Defeat เริ่ม Battle ใหม่ด้วย HP/SP/Pet HP เต็ม โดย Worker ตรวจ Battle ID ล่าสุดและผล Settlement", "ไม่รับค่า HP/SP/Pet HP จาก Client และคงกฎ Event Floor/Halloween เดิม"]
     },
     history: [
-      { version: "1.1.43", date: "2026-11-03", title: "แก้การต่อเนื่องทรัพยากรในการต่อสู้", items: ["แก้การส่งต่อ HP/SP/Pet HP เมื่อกลับแผนที่แล้วเลือกเล่นด่านเดิมหรือด่านถัดไป", "ปรับ HUD ให้แสดง HP/SP และค่าสูงสุดจาก Battle Core ชุดเดียวกับ Phaser"] },
       { version: "1.1.33", date: "2026-10-29", title: "อัปเดตการโหลดภาพอุปกรณ์ Idle", items: ["เพิ่ม Revision ให้ภาพ Leather และกางเกง Azure"] },
       { version: "1.1.32", date: "2026-10-29", title: "แก้กางเกงแสดงผลเมื่อสวมอุปกรณ์ผสม", items: ["จำกัดภาพมือที่ซ้อนหน้าดาบ Leather ไม่ให้ทับกางเกง"] },
       { version: "1.1.31", date: "2026-10-29", title: "แก้สีตัวอักษรหน้ารายละเอียดไอเทม", items: ["คืนสีตัวอักษรและปุ่มให้ถูกต้องในหน้าต่างเปรียบเทียบไอเทมบนมือถือ"] },

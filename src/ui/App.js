@@ -1448,7 +1448,7 @@ function ThornieDungeons() {
         setResumeBattle(null);
       }
       let started = options.halloween
-        ? await cloudStartHalloweenBattle(cred.url, save.characterId)
+        ? await cloudStartHalloweenBattle(cred.url, save.characterId, options.previousBattleId || null)
         : await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, options.previewContext || null, options.previousBattleId || null);
       if (!options.halloween && !started?.ok && started?.error === "dungeon_preview_stale" && started?.context) {
         started = await cloudStartDungeonBattle(cred.url, save.characterId, floorNum, started.context, options.previousBattleId || null);
@@ -2936,16 +2936,12 @@ function ThornieDungeons() {
       setPetReturnPhase("map");
       setPhase("pets");
     },
-    // Carry authoritative resources only after a settled victory, and only
-    // when retrying that floor or entering the immediately following floor.
-    // Selecting another unlocked floor intentionally starts a fresh battle.
+    // Only a settled Battle ID is forwarded. The Worker validates it and supplies
+    // all carried resources; client HP/SP/Pet HP are never authoritative.
     onSelectFloor: (floorNum, encounter, previewContext) => {
       const previousBattle = battleStateRef.current;
-      const previousFloor = Math.max(1, Math.floor(Number(previousBattle?.floor) || Number(selectedFloor) || 1));
-      const targetFloor = Math.floor(Number(floorNum) || 0);
-      const carryBattleId = previousBattle?.result === "victory"
+      const carryBattleId = ["victory", "fled", "defeat"].includes(previousBattle?.result)
         && previousBattle?.battleId
-        && (targetFloor === previousFloor || targetFloor === previousFloor + 1)
         ? previousBattle.battleId
         : null;
       return enterStage(
@@ -2954,11 +2950,15 @@ function ThornieDungeons() {
         { encounter, previewContext, ...(carryBattleId ? { previousBattleId: carryBattleId } : {}) }
       );
     },
-    onSelectHalloween: () => enterStage(
-      null,
-      player && player.hp > 0 ? player : null,
-      { halloween: true }
-    ),
+    onSelectHalloween: () => {
+      const previousBattle = battleStateRef.current;
+      const previousBattleId = ["victory", "fled", "defeat"].includes(previousBattle?.result)
+        ? previousBattle.battleId
+        : null;
+      return enterStage(null, player && player.hp > 0 ? player : null, {
+        halloween: true, ...(previousBattleId ? { previousBattleId } : {})
+      });
+    },
     onSave: manualSave,
     onMainHub: () => setPhase("menu"),
     onSettings: page => setAccountSettingsOpen(typeof page === "string" ? page : true),

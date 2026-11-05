@@ -22,7 +22,7 @@ class D1Database {
 function loadWorkerInternals() {
   let source = loadWorkerSource(path.resolve(__dirname, ".."));
   source = source.replace("export default {", "const workerDefault = {");
-  source += `\nglobalThis.__worker = workerDefault; globalThis.__auth = { validPlayerId, validPassword, hashPassword, verifyPasswordHash, handleRegister, handleLogin, handleValidateSession, handleLogout, handleCreateRecoveryCode, handleForgotPassword, handleChangePassword, verifySession, verifyOwnedCharacter };`;
+  source += `\nglobalThis.__worker = workerDefault; globalThis.__auth = { validPlayerId, validPassword, hashPassword, verifyPasswordHash, recoveryCodeHash, handleRegister, handleLogin, handleValidateSession, handleLogout, handleCreateRecoveryCode, handleForgotPassword, handleChangePassword, verifySession, verifyOwnedCharacter };`;
   const sandbox = { console, Response, Headers, Request, URL, TextEncoder, Uint8Array, crypto, atob, btoa, setTimeout, clearTimeout };
   vm.createContext(sandbox);
   vm.runInContext(source, sandbox);
@@ -270,4 +270,212 @@ test("worker router derives ownership from bearer session and rejects GET login"
   });
   assert.equal((await body(await worker.fetch(createRequest, env))).ok, true);
   assert.equal(db.raw.prepare(`SELECT player_id FROM characters WHERE name='Owned'`).get().player_id, "Route_1");
+});
+
+
+function stagingProvisionRequest(bodyValue, secret = "staging-provisioner-secret-value-0123456789", host = "thornie-dungeons-api-staging.ekqtjl.workers.dev", confirm = "YES") {
+  return new Request(`https://${host}/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${secret}`,
+      "X-Confirm-Staging-Provisioning": confirm
+    },
+    body: JSON.stringify(bodyValue)
+  });
+}
+
+function stagingProvisionEnv(db, enabled = "true", secret = "staging-provisioner-secret-value-0123456789") {
+  return { DB: db, STAGING_PROVISIONER_ENABLED: enabled, STAGING_PROVISIONER_SECRET: secret };
+}
+
+test("staging bulk provisioner is unreachable on Production and disabled when its flag is off", async () => {
+  const db = createDb();
+  const bodyValue = {
+    action: "stagingProvisionTestAccounts",
+    batchId: "batch_20261105",
+    accounts: [{ testId: "STG_LOAD_01", characterNames: ["Load Hero"] }]
+  };
+  const production = await worker.fetch(
+    stagingProvisionRequest(bodyValue, undefined, "thornie-dungeons-api.ekqtjl.workers.dev"),
+    stagingProvisionEnv(db)
+  );
+  assert.equal(production.status, 404);
+  assert.equal((await body(production)).error, "not_found");
+
+  const alternatePort = await worker.fetch(
+    stagingProvisionRequest(bodyValue, undefined, "thornie-dungeons-api-staging.ekqtjl.workers.dev:8443"),
+    stagingProvisionEnv(db)
+  );
+  assert.equal(alternatePort.status, 404);
+
+  const disabled = await worker.fetch(
+    stagingProvisionRequest(bodyValue),
+    stagingProvisionEnv(db, "false")
+  );
+  assert.equal(disabled.status, 404);
+  assert.equal((await body(disabled)).error, "provisioner_disabled");
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM players").get().c, 0);
+});
+
+test("staging bulk provisioner requires both the dedicated secret and explicit confirmation", async () => {
+  const db = createDb();
+  const env = stagingProvisionEnv(db);
+  const requestBody = {
+    action: "stagingProvisionTestAccounts",
+    batchId: "batch_20261105",
+    accounts: [{ testId: "STG_LOAD_01", characterNames: [] }]
+  };
+
+  const noConfirmation = await worker.fetch(
+    stagingProvisionRequest(requestBody, undefined, undefined, ""),
+    env
+  );
+  assert.equal(noConfirmation.status, 400);
+  assert.equal((await body(noConfirmation)).error, "staging_confirmation_required");
+
+  const wrongSecret = await worker.fetch(
+    stagingProvisionRequest(requestBody, "incorrect-secret-value-0123456789"),
+    env
+  );
+  assert.equal(wrongSecret.status, 401);
+  assert.equal((await body(wrongSecret)).error, "unauthorized");
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM players").get().c, 0);
+});
+
+test("staging bulk provisioner rejects oversized, invalid and duplicate batches before writes", async () => {
+  const db = createDb();
+  const env = stagingProvisionEnv(db);
+  const send = async accounts => worker.fetch(stagingProvisionRequest({
+    action: "stagingProvisionTestAccounts",
+    batchId: "batch_20261105",
+    accounts
+  }), env);
+
+  const oversized = await send(Array.from({ length: 101 }, (_, index) => ({
+    testId: `STG_${String(index).padStart(6, "0")}`,
+    characterNames: []
+  })));
+  assert.equal(oversized.status, 400);
+  assert.equal((await body(oversized)).error, "batch_limit_exceeded");
+
+  const invalidId = await send([{ testId: "TEST_LOAD_01", characterNames: [] }]);
+  assert.equal((await body(invalidId)).error, "invalid_test_id");
+
+  const duplicateIds = await send([
+    { testId: "STG_LOAD_01", characterNames: [] },
+    { testId: "STG_LOAD_01", characterNames: [] }
+  ]);
+  assert.equal((await body(duplicateIds)).error, "duplicate_test_id");
+
+  const tooManyCharacters = await send([{
+    testId: "STG_LOAD_01",
+    characterNames: ["Hero 1", "Hero 2", "Hero 3", "Hero 4"]
+  }]);
+  assert.equal((await body(tooManyCharacters)).error, "character_count_out_of_range");
+
+  const duplicateNames = await send([{
+    testId: "STG_LOAD_01",
+    characterNames: ["Load Hero", "load hero"]
+  }]);
+  assert.equal((await body(duplicateNames)).error, "duplicate_character_name");
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM players").get().c, 0);
+});
+
+test("staging bulk provisioner creates hashed accounts and characters through the normal authenticated handler", async () => {
+  const db = createDb();
+  const response = await worker.fetch(stagingProvisionRequest({
+    action: "stagingProvisionTestAccounts",
+    batchId: "batch_20261105",
+    accounts: [{ testId: "STG_LOAD_01", characterNames: ["Load Hero", "Load Pet"] }]
+  }), stagingProvisionEnv(db));
+  assert.equal(response.status, 200);
+  const result = await body(response);
+  assert.equal(result.ok, true);
+  assert.equal(result.created, 1);
+  assert.equal(result.credentialManifest.accounts.length, 1);
+
+  const credentials = result.credentialManifest.accounts[0];
+  assert.equal(credentials.testId, "STG_LOAD_01");
+  assert.equal(credentials.status, "created");
+  assert.equal(credentials.password.length, 24);
+  assert.match(credentials.password, /^[A-Za-z0-9]+$/);
+  assert.equal("recoveryCode" in credentials, false);
+  assert.equal(credentials.characters.length, 2);
+  assert.equal("sessionToken" in credentials, false);
+  assert.equal(JSON.stringify(result).includes("sessionToken"), false);
+
+  const player = db.raw.prepare("SELECT * FROM players WHERE id = ?").get(credentials.testId);
+  assert.equal(player.password, "");
+  assert.match(player.password_hash, /^pbkdf2_sha256\$100000\$/);
+  assert.match(player.recovery_code_hash, /^[A-Za-z0-9_-]+$/);
+  assert.equal(player.recovery_code_hash.length, 43);
+
+  const characters = db.raw.prepare("SELECT * FROM characters WHERE player_id = ? ORDER BY slot_index").all(credentials.testId);
+  assert.equal(characters.length, 2);
+  assert.deepEqual(characters.map(character => character.name), ["Load Hero", "Load Pet"]);
+  assert.deepEqual(characters.map(character => character.slot_index), [0, 1]);
+  assert.ok(characters.every(character => character.level === 1 && character.gold === 0 && character.unlocked_floor === 1));
+
+  const sessions = db.raw.prepare("SELECT * FROM auth_sessions WHERE player_id = ?").all(credentials.testId);
+  assert.equal(sessions.length, 1);
+  assert.ok(sessions[0].token_hash);
+  assert.ok(sessions[0].revoked_at);
+});
+
+test("staging bulk provisioner rejects re-provisioning and leaves an existing account unchanged", async () => {
+  const db = createDb();
+  const existing = await body(await auth.handleRegister(db, "STG_LOAD_01", "pass", "pass", false, "existing-account-ip"));
+  db.raw.prepare("UPDATE players SET diamonds = 77 WHERE id = ?").run("STG_LOAD_01");
+  db.raw.prepare("INSERT INTO characters (character_id,player_id,slot_index,name,level,gold) VALUES ('existing-char','STG_LOAD_01',0,'Existing',25,999)").run();
+
+  const before = db.raw.prepare("SELECT * FROM players WHERE id = ?").get("STG_LOAD_01");
+  const response = await worker.fetch(stagingProvisionRequest({
+    action: "stagingProvisionTestAccounts",
+    batchId: "batch_20261105",
+    accounts: [{ testId: "STG_LOAD_01", characterNames: ["Replacement"] }]
+  }), stagingProvisionEnv(db));
+  assert.equal(response.status, 409);
+  assert.equal((await body(response)).error, "test_id_already_exists");
+
+  const after = db.raw.prepare("SELECT * FROM players WHERE id = ?").get("STG_LOAD_01");
+  assert.deepEqual(after, before);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM characters WHERE player_id = ?").get("STG_LOAD_01").c, 1);
+  assert.ok(existing.sessionToken);
+});
+
+test("staging bulk provisioner returns a credential manifest and stops safely on a partial character failure", async () => {
+  const db = createDb();
+  db.raw.exec(`
+    CREATE TRIGGER fail_staging_character
+    BEFORE INSERT ON characters
+    WHEN NEW.name = 'Fail Me'
+    BEGIN
+      SELECT RAISE(FAIL, 'test-only injected character failure');
+    END;
+  `);
+  const response = await worker.fetch(stagingProvisionRequest({
+    action: "stagingProvisionTestAccounts",
+    batchId: "batch_20261105",
+    accounts: [
+      { testId: "STG_LOAD_01", characterNames: ["Created Hero", "Fail Me"] },
+      { testId: "STG_LOAD_02", characterNames: ["Not Attempted"] }
+    ]
+  }), stagingProvisionEnv(db));
+  assert.equal(response.status, 207);
+  const result = await body(response);
+  assert.equal(result.ok, false);
+  assert.equal(result.partial, true);
+  assert.equal(result.created, 1);
+  assert.equal(result.attempted, 1);
+  assert.equal(result.error, "provisioning_failed");
+
+  const account = result.credentialManifest.accounts[0];
+  assert.equal(account.testId, "STG_LOAD_01");
+  assert.equal(account.status, "partial");
+  assert.ok(account.password);
+  assert.equal("recoveryCode" in account, false);
+  assert.equal(account.characters.length, 1);
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM players WHERE id = 'STG_LOAD_02'").get().c, 0);
+  assert.ok(db.raw.prepare("SELECT revoked_at FROM auth_sessions WHERE player_id = 'STG_LOAD_01'").get().revoked_at);
 });

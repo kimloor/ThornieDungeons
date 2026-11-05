@@ -244,6 +244,20 @@ No Production R2 upload/SHA read-back, production D1 write, event-config activat
 - App version: **1.1.41 → 1.1.42**. Automated handler-level regression and GitHub Actions evidence are recorded in `H01-RELEASE-GATE-2026-11-03.md` after CI.
 
 
+## 1D. Shared Battle resource carry integration (2026-11-04)
+
+- Halloween start accepts the same optional `previousBattleId` authorization token as Dungeon start and validates it against the latest settled completion for the authenticated Character.
+- Victory/Fled carry server-stored Hero HP/SP and Pet HP into the Halloween boss battle. Defeat is accepted as a settled token but initializes Hero/Pet resources to full.
+- Halloween reference floor and boss encounter remain generated from the existing progression snapshot. Event activation, boss selection, skill cycle, reward odds and settlement are unchanged.
+- No schema/migration or direct Production data changes.
+
+## 1D. Shared Battle resource carry integration (2026-11-04)
+
+- Halloween start accepts the same optional `previousBattleId` authorization token as Dungeon start and validates it against the latest settled completion for the authenticated Character.
+- Victory/Fled carry server-stored Hero HP/SP and Pet HP into the Halloween boss battle. Defeat is accepted as a settled token but initializes Hero/Pet resources to full.
+- Halloween reference floor and boss encounter remain generated from the existing progression snapshot. Event activation, boss selection, skill cycle, reward odds and settlement are unchanged.
+- No schema/migration or direct Production data changes.
+
 ## 13. H01 final closeout — Owner decision (2026-11-03)
 
 H01 is **CLOSED** following Owner-confirmed Production QA of the entry-flow hotfix:

@@ -88,3 +88,8 @@ For each Production QA session, record:
 ## 6. Relationship to security QA
 
 This policy replaces Staging D1 as the default environment only for routine gameplay/UI/regression QA. It does not weaken or replace the separate authorization and isolation requirements for security testing. A Production QA account is not permission to run security attacks against Production.
+
+
+## 12. Universal Battle resource carry regression gate (2026-11-04)
+
+For changes to the settled-battle carry contract, automated QA must cover latest Battle ID and Character ownership validation, settled versus in-progress outcomes, Victory/Fled carry, Defeat full-resource reset, Pet HP, same/previous/next/distant unlocked floors, Dungeon Normal/Event modifiers, Dungeon↔Halloween transitions, Halloween repeat entry where eligible, and authoritative HUD hydration. Do not perform fault injection, direct Production D1 writes, or Production carry manipulation as part of routine QA. Production acceptance remains an explicit post-merge/deploy gate using legitimate gameplay only.

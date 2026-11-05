@@ -239,6 +239,19 @@ async function handleGetJunkInfo(db) {
 }
 
 // ---------- player / auth handlers ----------
+// Shared account-row creation used by normal registration and the guarded Staging provisioner.
+// Keep credential hashing and the persisted player shape identical across both entry points.
+async function createPlayerAccountRow(db, id, password, recoveryCode) {
+  const now = nowIso();
+  const passwordHash = await hashPassword(password);
+  const recoveryHash = await recoveryCodeHash(recoveryCode);
+  await db.prepare(
+    `INSERT INTO players (id, password, password_hash, recovery_code_hash, auth_version, diamonds, active_slot, created_at)
+     VALUES (?, '', ?, ?, 2, 0, NULL, ?)`
+  ).bind(id, passwordHash, recoveryHash, now).run();
+  return { createdAt: now };
+}
+
 async function handleRegister(db, id, password, confirmPassword, rememberLogin, ip) {
   const failedKey = rateKey("register_failed", ip);
   const successKey = rateKey("register_success", ip);
@@ -263,14 +276,8 @@ async function handleRegister(db, id, password, confirmPassword, rememberLogin, 
   // one generic availability result for account-existence privacy.
   if (existing) return await fail({ error: "registration_unavailable" });
 
-  const now = nowIso();
-  const passwordHash = await hashPassword(password);
   const recoveryCode = createRecoveryCode();
-  const recoveryHash = await recoveryCodeHash(recoveryCode);
-  await db.prepare(
-    `INSERT INTO players (id, password, password_hash, recovery_code_hash, auth_version, diamonds, active_slot, created_at)
-     VALUES (?, '', ?, ?, 2, 0, NULL, ?)`
-  ).bind(cleanId, passwordHash, recoveryHash, now).run();
+  await createPlayerAccountRow(db, cleanId, password, recoveryCode);
 
   // A valid successful registration clears typo/validation failures, but successful
   // account creation still has its own per-IP hourly cap to prevent account spam.
@@ -279,6 +286,203 @@ async function handleRegister(db, id, password, confirmPassword, rememberLogin, 
 
   const session = await issueSession(db, cleanId, !!rememberLogin);
   return json({ ok: true, playerId: cleanId, recoveryCode, recoveryConfigured: true, ...session });
+}
+
+const STAGING_PROVISIONER_HOST = "thornie-dungeons-api-staging.ekqtjl.workers.dev";
+const STAGING_PROVISIONER_MAX_BATCH = 100;
+const STAGING_TEST_ID_PATTERN = /^STG_[A-Z0-9_]{1,16}$/;
+
+function generateStagingProvisionerPassword(length = 24) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let password = "";
+  while (password.length < length) {
+    const bytes = new Uint8Array(48);
+    crypto.getRandomValues(bytes);
+    for (const value of bytes) {
+      // 248 is the largest multiple of 62 below 256; reject the tail to avoid modulo bias.
+      if (value >= 248) continue;
+      password += alphabet[value % alphabet.length];
+      if (password.length === length) break;
+    }
+  }
+  return password;
+}
+
+async function stagingProvisionerSecretMatches(supplied, expected) {
+  const left = String(supplied || "");
+  const right = String(expected || "");
+  if (!left || !right || left.length > 4096 || right.length > 4096) return false;
+  const encoder = new TextEncoder();
+  const [leftDigest, rightDigest] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(left)),
+    crypto.subtle.digest("SHA-256", encoder.encode(right))
+  ]);
+  const a = new Uint8Array(leftDigest);
+  const b = new Uint8Array(rightDigest);
+  let difference = left.length ^ right.length;
+  for (let index = 0; index < a.length; index++) difference |= a[index] ^ b[index];
+  return difference === 0;
+}
+
+function validateStagingProvisionerBatch(body) {
+  const batchId = String(body?.batchId || "").trim();
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(batchId)) return { error: "invalid_batch_id" };
+  if (!Array.isArray(body?.accounts) || body.accounts.length < 1) return { error: "accounts_required" };
+  if (body.accounts.length > STAGING_PROVISIONER_MAX_BATCH) return { error: "batch_limit_exceeded" };
+
+  const seenIds = new Set();
+  const accounts = [];
+  for (const item of body.accounts) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return { error: "invalid_account_entry" };
+    const testId = String(item.testId || "").trim();
+    if (!STAGING_TEST_ID_PATTERN.test(testId) || !validPlayerId(testId)) return { error: "invalid_test_id" };
+    const normalizedId = testId.toLowerCase();
+    if (seenIds.has(normalizedId)) return { error: "duplicate_test_id" };
+    seenIds.add(normalizedId);
+
+    const rawNames = item.characterNames === undefined ? [] : item.characterNames;
+    if (!Array.isArray(rawNames) || rawNames.length > MAX_CHARACTER_SLOTS) return { error: "character_count_out_of_range" };
+    const seenNames = new Set();
+    const characterNames = [];
+    for (const rawName of rawNames) {
+      if (typeof rawName !== "string") return { error: "invalid_character_name" };
+      const name = rawName.trim();
+      if (!name || name.length > 16) return { error: "invalid_character_name" };
+      const normalizedName = name.toLowerCase();
+      if (seenNames.has(normalizedName)) return { error: "duplicate_character_name" };
+      seenNames.add(normalizedName);
+      characterNames.push(name);
+    }
+    accounts.push({ testId, characterNames });
+  }
+  return { ok: true, batchId, accounts };
+}
+
+async function handleStagingBulkTestAccountProvisioner(request, env, db, body) {
+  const requestUrl = new URL(request.url);
+  if (request.method !== "POST"
+    || requestUrl.protocol !== "https:"
+    || requestUrl.hostname !== STAGING_PROVISIONER_HOST
+    || requestUrl.port
+    || !["", "/"].includes(requestUrl.pathname)
+    || requestUrl.search
+    || requestUrl.hash) {
+    return json({ error: "not_found" }, 404);
+  }
+  const configuredSecret = String(env.STAGING_PROVISIONER_SECRET || "");
+  if (env.STAGING_PROVISIONER_ENABLED !== "true" || configuredSecret.length < 32) {
+    return json({ error: "provisioner_disabled" }, 404);
+  }
+  if (request.headers.get("X-Confirm-Staging-Provisioning") !== "YES") {
+    return json({ error: "staging_confirmation_required" }, 400);
+  }
+  if (!(await stagingProvisionerSecretMatches(bearerToken(request), configuredSecret))) {
+    return json({ error: "unauthorized" }, 401);
+  }
+
+  const validated = validateStagingProvisionerBatch(body);
+  if (validated.error) return json({ error: validated.error }, 400);
+
+  // Preflight every explicit test ID before creating anything. Existing accounts are
+  // never reset, reused, or modified; a retry is rejected instead of duplicating work.
+  for (const account of validated.accounts) {
+    if (await playerByLoginId(db, account.testId)) {
+      return json({ error: "test_id_already_exists", testId: account.testId }, 409);
+    }
+  }
+
+  const manifestAccounts = [];
+  let createdCount = 0;
+  let failureCode = "";
+  for (const account of validated.accounts) {
+    const password = generateStagingProvisionerPassword();
+    const recoveryCode = createRecoveryCode();
+    const manifestAccount = {
+      testId: account.testId,
+      password,
+      status: "unknown",
+      characters: []
+    };
+    manifestAccounts.push(manifestAccount);
+
+    let rowCreated = false;
+    let rawSessionToken = "";
+    let sessionAuth = null;
+    try {
+      await createPlayerAccountRow(db, account.testId, password, recoveryCode);
+      rowCreated = true;
+      createdCount++;
+
+      const issuedSession = await issueSession(db, account.testId, false);
+      rawSessionToken = issuedSession.sessionToken;
+      sessionAuth = await verifySession(db, rawSessionToken);
+      if (!sessionAuth?.ok) {
+        failureCode = "session_creation_failed";
+        manifestAccount.status = "partial";
+      } else {
+        manifestAccount.status = "created";
+        for (let slotIndex = 0; slotIndex < account.characterNames.length; slotIndex++) {
+          const characterResponse = await handleCreateCharacter(
+            db, account.testId, sessionAuth, slotIndex, account.characterNames[slotIndex]
+          );
+          const characterPayload = await characterResponse.json();
+          if (!characterPayload?.ok || !characterPayload.character?.character_id) {
+            failureCode = "character_creation_failed";
+            manifestAccount.status = "partial";
+            break;
+          }
+          manifestAccount.characters.push({
+            characterId: String(characterPayload.character.character_id),
+            name: String(characterPayload.character.name || account.characterNames[slotIndex])
+          });
+        }
+      }
+    } catch {
+      failureCode = rowCreated ? "provisioning_failed" : "account_creation_failed";
+      manifestAccount.status = rowCreated ? "partial" : "unknown";
+    } finally {
+      try {
+        if (sessionAuth?.ok) {
+          const logoutPayload = await (await handleLogout(db, sessionAuth)).json();
+          if (!logoutPayload?.ok) {
+            failureCode ||= "session_cleanup_failed";
+            manifestAccount.status = "partial";
+          }
+        } else if (rawSessionToken) {
+          // Best-effort cleanup if session verification itself failed.
+          const tokenHash = await sha256(rawSessionToken);
+          await db.prepare(
+            `UPDATE auth_sessions SET revoked_at = ?, revoke_reason = 'staging_provisioner'
+             WHERE token_hash = ? AND revoked_at IS NULL`
+          ).bind(nowIso(), tokenHash).run();
+        }
+      } catch {
+        failureCode ||= "session_cleanup_failed";
+        manifestAccount.status = "partial";
+      }
+    }
+    if (failureCode) break;
+  }
+
+  const succeeded = !failureCode && manifestAccounts.length === validated.accounts.length
+    && manifestAccounts.every(account => account.status === "created");
+  const credentialManifest = {
+    schemaVersion: 1,
+    generatedAt: nowIso(),
+    target: STAGING_PROVISIONER_HOST,
+    batchId: validated.batchId,
+    accounts: manifestAccounts
+  };
+  return json({
+    ok: succeeded,
+    partial: !succeeded && createdCount > 0,
+    batchId: validated.batchId,
+    requested: validated.accounts.length,
+    attempted: manifestAccounts.length,
+    created: createdCount,
+    error: failureCode || null,
+    credentialManifest
+  }, succeeded ? 200 : 207);
 }
 
 // Safety-net migration for a single player: runs the same logic as migration_v2.sql's
@@ -1882,18 +2086,18 @@ async function dungeonAuthorityCarryState(db, characterId, previousBattleId, tar
     LIMIT 1`)
     .bind(characterId).first();
   if (!row || String(row.battle_id) !== String(previousBattleId)
-      || row.outcome !== "victory" || !row.settled_at) return null;
+      || !["victory", "fled", "defeat"].includes(row.outcome) || !row.settled_at) return null;
   const result = parseJsonColumn(row.result_json, null);
   const state = parseJsonColumn(row.state_json, null);
   const context = dungeonV2ServerNormalizeContext(state?.serverContext);
   const completedFloor = Math.floor(Number(result?.floor) || 0);
-  const nextFloor = Math.floor(Number(targetFloor) || 0);
-  if (!context || context.floor !== completedFloor
-      || (nextFloor !== completedFloor && nextFloor !== completedFloor + 1)) return null;
+  const requestedFloor = Math.floor(Number(targetFloor) || 0);
+  if (!context || context.floor !== completedFloor || result?.result !== row.outcome || requestedFloor < 1) return null;
+  if (row.outcome === "defeat") return { reset: true, outcome: row.outcome };
   const hero = state?.units?.[state.heroId];
-  const pet = state?.petId ? state?.units?.[state.petId] : null;
+  const pet = state?.petId ? state?.units[state.petId] : null;
   if (!hero || !Number.isFinite(Number(hero.hp)) || !Number.isFinite(Number(hero.sp))) return null;
-  return { heroHp: hero.hp, heroSp: hero.sp, petHp: pet?.hp };
+  return { heroHp: hero.hp, heroSp: hero.sp, petHp: pet?.hp, petInstId: pet?.instId || null, outcome: row.outcome };
 }
 
 async function dungeonAuthorityInitialState(db, character, context, battleId, carry) {
@@ -1903,7 +2107,10 @@ async function dungeonAuthorityInitialState(db, character, context, battleId, ca
   ]);
   const items = itemsResult?.results || [];
   const parsedPets = parsePetsJson(character);
-  const pet = dungeonAuthorityPetUnit(character, carry?.petHp);
+  const resourceCarry = carry?.reset ? null : carry;
+  const activePetId = parsedPets.active?.instId || "";
+  const carryPetHp = resourceCarry?.petInstId && resourceCarry.petInstId === activePetId ? resourceCarry.petHp : null;
+  const pet = dungeonAuthorityPetUnit(character, carryPetHp);
   const stats = dungeonAuthorityStats(character, items, pet?.defId || "", parsedPets.skillLevels || {});
   const skills = parsedPets.skillLevels || {};
   const state = globalThis.BATTLE_CORE_V1.createDungeonBattle({
@@ -1911,8 +2118,8 @@ async function dungeonAuthorityInitialState(db, character, context, battleId, ca
     dungeonEventId: context.enemies.map(entry => entry.modifierId).find(Boolean) || null,
     hero: {
       id: "hero", kind: "hero", side: "ally", name: character.name || "Hero",
-      maxHp: stats.maxHp, hp: carry ? Math.max(0, Math.min(stats.maxHp, Number(carry.heroHp) || 0)) : stats.maxHp,
-      maxSp: stats.maxMp, sp: carry ? Math.max(0, Math.min(stats.maxMp, Number(carry.heroSp) || 0)) : stats.maxMp,
+      maxHp: stats.maxHp, hp: resourceCarry ? Math.max(0, Math.min(stats.maxHp, Number(resourceCarry.heroHp) || 0)) : stats.maxHp,
+      maxSp: stats.maxMp, sp: resourceCarry ? Math.max(0, Math.min(stats.maxMp, Number(resourceCarry.heroSp) || 0)) : stats.maxMp,
       atk: stats.atk, def: stats.def, speed: stats.speed, accuracy: stats.accuracy,
       dodge: stats.dodge, crit: stats.critChance, critDamage: 1 + stats.critDamage / 100,
       agi: Number(character.agi) || 0, skills,
@@ -1977,6 +2184,9 @@ async function handleStartDungeonBattle(db, id, session, characterId, requestedF
     const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
     const authority = await db.prepare(`SELECT state_rev, state_json, outcome, settled_at FROM battle_authority WHERE battle_id = ? AND character_id = ? LIMIT 1`)
       .bind(existing.battle_id, characterId).first();
+    if (authority && !authority.outcome && previousBattleId && String(previousBattleId) === String(existing.battle_id)) {
+      return json({ error: "battle_carry_source_invalid" }, 409);
+    }
     if (authority && !authority.outcome && context && context.floor === floor) {
       return json({ ok: true, battleId: existing.battle_id, context, state: { ...parseJsonColumn(authority.state_json, {}), authorityRev: Number(authority.state_rev) || 0 }, stateRev: Number(authority.state_rev) || 0, authoritative: true });
     }
@@ -2238,7 +2448,7 @@ async function halloweenAuthorityStartResult(db, character, battleId, context) {
   };
 }
 
-async function handleStartHalloweenBattle(db, id, session, characterId) {
+async function handleStartHalloweenBattle(db, id, session, characterId, previousBattleId = null) {
   const auth = await verifyPlayer(db, id, session);
   if (auth.error) return json({ error: auth.error }, 401);
   const owned = await verifyOwnedCharacter(db, id, characterId);
@@ -2254,7 +2464,12 @@ async function handleStartHalloweenBattle(db, id, session, characterId) {
     const context = dungeonV2ServerContextFromStoredCheckpoint(payload);
     if (context?.eventId === HALLOWEEN_EVENT_ID) {
       const current = await halloweenAuthorityStartResult(db, owned.row, existing.battle_id, context);
-      if (current.body) return json(current.body);
+      if (current.body) {
+        if (previousBattleId && String(previousBattleId) === String(existing.battle_id)) {
+          return json({ error: "battle_carry_source_invalid" }, 409);
+        }
+        return json(current.body);
+      }
       if (current.settled) {
         await db.prepare(`UPDATE battle_checkpoints SET state = 'closed', updated_at = ? WHERE battle_id = ? AND character_id = ? AND state = 'active'`)
           .bind(nowIso(), existing.battle_id, characterId).run();
@@ -2307,10 +2522,12 @@ async function handleStartHalloweenBattle(db, id, session, characterId) {
     }]
   });
   if (!context) return json({ error: "halloween_context_invalid" }, 500);
+  const carry = previousBattleId ? await dungeonAuthorityCarryState(db, characterId, previousBattleId, referenceFloor) : null;
+  if (previousBattleId && !carry) return json({ error: "battle_carry_source_invalid" }, 409);
 
   const battleId = `halloween-${randomToken(16)}`;
   const now = nowIso();
-  const state = await dungeonAuthorityInitialState(db, owned.row, context, battleId, null);
+  const state = await dungeonAuthorityInitialState(db, owned.row, context, battleId, carry);
   const authorization = JSON.stringify({
     version: 1,
     battleId,
@@ -9059,6 +9276,7 @@ async function apiFetch(request, env) {
       if (request.method === "POST") {
         const body = await request.json();
         const ip = requestIp(request);
+        if (body.action === "stagingProvisionTestAccounts") return await handleStagingBulkTestAccountProvisioner(request, env, db, body);
         if (body.action === "login") return await handleLogin(db, body.id, body.password, !!body.rememberLogin, ip);
         if (body.action === "register") return await handleRegister(db, body.id, body.password, body.confirmPassword, !!body.rememberLogin, ip);
         if (body.action === "forgotPassword") return await handleForgotPassword(db, body.id, body.recoveryCode, body.newPassword, body.confirmPassword, ip);
@@ -9150,7 +9368,7 @@ async function apiFetch(request, env) {
           case "submitDungeonBattleAction":
             return await handleSubmitDungeonBattleAction(db, id, auth, body.characterId, body.battleId, body.actionKey, body.expectedRev, body.command);
           case "startHalloweenBattle":
-            return await handleStartHalloweenBattle(db, id, auth, body.characterId);
+            return await handleStartHalloweenBattle(db, id, auth, body.characterId, body.previousBattleId || null);
           case "saveBattleCheckpoint":
             return await handleSaveBattleCheckpoint(db, id, auth, body.characterId, body.battleId, body.checkpointSeq, body.payload);
           case "clearBattleCheckpoint":

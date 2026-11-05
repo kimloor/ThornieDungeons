@@ -316,10 +316,11 @@ test("Worker-derived victory settles exactly once and ignores forged rewards", a
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM battle_completions WHERE battle_id=?").get(started.body.battleId).c, 1);
 });
 
-test("Dungeon HP/SP carry accepts only the latest settled victory", async () => {
-  const api = worker(), db = database();
+test("Dungeon resource carry accepts the latest settled outcome across any unlocked floor", async () => {
+  const api = worker({ eventId: "golden" }), db = database();
   const { token, characterId } = await account(api, db, "Battle_Carry_Latest");
-  db.raw.prepare("UPDATE characters SET str=1000,vit=1000,agi=1000,dex=1000,luk=1000 WHERE character_id=?").run(characterId);
+  const activePet = { instId: "carry-pet", defId: "sprout", level: 1, xp: 0, star: 1 };
+  db.raw.prepare("UPDATE characters SET str=1000,vit=1000,agi=1000,dex=1000,luk=1000,pets_json=?,active_pet_id=?,unlocked_floor=20 WHERE character_id=?").run(JSON.stringify({ list: [activePet] }), activePet.instId, characterId);
 
   const first = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 1 });
   assert.equal(first.body.ok, true, JSON.stringify(first.body));
@@ -328,26 +329,46 @@ test("Dungeon HP/SP carry accepts only the latest settled victory", async () => 
   const firstState = JSON.parse(firstStateRow.state_json);
   firstState.units[firstState.heroId].hp = 31;
   firstState.units[firstState.heroId].sp = 7;
+  firstState.units[firstState.petId].hp = 13;
   db.raw.prepare("UPDATE battle_authority SET state_json=? WHERE battle_id=?").run(JSON.stringify(firstState), first.body.battleId);
   const firstCommit = await post(api, db, token, {
     action: "completeBattle", characterId, battleId: first.body.battleId, result: { result: "victory" }
   });
   assert.equal(firstCommit.body.ok, true, JSON.stringify(firstCommit.body));
 
-  // Retrying the just-cleared floor may carry the latest completion's real HP/SP.
-  const second = await post(api, db, token, {
+  const sameFloor = await post(api, db, token, {
     action: "startDungeonBattle", characterId, floor: 1, previousBattleId: first.body.battleId
+  });
+  assert.equal(sameFloor.body.ok, true, JSON.stringify(sameFloor.body));
+  assert.equal(sameFloor.body.state.units[sameFloor.body.state.heroId].hp, 31);
+  assert.equal(sameFloor.body.state.units[sameFloor.body.state.heroId].sp, 7);
+  assert.equal(sameFloor.body.state.units[sameFloor.body.state.petId].hp, 13);
+  forceAuthoritativeVictory(db, sameFloor.body.battleId);
+  const sameState = JSON.parse(db.raw.prepare("SELECT state_json FROM battle_authority WHERE battle_id=?").get(sameFloor.body.battleId).state_json);
+  sameState.units[sameState.heroId].hp = 27;
+  sameState.units[sameState.heroId].sp = 6;
+  sameState.units[sameState.petId].hp = 11;
+  db.raw.prepare("UPDATE battle_authority SET state_json=? WHERE battle_id=?").run(JSON.stringify(sameState), sameFloor.body.battleId);
+  const sameCommit = await post(api, db, token, { action: "completeBattle", characterId, battleId: sameFloor.body.battleId, result: { result: "victory" } });
+  assert.equal(sameCommit.body.ok, true, JSON.stringify(sameCommit.body));
+
+  const second = await post(api, db, token, {
+    action: "startDungeonBattle", characterId, floor: 17, previousBattleId: sameFloor.body.battleId
   });
   assert.equal(second.body.ok, true, JSON.stringify(second.body));
   const secondHero = second.body.state.units[second.body.state.heroId];
-  assert.equal(secondHero.hp, 31);
-  assert.equal(secondHero.sp, 7);
+  assert.equal(secondHero.hp, 27);
+  assert.equal(secondHero.sp, 6);
+  assert.equal(second.body.context.floor, 17);
+  assert.ok(second.body.context.enemies.every(enemy => enemy.modifierId === "golden"));
+  assert.equal(second.body.state.units[second.body.state.petId].hp, 11);
 
   forceAuthoritativeVictory(db, second.body.battleId);
   const secondStateRow = db.raw.prepare("SELECT state_json FROM battle_authority WHERE battle_id=?").get(second.body.battleId);
   const secondState = JSON.parse(secondStateRow.state_json);
   secondState.units[secondState.heroId].hp = 19;
   secondState.units[secondState.heroId].sp = 4;
+  secondState.units[secondState.petId].hp = 8;
   db.raw.prepare("UPDATE battle_authority SET state_json=? WHERE battle_id=?").run(JSON.stringify(secondState), second.body.battleId);
   const secondCommit = await post(api, db, token, {
     action: "completeBattle", characterId, battleId: second.body.battleId, result: { result: "victory" }
@@ -361,14 +382,72 @@ test("Dungeon HP/SP carry accepts only the latest settled victory", async () => 
   assert.equal(stale.status, 409);
   assert.equal(stale.body.error, "battle_carry_source_invalid");
 
-  // The latest settled victory remains valid for the next floor.
+  // The latest settled victory remains valid when moving back to a previous floor.
   const latest = await post(api, db, token, {
-    action: "startDungeonBattle", characterId, floor: 2, previousBattleId: second.body.battleId
+    action: "startDungeonBattle", characterId, floor: 1, previousBattleId: second.body.battleId
   });
   assert.equal(latest.body.ok, true, JSON.stringify(latest.body));
   const latestHero = latest.body.state.units[latest.body.state.heroId];
   assert.equal(latestHero.hp, 19);
   assert.equal(latestHero.sp, 4);
+  assert.equal(latest.body.state.units[latest.body.state.petId].hp, 8);
+  forceAuthoritativeVictory(db, latest.body.battleId);
+  const latestCommit = await post(api, db, token, { action: "completeBattle", characterId, battleId: latest.body.battleId, result: { result: "victory" } });
+  assert.equal(latestCommit.body.ok, true, JSON.stringify(latestCommit.body));
+  const nextFloor = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 2, previousBattleId: latest.body.battleId });
+  assert.equal(nextFloor.body.ok, true, JSON.stringify(nextFloor.body));
+  assert.equal(nextFloor.body.state.units[nextFloor.body.state.heroId].hp, 19);
+  assert.equal(nextFloor.body.state.units[nextFloor.body.state.heroId].sp, 4);
+  assert.equal(nextFloor.body.state.units[nextFloor.body.state.petId].hp, 8);
+
+  const other = await account(api, db, "CarryOther");
+  const crossCharacter = await post(api, db, other.token, { action: "startDungeonBattle", characterId: other.characterId, floor: 1, previousBattleId: second.body.battleId });
+  assert.equal(crossCharacter.status, 409);
+  assert.equal(crossCharacter.body.error, "battle_carry_source_invalid");
+  const foreignStart = await post(api, db, other.token, { action: "startDungeonBattle", characterId: other.characterId, floor: 1 });
+  const inProgress = await post(api, db, other.token, { action: "startDungeonBattle", characterId: other.characterId, floor: 1, previousBattleId: foreignStart.body.battleId });
+  assert.equal(inProgress.status, 409);
+  assert.equal(inProgress.body.error, "battle_carry_source_invalid");
+});
+
+test("Fled carries settled Hero/Pet resources and Defeat resets them to full", async () => {
+  const api = worker({ eventId: null }), db = database();
+  const { token, characterId } = await account(api, db, "CarryFledDefeat");
+  const activePet = { instId: "carry-pet-fd", defId: "sprout", level: 1, xp: 0, star: 1 };
+  db.raw.prepare("UPDATE characters SET unlocked_floor=20,pets_json=?,active_pet_id=? WHERE character_id=?")
+    .run(JSON.stringify({ list: [activePet] }), activePet.instId, characterId);
+  const fled = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 3 });
+  const fledState = JSON.parse(db.raw.prepare("SELECT state_json FROM battle_authority WHERE battle_id=?").get(fled.body.battleId).state_json);
+  fledState.units[fledState.heroId].hp = 41;
+  fledState.units[fledState.heroId].sp = 9;
+  fledState.units[fledState.petId].hp = 17;
+  fledState.result = "fled";
+  db.raw.prepare("UPDATE battle_authority SET state_rev=state_rev+1,state_json=?,outcome='fled',updated_at=? WHERE battle_id=?")
+    .run(JSON.stringify(fledState), new Date().toISOString(), fled.body.battleId);
+  const fledReceipt = await post(api, db, token, { action: "completeBattle", characterId, battleId: fled.body.battleId, result: { result: "fled" } });
+  assert.equal(fledReceipt.body.ok, true, JSON.stringify(fledReceipt.body));
+  const afterFled = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 19, previousBattleId: fled.body.battleId });
+  assert.equal(afterFled.body.ok, true, JSON.stringify(afterFled.body));
+  assert.equal(afterFled.body.state.units[afterFled.body.state.heroId].hp, 41);
+  assert.equal(afterFled.body.state.units[afterFled.body.state.heroId].sp, 9);
+  assert.equal(afterFled.body.state.units[afterFled.body.state.petId].hp, 17);
+
+  const defeatState = JSON.parse(db.raw.prepare("SELECT state_json FROM battle_authority WHERE battle_id=?").get(afterFled.body.battleId).state_json);
+  defeatState.units[defeatState.heroId].hp = 0;
+  defeatState.units[defeatState.heroId].sp = 2;
+  defeatState.units[defeatState.petId].hp = 0;
+  defeatState.result = "defeat";
+  db.raw.prepare("UPDATE battle_authority SET state_rev=state_rev+1,state_json=?,outcome='defeat',updated_at=? WHERE battle_id=?")
+    .run(JSON.stringify(defeatState), new Date().toISOString(), afterFled.body.battleId);
+  const defeatReceipt = await post(api, db, token, { action: "completeBattle", characterId, battleId: afterFled.body.battleId, result: { result: "defeat" } });
+  assert.equal(defeatReceipt.body.ok, true, JSON.stringify(defeatReceipt.body));
+  const afterDefeat = await post(api, db, token, { action: "startDungeonBattle", characterId, floor: 2, previousBattleId: afterFled.body.battleId });
+  assert.equal(afterDefeat.body.ok, true, JSON.stringify(afterDefeat.body));
+  const hero = afterDefeat.body.state.units[afterDefeat.body.state.heroId];
+  const pet = afterDefeat.body.state.units[afterDefeat.body.state.petId];
+  assert.equal(hero.hp, hero.maxHp);
+  assert.equal(hero.sp, hero.maxSp);
+  assert.equal(pet.hp, pet.maxHp);
 });
 
 test("legacy checkpoint uses restart-same-floor policy without rewards", async () => {
