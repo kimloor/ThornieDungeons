@@ -91,7 +91,6 @@ function safeManifest(manifest) {
     accounts: manifest.accounts.map(account => ({
       testId: String(account.testId || ""),
       password: String(account.password || ""),
-      recoveryCode: String(account.recoveryCode || ""),
       status: String(account.status || "unknown"),
       characters: Array.isArray(account.characters) ? account.characters.map(character => ({
         characterId: String(character.characterId || ""),
