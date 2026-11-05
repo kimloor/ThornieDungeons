@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile, writeFile, mkdir, chmod } from "node:fs/promises";
+import { readFile, writeFile, mkdir, chmod, open, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -99,7 +99,7 @@ function safeManifest(manifest) {
   };
 }
 
-async function writeCredentialManifest(manifest, requestedPath, batchId, repoRoot) {
+async function reserveCredentialManifestPath(requestedPath, batchId, repoRoot) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const defaultPath = path.join(
     os.homedir(), ".thorniedungeons", "staging", "credentials",
@@ -108,12 +108,19 @@ async function writeCredentialManifest(manifest, requestedPath, batchId, repoRoo
   const outputPath = path.resolve(requestedPath || defaultPath);
   if (isInside(repoRoot, outputPath)) throw new Error("manifest_must_be_outside_repository");
 
-  const protectedManifest = safeManifest(manifest);
   const directory = path.dirname(outputPath);
   await mkdir(directory, { recursive: true, mode: 0o700 });
+  const handle = await open(outputPath, "wx", 0o600);
+  await handle.close();
+  await chmod(outputPath, 0o600);
+  return outputPath;
+}
+
+async function writeCredentialManifestAt(manifest, outputPath) {
+  const protectedManifest = safeManifest(manifest);
   await writeFile(outputPath, JSON.stringify(protectedManifest, null, 2) + "\n", {
     encoding: "utf8",
-    flag: "wx",
+    flag: "w",
     mode: 0o600
   });
   await chmod(outputPath, 0o600);
@@ -149,42 +156,50 @@ export async function main(args = process.argv.slice(2), env = process.env) {
   const secret = String(env.STAGING_PROVISIONER_SECRET || "");
   if (secret.length < 32) throw new Error("staging_provisioner_secret_required");
 
-  const response = await fetch(target, {
-    method: "POST",
-    redirect: "error",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${secret}`,
-      "x-confirm-staging-provisioning": "YES"
-    },
-    body: JSON.stringify({
-      action: "stagingProvisionTestAccounts",
-      batchId: batch.batchId,
-      accounts: batch.accounts
-    }),
-    signal: AbortSignal.timeout(30000)
-  });
-  let payload;
-  try { payload = await response.json(); } catch { throw new Error("provisioner_response_invalid"); }
+  // Reserve the destination before making the provisioning request. This prevents an
+  // unsafe/in-repository or already-existing output path from failing after accounts exist.
+  const manifestPath = await reserveCredentialManifestPath(parsed.out, batch.batchId, repoRoot);
+  let manifestSaved = false;
+  try {
+    const response = await fetch(target, {
+      method: "POST",
+      redirect: "error",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${secret}`,
+        "x-confirm-staging-provisioning": "YES"
+      },
+      body: JSON.stringify({
+        action: "stagingProvisionTestAccounts",
+        batchId: batch.batchId,
+        accounts: batch.accounts
+      }),
+      signal: AbortSignal.timeout(30000)
+    });
+    let payload;
+    try { payload = await response.json(); } catch { throw new Error("provisioner_response_invalid"); }
 
-  let manifestPath = "";
-  if (payload?.credentialManifest) {
-    manifestPath = await writeCredentialManifest(payload.credentialManifest, parsed.out, batch.batchId, repoRoot);
+    if (payload?.credentialManifest) {
+      await writeCredentialManifestAt(payload.credentialManifest, manifestPath);
+      manifestSaved = true;
+    }
+    if (!response.ok && !payload?.credentialManifest) {
+      throw new Error(String(payload?.error || `provisioner_request_failed_${response.status}`));
+    }
+    return {
+      mode: "execute",
+      ok: payload?.ok === true,
+      partial: payload?.partial === true,
+      batchId: batch.batchId,
+      requested: Number(payload?.requested) || batch.accounts.length,
+      attempted: Number(payload?.attempted) || 0,
+      created: Number(payload?.created) || 0,
+      error: payload?.error || null,
+      manifestPath: manifestSaved ? manifestPath : ""
+    };
+  } finally {
+    if (!manifestSaved) await rm(manifestPath, { force: true }).catch(() => {});
   }
-  if (!response.ok && !payload?.credentialManifest) {
-    throw new Error(String(payload?.error || `provisioner_request_failed_${response.status}`));
-  }
-  return {
-    mode: "execute",
-    ok: payload?.ok === true,
-    partial: payload?.partial === true,
-    batchId: batch.batchId,
-    requested: Number(payload?.requested) || batch.accounts.length,
-    attempted: Number(payload?.attempted) || 0,
-    created: Number(payload?.created) || 0,
-    error: payload?.error || null,
-    manifestPath
-  };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
