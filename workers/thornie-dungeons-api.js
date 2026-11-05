@@ -345,7 +345,14 @@ function validateStagingProvisionerBatch(body) {
 }
 
 async function handleStagingBulkTestAccountProvisioner(request, env, db, body) {
-  if (request.method !== "POST" || new URL(request.url).hostname !== STAGING_PROVISIONER_HOST) {
+  const requestUrl = new URL(request.url);
+  if (request.method !== "POST"
+    || requestUrl.protocol !== "https:"
+    || requestUrl.hostname !== STAGING_PROVISIONER_HOST
+    || requestUrl.port
+    || !["", "/"].includes(requestUrl.pathname)
+    || requestUrl.search
+    || requestUrl.hash) {
     return json({ error: "not_found" }, 404);
   }
   const configuredSecret = String(env.STAGING_PROVISIONER_SECRET || "");
