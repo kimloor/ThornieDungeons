@@ -17,7 +17,9 @@ export function validateTarget(value = STAGING_PROVISIONER_ORIGIN) {
   if (url.username || url.password || url.search || url.hash || !["", "/"].includes(url.pathname)) {
     throw new Error("target_url_not_allowed");
   }
-  if (url.hostname !== STAGING_HOST) throw new Error("staging_host_not_allowlisted");
+  if (url.hostname !== STAGING_HOST || url.origin !== STAGING_PROVISIONER_ORIGIN) {
+    throw new Error("staging_host_not_allowlisted");
+  }
   return url.origin;
 }
 
