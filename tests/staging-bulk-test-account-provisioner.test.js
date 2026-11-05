@@ -18,6 +18,7 @@ test("provisioning client allowlists only the exact Staging Worker URL", () => {
   assert.throws(() => validateTarget("http://thornie-dungeons-api-staging.ekqtjl.workers.dev"), /https_required/);
   assert.throws(() => validateTarget("https://user:pass@thornie-dungeons-api-staging.ekqtjl.workers.dev"), /target_url_not_allowed/);
   assert.throws(() => validateTarget("https://thornie-dungeons-api-staging.ekqtjl.workers.dev/other"), /target_url_not_allowed/);
+  assert.throws(() => validateTarget("https://thornie-dungeons-api-staging.ekqtjl.workers.dev:8443"), /staging_host_not_allowlisted/);
 });
 
 test("provisioning input requires explicit unique STG IDs and bounded character lists", () => {
