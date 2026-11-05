@@ -399,7 +399,6 @@ async function handleStagingBulkTestAccountProvisioner(request, env, db, body) {
     const manifestAccount = {
       testId: account.testId,
       password,
-      recoveryCode,
       status: "unknown",
       characters: []
     };
