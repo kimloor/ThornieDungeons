@@ -400,7 +400,7 @@ test("staging bulk provisioner creates hashed accounts and characters through th
   assert.equal(credentials.status, "created");
   assert.equal(credentials.password.length, 24);
   assert.match(credentials.password, /^[A-Za-z0-9]+$/);
-  assert.match(credentials.recoveryCode, /^TD-/);
+  assert.equal("recoveryCode" in credentials, false);
   assert.equal(credentials.characters.length, 2);
   assert.equal("sessionToken" in credentials, false);
   assert.equal(JSON.stringify(result).includes("sessionToken"), false);
@@ -408,8 +408,7 @@ test("staging bulk provisioner creates hashed accounts and characters through th
   const player = db.raw.prepare("SELECT * FROM players WHERE id = ?").get(credentials.testId);
   assert.equal(player.password, "");
   assert.match(player.password_hash, /^pbkdf2_sha256\$100000\$/);
-  assert.equal(player.recovery_code_hash, await auth.recoveryCodeHash(credentials.recoveryCode));
-  assert.notEqual(player.recovery_code_hash, credentials.recoveryCode);
+  assert.match(player.recovery_code_hash, /^[a-f0-9]{64}$/i);
 
   const characters = db.raw.prepare("SELECT * FROM characters WHERE player_id = ? ORDER BY slot_index").all(credentials.testId);
   assert.equal(characters.length, 2);
@@ -474,7 +473,7 @@ test("staging bulk provisioner returns a credential manifest and stops safely on
   assert.equal(account.testId, "STG_LOAD_01");
   assert.equal(account.status, "partial");
   assert.ok(account.password);
-  assert.ok(account.recoveryCode);
+  assert.equal("recoveryCode" in account, false);
   assert.equal(account.characters.length, 1);
   assert.equal(db.raw.prepare("SELECT COUNT(*) AS c FROM players WHERE id = 'STG_LOAD_02'").get().c, 0);
   assert.ok(db.raw.prepare("SELECT revoked_at FROM auth_sessions WHERE player_id = 'STG_LOAD_01'").get().revoked_at);
