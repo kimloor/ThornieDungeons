@@ -111,7 +111,7 @@ Design mockup: Claude Design canvas "Admin QA Seed (W2-H) — Page Design" (3 bo
 - Version bump on shipped H1/H2/H3; tests need `item_provenance` / `item_ownership_events` tables; register new error codes in the admin client.
 - Provenance origin type `admin_seed`, ownership event type `admin_seeded`.
 
-## 10. H1 implementation record (Ver 1.1.44, PR #202, branch `feat/w2h-h1-admin-seed-shell`)
+## 10. H1 implementation record (Ver 1.1.45, PR #202, branch `feat/w2h-h1-admin-seed-shell`)
 Shipped DISABLED (`game_config.admin_seed_enabled` absent = off). Scope: framework + `gold` canary only. Independent review (2026-11-03) found P1-A..D and P2-A..C; all addressed below and awaiting independent re-review.
 
 **API**
@@ -145,14 +145,15 @@ Shipped DISABLED (`game_config.admin_seed_enabled` absent = off). Scope: framewo
 |---|---|---|
 | P1-A activity race | FIXED (regression-verified) | in-batch guard shares `adminItemActivityGuardSql/Binds` with W2-F/G; tests "P1-A ..." |
 | P1-B requestId binding | FIXED (regression-verified) | `requestHash` + `attemptToken`; tests "P1-B ..." |
-| P1-C mutation row-count assertion | **PARTIAL** | tested on node:sqlite only; NOT proven on real Cloudflare D1 (see below) |
+| P1-C mutation row-count assertion | **FIXED** (real D1 proof, staging) | scenario 27 of staging run 41987981229: assertion fires on real D1 and the whole batch rolls back (see "Real D1 handler evidence") |
 | P1-D state guard | FIXED for Gold | field-level guard + static writer-coverage test |
 | P2-A kill switch | FIXED | 10 stored values x 3 endpoints |
 | P2-B UI per §9 | FIXED | mocked-API browser run + static UI tests |
 | P2-C error catalog / UI reliability | FIXED | static tests: every Worker code has a Thai text and a catalog entry; safe fallback; no innerHTML sinks; 30 s timeout; requestId reuse on retry; double-submit guards |
 | New P2 PR metadata | FIXED | PR description rewritten (version, tests, CI, evidence labels) |
+| W2F-1 (W2-F replay not payload-bound) | **FIXED** in this PR | `adminDeleteReplayResponse` + `requestHash` in the delete audit; tests in `admin-v2-delete-item.test.js`; staging scenario 20 |
 
-**Evidence by kind** (never mix): (a) Unit/integration tests on node:sqlite: `tests/admin-v2-seed-h1.test.js` (36). (b) Static source tests: part of (a). (c) Browser run: headless Chromium against a MOCKED API only, not the real Worker. (d) D1 SQL-level test: none for H1. (e) Full handler through `D1Database.batch()` on real D1: none for H1. Production QA: none (flag OFF).
+**Evidence by kind** (never mix): (a) Unit/integration tests on node:sqlite: `tests/admin-v2-seed-h1.test.js` (36), `admin-v2-delete-item.test.js` (23). (b) Static source tests: part of (a). (c) Browser run: headless Chromium against a MOCKED API only, not the real Worker. (d) D1 SQL-level test: superseded by (e). (e) Full handler through `D1Database.batch()` on a real Cloudflare D1 (STAGING only): 33/33, see below. Production QA: none (flags OFF). Production was touched read-only once (restore point).
 
 **P1-C blocker:** proving `changes()` and `json()` behaviour and rollback inside `D1Database.batch()` needs a real D1. Only the production D1 and the retired staging D1 (`thornie-dungeons-staging`, c16e0b11-...) are reachable from the current tooling; the Owner has retired the staging path, and Production writes are forbidden. No D1 test was run. Needs an Owner decision (see the report). Fail-closed design: if D1 rejected the assertion, the batch errors and nothing is written.
 
@@ -162,3 +163,14 @@ Shipped DISABLED (`game_config.admin_seed_enabled` absent = off). Scope: framewo
 - **W2FG-2 (P3, not changed):** the item statement's row count (`results[2].meta.changes`) is checked after the batch but a mismatch cannot roll back the already-inserted audit/event rows. The three statements carry textually identical guards inside one serialized transaction, so the mismatch should not be reachable; adopting H1's in-batch assertion would make it impossible by construction, but only after P1-C is proven on D1.
 - **W2G-3 (P3, limitation):** a restore that has to use a new item id (original id taken) writes no `item_provenance` row; only the admin viewers read provenance (game logic does not), and the ownership event and audit record exist.
 - Cross-scope: audit ids are namespaced (`adm-del-`, `adm-res-`, `adm-seed-`) on one primary key; flags are independent (`admin_item_delete_enabled`, `admin_seed_enabled`); all entry points check the Admin bearer session before the flag; H1 now reuses the W2-F/G activity helpers (single implementation).
+
+### Real D1 handler evidence (staging, 2026-11-05) — NOT production
+- Workflow `admin-v2-staging-qa.yml` on the unmerged QA branch `qa/h1-w2fg-staging-d1` (tooling only, never to be merged; PR #185 stays closed). Authorized by the Owner on 2026-11-05 for this verification ("deploy the worker to staging yourself").
+- Run **41987981229**, result **33/33 PASS** (earlier run 41930768139: 32/33; the single failure, scenario 31, was a bug in the QA script's "no session" call, fixed, not a product defect).
+- Code under test: PR #202 commit **`8453dd620c608a4cb2303bfca7bdf1061a42d717`** deployed as staging Worker `thornie-dungeons-api-staging`, Worker version `61acbe1d-3d15-4206-89a3-ac591cbc4653`, staging D1 `thornie-dungeons-staging` (`c16e0b11-cf83-468c-a533-0ecbf522082f`), mode `remote`, finished 2026-11-05T08:06Z. The merge commits made afterwards (main merges, version bump, docs) did not change any Seed or W2-F/G code (checked by diffing the Worker).
+- Scenarios 1-19: the earlier W2-F/W2-G set (delete/restore, stack, equipped, pending, run, invalid timestamp, stale hash, capacity/overflow, id collision, malformed snapshot, flag off, concurrent duplicate delete/restore on real D1, pending-operation race, forced audit failure rollback) re-run against the current code. Scenario 20: W2F-1. Scenarios 21-33: H1 (flag off 403/401, lookup, preview read-only, apply + audit readback, requestId replay and payload binding, stale preview, pending/run blocks incl. unparseable timestamp, **row-count assertion on real D1 (27)**, audit failure rollback and retry once (28), 6 concurrent identical requests -> applied once (29), 6 concurrent different requestIds -> one winner (30), validation, flag isolation, any-player/audit actor).
+- Scenario 27 method: a `BEFORE UPDATE OF gold` trigger with `RAISE(IGNORE)` on the staging character makes the UPDATE touch 0 rows although the audit INSERT succeeded. Observed on real D1: HTTP 500 `seed_mutation_failed`, no ADMIN_SEED audit row left (the audit INSERT was rolled back by the same batch), Gold unchanged; after dropping the trigger the same requestId applied exactly once (positive control: `changes() = 1` is read correctly).
+- Limits: staging D1 and Worker, not production; in-batch interleaving (a gameplay writer between preflight and batch) is covered by the node:sqlite tests, not by the real-D1 run (scenario 18 covers the real-D1 pending-operation race for W2-F/G); the UI was checked against a mocked API only.
+
+### Production restore point (read-only)
+Workflow `prod-d1-restore-point.yml` (QA branch) ran `wrangler d1 time-travel info` against production `thornie-dungeons-db` (`2f6d52b4-3de7-4e78-98d4-fc143a4d29e2`), run 41930885933, about 2026-11-04T23:07Z: bookmark `0000049a-00000000-00005119-67bb0c8b17459324cc8eabd900e26b33`. Read-only; nothing restored or written. It is a point in time: take a fresh one immediately before the Owner-supervised first use.
