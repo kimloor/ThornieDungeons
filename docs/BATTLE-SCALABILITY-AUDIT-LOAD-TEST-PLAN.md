@@ -216,3 +216,9 @@ Final sanitized Staging refresh matches the approved Production core-data counts
 5. No load test has been run yet; Gate 4 remains pending staging QA sign-off.
 
 **Next required action:** run the approved staging QA smoke/regression suite, then execute the §4 load matrix only against Staging. Production remains read-only.
+
+## 12. Staging test account provisioning
+
+The separate [Staging Bulk Test Account Provisioner](STAGING-BULK-TEST-ACCOUNT-PROVISIONER.md) prepares synthetic accounts for the load harness. It is guarded by the exact Staging Worker hostname, a Staging-only secret, an explicit enable flag, a confirmation header, a 100-account batch limit, and duplicate-ID preflight. It creates characters through the normal authenticated character handler and emits a private credential manifest.
+
+Provisioning is a separate, explicitly authorized operation. Do not create accounts, mutate Staging D1, enable/deploy the provisioner, or run a load test while implementing or reviewing the tool. Before any later use, confirm the live Staging Worker/D1 identity and isolation gates in this plan, then obtain separate Owner authorization for the actual provisioning/load run.
