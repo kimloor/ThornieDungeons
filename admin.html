@@ -34,6 +34,8 @@
   .matRow input, .lootRow input, .lootRow select { flex: 1; }
   .matRow button, .lootRow button, .rowActions button { background: #d9534f; color: #fff; border: none; border-radius: 6px; padding: 5px 9px; font-size: 12px; cursor: pointer; }
   .rowActions { display: flex; gap: 6px; }
+  .seedBar { position: sticky; bottom: 0; background: #1c1f2b; border-top: 1px solid #3a4756; padding: 12px; margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .seedActions { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-top: 12px; }
   .rowActions .edit { background: #3a5ac9; }
   .btn-add { background: #2f7d4f; margin-top: 4px; }
   .btn-primary { background: #3a5ac9; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-top: 6px; }
@@ -111,6 +113,7 @@
   <div class="tab" data-tab="monsters">Monster Drops</div>
   <div class="tab" data-tab="junk">Junk Info</div>
   <div class="tab" data-tab="audit">Audit Log</div>
+  <div class="tab" data-tab="seed">Seed (QA)</div>
 </div>
 
 <main>
@@ -337,6 +340,70 @@
       <div class="msg" id="junkInfoMsg"></div>
     </div>
   </section>
+  <!-- ===================== SEED (QA) TAB — W2-H H1 ===================== -->
+  <section id="tab-seed">
+    <div class="card">
+      <h2>Admin QA Seed <span class="pill">PRODUCTION</span></h2>
+      <div class="muted">เพิ่มข้อมูลให้ตัวละครทดสอบบน Production (เพิ่มได้อย่างเดียว ไม่มีการลด) ทุกครั้งต้องพรีวิวก่อนยืนยัน และถูกบันทึกใน Audit Log ปิดอยู่จนกว่า game_config admin_seed_enabled = true</div>
+      <div class="playerSearchRow">
+        <input id="seedUsername" placeholder="username (Player ID) เช่น claude" autocomplete="off">
+        <button class="btn-primary" id="seedSearchBtn" type="button" style="margin-top:0;">ค้นหา</button>
+      </div>
+      <div class="msg" id="seedMsg"></div>
+    </div>
+
+    <div class="card" id="seedCharsCard" style="display:none;">
+      <h2>ตัวละครในบัญชีนี้</h2>
+      <div id="seedAccountMeta" class="viewerMeta"></div>
+      <div class="scrollTable">
+        <table id="seedCharTable">
+          <thead><tr><th>ชื่อ</th><th>Lv</th><th>Gold</th><th>ชั้นที่ปลดล็อก</th><th>สร้างเมื่อ</th><th>Active ล่าสุด</th><th>สถานะ</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="seedFormCard" style="display:none;">
+      <h2>Seed: <span id="seedTargetName"></span></h2>
+      <div id="seedTargetMeta" class="viewerMeta"></div>
+      <div class="msg err" id="seedTargetWarn"></div>
+      <div class="card">
+        <label><input type="checkbox" id="seedGoldOn" checked> <b>Gold</b> <span class="muted">เพิ่มได้ 1–100,000 ต่อครั้ง</span></label>
+        <div class="field"><input type="number" id="seedGoldAmount" min="1" max="100000" step="1" value="1000" aria-label="จำนวนทองที่เพิ่ม"></div>
+      </div>
+      <div class="muted">การ์ดอื่น (Level, ชั้น, Diamond, Potion, วัสดุ, Pet, Equipment) จะเพิ่มใน H2/H3</div>
+      <div class="seedBar">
+        <div class="muted" id="seedSummary"></div>
+        <div class="field"><label for="seedFormReason">เหตุผล (5–300 ตัวอักษร)</label><input id="seedFormReason" maxlength="300" autocomplete="off"></div>
+        <div class="seedActions">
+          <button class="ghost" id="seedBackToCharsBtn" type="button">← เปลี่ยนตัวละคร</button>
+          <button class="btn-primary" id="seedPreviewBtn" type="button">พรีวิวทั้งหมด</button>
+        </div>
+        <div class="msg" id="seedFormMsg"></div>
+      </div>
+    </div>
+
+    <div class="card" id="seedPreviewCard" style="display:none;">
+      <h2>พรีวิว Seed <span class="pill" id="seedPreviewTarget"></span></h2>
+      <div class="viewerMeta mono" id="seedPreviewIds"></div>
+      <div class="msg err" id="seedPreviewNonQa"></div>
+      <div class="msg err" id="seedPreviewWarn"></div>
+      <div class="scrollTable">
+        <table id="seedPreviewTable">
+          <thead><tr><th>หมวด</th><th>ก่อน</th><th>หลัง</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="muted">ตรวจแล้ว: ไม่มี operation ค้าง · ไม่มี run ภายใน 30 นาที · ทุกรายการสำเร็จพร้อมกันหรือไม่สำเร็จเลย · ไม่มีปุ่มลดข้อมูล</div>
+      <div class="field"><label for="seedReason">เหตุผล (5–300 ตัวอักษร)</label><input id="seedReason" maxlength="300" autocomplete="off"></div>
+      <div class="seedActions">
+        <button class="ghost" id="seedBackBtn" type="button">← Back</button>
+        <button class="btn-primary" id="seedConfirmBtn" type="button" disabled>ยืนยัน seed</button>
+      </div>
+      <div class="msg" id="seedPreviewMsg"></div>
+    </div>
+  </section>
+
 </main>
 </div>
 

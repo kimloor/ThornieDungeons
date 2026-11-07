@@ -296,3 +296,40 @@ test("A1: a concurrent duplicate request (same requestId) cannot delete twice: l
   assert.equal(JSON.parse(db.raw.prepare("SELECT extra_json FROM items WHERE item_id='junk1'").get().extra_json).quantity, 5);
   assert.equal(audits(db).length, 1);
 });
+
+test("W2F-1: a requestId is bound to its request; reuse for another item or quantity is 409 request_id_conflict and deletes nothing", async () => {
+  const db = createDb();
+  const pvGear = await preview(db, "gear1");
+  const first = await j(await h.handleAdminDeleteItem(db, ADMIN, { playerId: "P1", characterId: "c1", itemId: "gear1", reason: "player requested removal", confirmText: "gear1", snapshotHash: pvGear.snapshotHash, requestId: "req-bound-abcdefgh" }));
+  assert.equal(first.ok, true);
+  const pvJunk = await preview(db, "junk1", { quantity: "2" });
+  const other = await j(await h.handleAdminDeleteItem(db, ADMIN, { playerId: "P1", characterId: "c1", itemId: "junk1", quantity: 2, reason: "player requested removal", confirmText: "junk1", snapshotHash: pvJunk.snapshotHash, requestId: "req-bound-abcdefgh" }));
+  assert.equal(other.status, 409); assert.equal(other.error, "request_id_conflict");
+  assert.equal(JSON.parse(db.raw.prepare("SELECT extra_json FROM items WHERE item_id='junk1'").get().extra_json).quantity, 7);
+  assert.equal(audits(db).length, 1);
+  assert.match(JSON.parse(audits(db)[0].metadata_json).requestHash, /^[0-9a-f]{64}$/);
+  // identical replay still succeeds as already_applied
+  const replay = await j(await h.handleAdminDeleteItem(db, ADMIN, { playerId: "P1", characterId: "c1", itemId: "gear1", reason: "player requested removal", confirmText: "gear1", snapshotHash: pvGear.snapshotHash, requestId: "req-bound-abcdefgh" }));
+  assert.equal(replay.already_applied, true);
+});
+
+test("W2F-1: same item with a different quantity under one requestId is request_id_conflict", async () => {
+  const db = createDb();
+  const pv2 = await preview(db, "junk1", { quantity: "2" });
+  const body = { playerId: "P1", characterId: "c1", itemId: "junk1", reason: "player requested removal", confirmText: "junk1", requestId: "req-qty-abcdefgh" };
+  assert.equal((await j(await h.handleAdminDeleteItem(db, ADMIN, { ...body, quantity: 2, snapshotHash: pv2.snapshotHash }))).ok, true);
+  const r = await j(await h.handleAdminDeleteItem(db, ADMIN, { ...body, quantity: 3, snapshotHash: pv2.snapshotHash }));
+  assert.equal(r.error, "request_id_conflict");
+  assert.equal(JSON.parse(db.raw.prepare("SELECT extra_json FROM items WHERE item_id='junk1'").get().extra_json).quantity, 5);
+});
+
+test("W2F-1: legacy audit rows without requestHash fall back to comparing the target item", async () => {
+  const db = createDb();
+  db.raw.prepare("INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) VALUES ('adm-del-req-legacy-abcdefgh','Admin_1','ADMIN_ITEM_DELETE','item','gear1','{}','t')").run();
+  const pv = await preview(db, "gear1");
+  const same = await j(await h.handleAdminDeleteItem(db, ADMIN, { playerId: "P1", characterId: "c1", itemId: "gear1", reason: "player requested removal", confirmText: "gear1", snapshotHash: pv.snapshotHash, requestId: "req-legacy-abcdefgh" }));
+  assert.equal(same.already_applied, true);
+  const pvJ = await preview(db, "junk1");
+  const diff = await j(await h.handleAdminDeleteItem(db, ADMIN, { playerId: "P1", characterId: "c1", itemId: "junk1", reason: "player requested removal", confirmText: "junk1", snapshotHash: pvJ.snapshotHash, requestId: "req-legacy-abcdefgh" }));
+  assert.equal(diff.error, "request_id_conflict");
+});
