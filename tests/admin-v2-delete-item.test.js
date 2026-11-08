@@ -323,26 +323,48 @@ test("W2F-1: same item with a different quantity under one requestId is request_
   assert.equal(JSON.parse(db.raw.prepare("SELECT extra_json FROM items WHERE item_id='junk1'").get().extra_json).quantity, 5);
 });
 
-test("W2F-1: legacy audit rows without requestHash fall back to comparing the target item", async () => {
-  const db = createDb();
-  db.raw.prepare("INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) VALUES ('adm-del-req-legacy-abcdefgh','Admin_1','ADMIN_ITEM_DELETE','item','gear1','{}','t')").run();
-  const pv = await preview(db, "gear1");
-  const same = await j(await h.handleAdminDeleteItem(db, ADMIN, { playerId: "P1", characterId: "c1", itemId: "gear1", reason: "player requested removal", confirmText: "gear1", snapshotHash: pv.snapshotHash, requestId: "req-legacy-abcdefgh" }));
-  assert.equal(same.already_applied, true);
-  const pvJ = await preview(db, "junk1");
-  const diff = await j(await h.handleAdminDeleteItem(db, ADMIN, { playerId: "P1", characterId: "c1", itemId: "junk1", reason: "player requested removal", confirmText: "junk1", snapshotHash: pvJ.snapshotHash, requestId: "req-legacy-abcdefgh" }));
-  assert.equal(diff.error, "request_id_conflict");
+// W2F-1 legacy fallback is fail-closed: a row without requestHash must record player, character, item and the resolved quantity.
+const legacyRow = (db, id, targetId, before) => db.raw.prepare("INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) VALUES (?,'Admin_1','ADMIN_ITEM_DELETE','item',?,?,'t')").run(`adm-del-${id}`, targetId, JSON.stringify({ outcome: "ok", before, changedKeys: ["quantity"] }));
+const junkBefore = (over = {}) => ({ playerId: "P1", characterId: "c1", itemId: "junk1", quantityRequested: 2, item: { item_id: "junk1", slot_type: "junk", extra_json: { junkId: "scrap", quantity: 7 } }, ...over });
+const replay = async (db, id, over = {}) => {
+  const auditsBefore = audits(db).length;
+  const r = await j(await h.handleAdminDeleteItem(db, ADMIN, { playerId: "P1", characterId: "c1", itemId: "junk1", reason: "player requested removal", confirmText: "junk1", snapshotHash: "a".repeat(64), requestId: id, ...over }));
+  assert.equal(audits(db).length, auditsBefore, "replay must not write an audit row");
+  assert.equal(JSON.parse(db.raw.prepare("SELECT extra_json FROM items WHERE item_id='junk1'").get().extra_json).quantity, 7, "replay must not delete anything");
+  return r;
+};
+
+test("W2F-1 legacy: matching player/character/item/quantity is already_applied and writes nothing", async () => {
+  const db = createDb(); legacyRow(db, "req-lg-same-abcd", "junk1", junkBefore());
+  assert.equal((await replay(db, "req-lg-same-abcd", { quantity: 2 })).already_applied, true);
 });
 
-test("W2F-1: legacy audit row (no requestHash) with a recorded snapshot also compares player, character and quantity", async () => {
+test("W2F-1 legacy: different quantity, player or character -> request_id_conflict", async () => {
+  const db = createDb(); legacyRow(db, "req-lg-diff-abcd", "junk1", junkBefore());
+  assert.equal((await replay(db, "req-lg-diff-abcd", { quantity: 3 })).error, "request_id_conflict");
+  assert.equal((await replay(db, "req-lg-diff-abcd", { quantity: 2, playerId: "P2" })).error, "request_id_conflict");
+  assert.equal((await replay(db, "req-lg-diff-abcd", { quantity: 2, characterId: "c9" })).error, "request_id_conflict");
+  assert.equal((await replay(db, "req-lg-diff-abcd", { quantity: 2, itemId: "gear1", confirmText: "gear1" })).error, "request_id_conflict");
+});
+
+test("W2F-1 legacy: a request without quantity means the whole stack, never a wildcard", async () => {
   const db = createDb();
-  const meta = JSON.stringify({ outcome: "ok", before: { playerId: "P1", characterId: "c1", itemId: "junk1", quantityRequested: 2 }, changedKeys: ["quantity"] });
-  db.raw.prepare("INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) VALUES ('adm-del-req-legacy2-abcdefgh','Admin_1','ADMIN_ITEM_DELETE','item','junk1',?,'t')").run(meta);
-  const pv = await preview(db, "junk1", { quantity: "3" });
-  const body = { playerId: "P1", characterId: "c1", itemId: "junk1", reason: "player requested removal", confirmText: "junk1", snapshotHash: pv.snapshotHash, requestId: "req-legacy2-abcdefgh" };
-  const diffQty = await j(await h.handleAdminDeleteItem(db, ADMIN, { ...body, quantity: 3 }));
-  assert.equal(diffQty.error, "request_id_conflict");
-  const same = await j(await h.handleAdminDeleteItem(db, ADMIN, { ...body, quantity: 2 }));
-  assert.equal(same.already_applied, true);
-  assert.equal(JSON.parse(db.raw.prepare("SELECT extra_json FROM items WHERE item_id='junk1'").get().extra_json).quantity, 7);
+  legacyRow(db, "req-lg-part-abcd", "junk1", junkBefore());                       // recorded 2 of 7
+  assert.equal((await replay(db, "req-lg-part-abcd")).error, "request_id_conflict");
+  legacyRow(db, "req-lg-whole-abcd", "junk1", junkBefore({ quantityRequested: 7 })); // recorded the whole stack
+  assert.equal((await replay(db, "req-lg-whole-abcd")).already_applied, true);
+  assert.equal((await replay(db, "req-lg-whole-abcd", { quantity: null })).already_applied, true);
+  assert.equal((await replay(db, "req-lg-whole-abcd", { quantity: 3 })).error, "request_id_conflict");
+});
+
+test("W2F-1 legacy: rows that do not record the needed fields are a conflict (fail-closed)", async () => {
+  const db = createDb();
+  db.raw.prepare("INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) VALUES ('adm-del-req-lg-empty-abcd','Admin_1','ADMIN_ITEM_DELETE','item','junk1','{}','t')").run();
+  assert.equal((await replay(db, "req-lg-empty-abcd", { quantity: 2 })).error, "request_id_conflict");
+  legacyRow(db, "req-lg-noqty-abcd", "junk1", { ...junkBefore(), quantityRequested: undefined });
+  assert.equal((await replay(db, "req-lg-noqty-abcd", { quantity: 2 })).error, "request_id_conflict");
+  legacyRow(db, "req-lg-nosnap-abcd", "junk1", { ...junkBefore(), item: undefined });
+  assert.equal((await replay(db, "req-lg-nosnap-abcd")).error, "request_id_conflict");
+  legacyRow(db, "req-lg-noplayer-abcd", "junk1", { ...junkBefore(), playerId: undefined });
+  assert.equal((await replay(db, "req-lg-noplayer-abcd", { quantity: 2 })).error, "request_id_conflict");
 });
