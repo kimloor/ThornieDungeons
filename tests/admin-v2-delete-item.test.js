@@ -333,3 +333,16 @@ test("W2F-1: legacy audit rows without requestHash fall back to comparing the ta
   const diff = await j(await h.handleAdminDeleteItem(db, ADMIN, { playerId: "P1", characterId: "c1", itemId: "junk1", reason: "player requested removal", confirmText: "junk1", snapshotHash: pvJ.snapshotHash, requestId: "req-legacy-abcdefgh" }));
   assert.equal(diff.error, "request_id_conflict");
 });
+
+test("W2F-1: legacy audit row (no requestHash) with a recorded snapshot also compares player, character and quantity", async () => {
+  const db = createDb();
+  const meta = JSON.stringify({ outcome: "ok", before: { playerId: "P1", characterId: "c1", itemId: "junk1", quantityRequested: 2 }, changedKeys: ["quantity"] });
+  db.raw.prepare("INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) VALUES ('adm-del-req-legacy2-abcdefgh','Admin_1','ADMIN_ITEM_DELETE','item','junk1',?,'t')").run(meta);
+  const pv = await preview(db, "junk1", { quantity: "3" });
+  const body = { playerId: "P1", characterId: "c1", itemId: "junk1", reason: "player requested removal", confirmText: "junk1", snapshotHash: pv.snapshotHash, requestId: "req-legacy2-abcdefgh" };
+  const diffQty = await j(await h.handleAdminDeleteItem(db, ADMIN, { ...body, quantity: 3 }));
+  assert.equal(diffQty.error, "request_id_conflict");
+  const same = await j(await h.handleAdminDeleteItem(db, ADMIN, { ...body, quantity: 2 }));
+  assert.equal(same.already_applied, true);
+  assert.equal(JSON.parse(db.raw.prepare("SELECT extra_json FROM items WHERE item_id='junk1'").get().extra_json).quantity, 7);
+});

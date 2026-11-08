@@ -8644,8 +8644,9 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
   // The requestId is bound to the exact request (player, character, item, requested quantity): an identical
   // replay is already_applied, anything else with the same requestId is 409 request_id_conflict (W2F-1).
   const requestHash = await adminItemSnapshotHash({ request: JSON.stringify(adminSeedCanonical({ playerId, characterId, itemId, quantity: quantity ?? null })) });
+  const replayRequest = { playerId, characterId, itemId, quantity: quantity ?? null };
   const prior = await db.prepare(`SELECT target_id, metadata_json FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
-  if (prior) return adminDeleteReplayResponse(prior, requestHash, itemId);
+  if (prior) return adminDeleteReplayResponse(prior, requestHash, replayRequest);
 
   const row = await loadAdminItemTriple(db, playerId, characterId, itemId);
   if (!row) return json({ error: "item_not_found" }, 404);
@@ -8690,7 +8691,7 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
   } catch (error) {
     if (isAdminAuditDuplicate(error)) {
       const settled = await db.prepare(`SELECT target_id, metadata_json FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
-      if (settled) return adminDeleteReplayResponse(settled, requestHash, itemId);
+      if (settled) return adminDeleteReplayResponse(settled, requestHash, replayRequest);
     }
     console.error("admin_audit_failed", "ADMIN_ITEM_DELETE", error && error.message);
     return json({ error: "admin_audit_failed" }, 500);
@@ -8698,7 +8699,7 @@ async function handleAdminDeleteItem(db, adminAuth, body) {
   if (Number(results?.[2]?.meta?.changes) !== 1) {
     // The guard refused. If a concurrent request with the same id already applied, say so.
     const settled = await db.prepare(`SELECT target_id, metadata_json FROM admin_audit_log WHERE audit_id = ?`).bind(auditId).first();
-    if (settled) return adminDeleteReplayResponse(settled, requestHash, itemId);
+    if (settled) return adminDeleteReplayResponse(settled, requestHash, replayRequest);
     // Otherwise report the precise reason when it is an activity block, else a state change.
     const now2 = await loadAdminItemTriple(db, playerId, characterId, itemId);
     const reason2 = now2 ? await adminItemBlockedReason(db, now2, characterId) : null;
@@ -9009,11 +9010,22 @@ async function adminSeedRequestHash(body) {
   return adminItemSnapshotHash({ request: JSON.stringify(adminSeedCanonical({ playerId: body?.playerId, characterId: body?.characterId, ops: body?.ops })) });
 }
 // W2-F replay: identical request -> already_applied; same requestId for another item/quantity -> 409 request_id_conflict.
-// Audit rows written before requestHash existed fall back to comparing the target item only.
-function adminDeleteReplayResponse(prior, requestHash, itemId) {
-  let recorded = null;
-  try { recorded = JSON.parse(prior.metadata_json || "{}").requestHash || null; } catch (_) { recorded = null; }
-  const same = recorded ? recorded === requestHash : prior.target_id === itemId;
+// Audit rows written before requestHash existed fall back to comparing what the row recorded: the target item
+// always, plus player, character and requested quantity whenever the legacy snapshot (metadata.before) has them.
+// A field the legacy row does not record cannot be compared and is not treated as a mismatch.
+function adminDeleteReplayResponse(prior, requestHash, request) {
+  let meta = {};
+  try { meta = JSON.parse(prior.metadata_json || "{}") || {}; } catch (_) { meta = {}; }
+  let same;
+  if (meta.requestHash) {
+    same = meta.requestHash === requestHash;
+  } else {
+    const before = meta.before && typeof meta.before === "object" ? meta.before : {};
+    same = prior.target_id === request.itemId
+      && (before.playerId === undefined || before.playerId === request.playerId)
+      && (before.characterId === undefined || before.characterId === request.characterId)
+      && (request.quantity === null || before.quantityRequested === undefined || before.quantityRequested === request.quantity);
+  }
   return same ? json({ ok: true, already_applied: true }) : json({ error: "request_id_conflict" }, 409);
 }
 
