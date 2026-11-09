@@ -8,6 +8,7 @@ class HeroActor extends PhaserBattleActor {
       displaySize: () => this.displaySize(),
       textureKey: reference => this.scene.assetKey(reference)
     });
+    this.enhancementAuraRenderer = new EnhancementAuraRenderer(scene, this.visualRoot, () => this.displaySize());
   }
 
   isV5Presentation() {
@@ -39,9 +40,12 @@ class HeroActor extends PhaserBattleActor {
 
   applyVisualFrame(state, index = 0) {
     this.heroRenderer?.setData(this.data).applyVisualFrame(state, index);
+    this.enhancementAuraRenderer?.update(this.data?.enhancementAura, this.heroRenderer);
   }
 
   destroy() {
+    this.enhancementAuraRenderer?.destroy();
+    this.enhancementAuraRenderer = null;
     this.heroRenderer?.destroy();
     this.heroRenderer = null;
     super.destroy();

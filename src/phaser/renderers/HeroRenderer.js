@@ -16,6 +16,7 @@ class HeroRenderer {
     this.displaySizeSource = displaySize;
     this.textureKeySource = textureKey;
     this.layerImages = [];
+    this.currentLayers = [];
     this.destroyed = false;
   }
 
@@ -70,6 +71,7 @@ class HeroRenderer {
   applyVisualFrame(state, index = 0) {
     const frames = this.layerSetForState(state);
     const layers = frames[Math.min(Math.max(0, index), Math.max(0, frames.length - 1))] || this.data.layers || [];
+    this.currentLayers = layers;
     this.ensureLayerImages(layers);
     const size = this.displaySize();
     const canvasWidth = Math.max(1, Number(this.data.layerFrames?.canvas?.width) || 1254);
@@ -105,6 +107,7 @@ class HeroRenderer {
     this.destroyed = true;
     this.layerImages.forEach(entry => entry.image?.destroy());
     this.layerImages = [];
+    this.currentLayers = [];
     if (this.ownsRoot) this.root?.destroy(true);
     this.root = null;
     this.scene = null;

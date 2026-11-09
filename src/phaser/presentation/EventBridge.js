@@ -140,7 +140,8 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
       combatSpeed: Math.max(1, Math.min(2, Number(combatSpeed) || 1)),
       visualMode: heroFrames.mode || "v3",
       layers: heroLayers,
-      layerFrames: heroFrames
+      layerFrames: heroFrames,
+      enhancementAura: resolveEnhancementAura(equipped)
     },
     pet: pet ? {
       ...pet,
@@ -353,7 +354,8 @@ function buildArenaBattlefieldSnapshot({
         combatSpeed: speed,
         visualMode: heroFrames.mode || "v3",
         layers: heroFrames.idle?.[0] || [],
-        layerFrames: heroFrames
+        layerFrames: heroFrames,
+        enhancementAura: role === "attacker" ? resolveEnhancementAura(equipped) : null
       } : null,
       pet: pet ? {
         ...pet,
