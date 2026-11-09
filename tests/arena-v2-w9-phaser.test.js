@@ -134,6 +134,7 @@ test("W9.2 Arena snapshot supports mirrored Hero+Pet teams and shared assets", (
 test("W9.2 Arena snapshot supports Hero-only teams", () => {
   const model = source("src/phaser/presentation/ActorPresentationModel.js");
   const adapter = source("src/phaser/presentation/EventBridge.js");
+  const aura = source("src/phaser/presentation/EnhancementAura.js");
   const context = {
     SHARED_PHASER_ASSET_RESOLVER: {
       resolve: value => value || "",
@@ -171,6 +172,7 @@ test("W9.2 Arena snapshot supports Hero-only teams", () => {
 test("W9.10 Arena snapshot carries authoritative action cues in log order", () => {
   const model = source("src/phaser/presentation/ActorPresentationModel.js");
   const adapter = source("src/phaser/presentation/EventBridge.js");
+  const aura = source("src/phaser/presentation/EnhancementAura.js");
   const context = {
     SHARED_PHASER_ASSET_RESOLVER: {
       resolve: value => value || "",
