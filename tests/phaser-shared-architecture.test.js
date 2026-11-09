@@ -546,6 +546,7 @@ test("W7 Hero V5 runtime contract loads before the battle adapter", () => {
 });
 
 test("W7.2 semantic snapshot builds synchronized V5 Base + Wing frames and preserves V3 fallback", () => {
+  const auraSource = source("src/phaser/presentation/EnhancementAura.js");
   const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
   const adapterSource = source("src/phaser/presentation/EventBridge.js");
   const frameIds = ["idle_01","idle_02","idle_03","attack_01","attack_02","attack_03","death_01","death_02"];
@@ -591,7 +592,7 @@ test("W7.2 semantic snapshot builds synchronized V5 Base + Wing frames and prese
     resolveHeroV3Layers: () => [{ name: "base", url: "/assets/v3/base.png", x: 0, y: 0, scale: 1, rotation: 0 }]
   };
   vm.createContext(context);
-  vm.runInContext(`${contractSource}\n${adapterSource}; this.v5 = buildBattlefieldSnapshot({
+  vm.runInContext(`${auraSource}\n${contractSource}\n${adapterSource}; this.v5 = buildBattlefieldSnapshot({
     battleState: { heroId: "hero", units: { hero: { id: "hero", kind: "hero", hp: 100, maxHp: 100 } } },
     equipped: { wings: { id: "angel" } },
     heroV5: true
@@ -744,6 +745,7 @@ test("W7.3 Azure layer selection follows slot ownership and authored draw order"
 });
 
 test("W7.3 full Azure snapshot composes Base plus seven equipment layers inside Wing R5", () => {
+  const auraSource = source("src/phaser/presentation/EnhancementAura.js");
   const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
   const adapterSource = source("src/phaser/presentation/EventBridge.js");
   const frameIds = ["idle_01","idle_02","idle_03","attack_01","attack_02","attack_03","death_01","death_02"];
@@ -800,7 +802,7 @@ test("W7.3 full Azure snapshot composes Base plus seven equipment layers inside 
     resolveHeroV3Layers: () => [{ name: "base", url: "/assets/v3/base.png", x: 0, y: 0, scale: 1, rotation: 0 }]
   };
   vm.createContext(context);
-  vm.runInContext(`${contractSource}\n${adapterSource}; this.snapshot = buildBattlefieldSnapshot({
+  vm.runInContext(`${auraSource}\n${contractSource}\n${adapterSource}; this.snapshot = buildBattlefieldSnapshot({
     battleState: { heroId: "hero", units: { hero: { id: "hero", kind: "hero", hp: 100, maxHp: 100 } } },
     heroV5: true
   });`, context);

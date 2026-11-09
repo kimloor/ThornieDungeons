@@ -119,7 +119,7 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.45", date: "2026-11-05", title: "เตรียมเครื่องมือทดสอบหลังบ้าน",
+      version: "1.1.47", date: "2026-11-09", title: "เตรียมเครื่องมือทดสอบหลังบ้าน",
       items: ["เตรียมเครื่องมือสำหรับผู้ดูแลระบบเพื่อใช้ทดสอบระบบกับบัญชีทดสอบ (ยังปิดใช้งานอยู่) ไม่มีการเปลี่ยนแปลงต่อการเล่นหรือข้อมูลตัวละครของผู้เล่น"]
     },
     history: [

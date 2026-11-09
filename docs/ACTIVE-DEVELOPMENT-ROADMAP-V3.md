@@ -225,7 +225,7 @@ Graphics dependency: **G15 Player Information Center UI Pack** provides the shar
 **Later main baseline:** Ver 1.1.15 / Client Systems PR-D merged after that review; the above 804/804 count applies to Ver 1.1.14 and must not be misreported as the Ver 1.1.15 test result.
 
 ### WAVE 2 — Admin V2 Expansion
-**Status: CONTRACTS (ADMIN-V2.md section 22) APPROVED; W2-A (Ver 1.1.20), W2-C (no version bump), W2-D (Ver 1.1.21) and W2-E (Ver 1.1.22) MERGED; W2-F (#161) merged DISABLED (Ver 1.1.23); W2-G restore-from-audit (#165) merged DISABLED (Ver 1.1.24, same flag); security hardening #182 merged (ec02c8b, 2026-11-03); W2-F/W2-G release gate NOT passed, flag `admin_item_delete_enabled` OFF; W2-H H1 Admin QA Seed (Gold canary, flag `admin_seed_enabled` OFF, Ver 1.1.45) in PR #202 awaiting independent re-review; PR #185 (staging QA workflow) closed WITHOUT merge by Owner decision (QA moved to Production with designated accounts, see PRODUCTION-QA-POLICY-V1.md). ADDITIONAL TOOLS PENDING DESIGN (2026-10-27)**
+**Status: CONTRACTS (ADMIN-V2.md section 22) APPROVED; W2-A (Ver 1.1.20), W2-C (no version bump), W2-D (Ver 1.1.21) and W2-E (Ver 1.1.22) MERGED; W2-F merged DISABLED (Ver 1.1.23); W2-G restore-from-audit in PR (Ver 1.1.24, same flag); ADDITIONAL TOOLS PENDING DESIGN (2026-10-27)**
 **Contract/design record:** `docs/ADMIN-V2.md` sections 21-22; Claude read-only audit Issue #144.
 
 - **W2-A — mutation audit logging (approved):** cover all current Admin data mutations, with actor, action, target, sanitized change detail and reliable persistence. Revalidate the eight unaudited mutation actions reported in Issue #144 against the latest code.
@@ -359,7 +359,7 @@ Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
                      ↓
 Gate C — Ver 1.1.0 Release Acceptance            ✅ COMPLETE (2026-10-20)
                      ↓
-Visible game version                             Ver 1.1.45
+Visible game version                             Ver 1.1.47
                      ↓
 NEW WAVE 1 — Global Loading System V1         ✅ COMPLETE (Ver 1.1.1)
                      ↓
@@ -413,7 +413,7 @@ Completed and merged:
 - Durable per-action receipts; Potion inventory decrement, authority transition and receipt commit in one D1 batch.
 - Potion preflight remains read-only; stale revisions do not consume inventory; one-time per-character Potion request IDs prevent replay.
 - Historical consumed Potion requests remain replay-protected.
-- HP/MP carry source is restricted to the Character's latest settled Victory, with same-Floor retry or immediate next-Floor progression only; stale/cross-character/cross-floor references are rejected.
+- **Universal settled-battle resource carry — COMPLETE / MERGED (PR #204, Ver 1.1.46; merge `841a4ca`).** Worker validates the latest settled completion for the authenticated Character and matching Battle Authority receipt. Victory/Fled carry server-authoritative Hero HP/SP and same-active-Pet HP to any unlocked Dungeon floor or Halloween; Defeat starts the next battle at full resources. Same/previous/next/distant unlocked floor selection and Dungeon/Event/Halloween routing are covered by focused regression. Stale, foreign-character, in-progress, unsettled and malformed tokens are rejected; the client submits only `previousBattleId`, never HP/SP/Pet HP. See `BATTLE-SYSTEM-V1.md` §27 and `H01-HALLOWEEN-EVENT-V1.md` resource-carry integration note.
 
 Verification:
 - Battle Core parity exact-head security run [#41433194956](https://github.com/kimloor/ThornieDungeons/actions/runs/41433194956) PASS; branch-associated run [#41433203981](https://github.com/kimloor/ThornieDungeons/actions/runs/41433203981) PASS.

@@ -50,6 +50,18 @@ test("guide: structure, unique ids, every topic has readable blocks", () => {
   });
 });
 
+test("guide: Refine includes the approved cosmetic Enhancement Aura rules", () => {
+  const refine = INFO_GUIDE.topics.find(topic => topic.id === "refine");
+  assert.ok(refine, "existing refine topic id is preserved");
+  const auraBlock = refine.blocks.find(block => block.heading === "ออร่าจากการตีบวก");
+  assert.ok(auraBlock);
+  const copy = auraBlock.body.join(" ");
+  assert.match(copy, /ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้/);
+  assert.match(copy, /หมวก ชุดเกราะ ถุงมือ และรองเท้า/);
+  assert.match(copy, /อาวุธ ปีก และเครื่องประดับไม่นำมาคำนวณ/);
+  assert.match(auraBlock.rows[0][1], /\+4: Stage 1.*\+10: Stage 4/);
+});
+
 test("guide section is wired into the Information Center with deep links", () => {
   const section = infoFindSection("guide");
   assert.equal(section.kind, "guide");

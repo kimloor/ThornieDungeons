@@ -111,7 +111,7 @@ Design mockup: Claude Design canvas "Admin QA Seed (W2-H) — Page Design" (3 bo
 - Version bump on shipped H1/H2/H3; tests need `item_provenance` / `item_ownership_events` tables; register new error codes in the admin client.
 - Provenance origin type `admin_seed`, ownership event type `admin_seeded`.
 
-## 10. H1 implementation record (Ver 1.1.45, PR #202, branch `feat/w2h-h1-admin-seed-shell`)
+## 10. H1 implementation record (Ver 1.1.47 after syncing with main 1.1.46; was 1.1.45 when staging-tested, PR #202, branch `feat/w2h-h1-admin-seed-shell`)
 Shipped DISABLED (`game_config.admin_seed_enabled` absent = off). Scope: framework + `gold` canary only. Independent review (2026-11-03) found P1-A..D and P2-A..C; all addressed below and awaiting independent re-review.
 
 **API**
@@ -185,3 +185,8 @@ Workflow `prod-d1-restore-point.yml` (QA branch) ran `wrangler d1 time-travel in
 - Run `42542285158` (workflow commit `6eb78d83`, branch `qa/h1-w2fg-staging-d1`); code deployed and tested `9797e405` (= PR head at dispatch); staging Worker version `3b253037-bd9b-4aed-be20-8f1917eb2762`; staging D1 `c16e0b11-cf83-468c-a533-0ecbf522082f`; evidence branch commit `a52945ad` (`qa-evidence/h1-w2fg-42542285158`).
 - `evidence.json`: 34/34 PASS, 129 checks, none failed (33 earlier scenarios re-run on the new code plus scenario 34). Scenario 34 (synthetic QA rows only): match -> `already_applied`; different quantity / player / character -> 409; null quantity vs recorded partial -> 409 (not a wildcard); null vs recorded whole stack -> `already_applied`; empty metadata and missing `quantityRequested` -> 409; stack stayed 7; no new audit row or ownership event.
 - Artifact zip was not downloadable from the review sandbox (NOT VERIFIED); `evidence.json` was read from the evidence branch copy. Still no Production QA, no Production UI QA, flag OFF.
+
+### P2 fix and main sync (2026-11-09)
+- `adminLegacyWholeStack` resolves the whole-stack quantity of a legacy snapshot (`metadata.before.item`) with the same rule as `adminItemStackInfo`: stackable slots use `extra_json.quantity` (> 0) else the `quantity` column, a non-stackable item is never a stack, malformed or missing quantity sources and a missing `before.itemId` fail closed (409). A request without quantity is still "whole stack", never a wildcard.
+- Synced with `main` `2ff9899d` (Ver 1.1.46) by a normal merge (no force push); the only conflicts were version files, roadmap line and the version test, resolved to main's content and bumped to Ver 1.1.47. Generated `index.html` rebuilt with `node build.js`.
+- The staging evidence above (run 42542285158, scenario 34) tested code `9797e405`. It does NOT cover the P2 resolver change or the merge with main; real-D1 evidence for those is NOT VERIFIED until a new staging run is recorded.

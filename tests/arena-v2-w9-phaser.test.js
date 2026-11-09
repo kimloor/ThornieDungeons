@@ -72,6 +72,7 @@ test("W9.2 Arena layout mirrors current Dungeon Hero/Pet baseline", () => {
 test("W9.2 Arena snapshot supports mirrored Hero+Pet teams and shared assets", () => {
   const model = source("src/phaser/presentation/ActorPresentationModel.js");
   const adapter = source("src/phaser/presentation/EventBridge.js");
+  const aura = source("src/phaser/presentation/EnhancementAura.js");
   const context = {
     SHARED_PHASER_ASSET_RESOLVER: {
       resolve: value => value ? `/assets/${String(value).replace(/^\/+/, "")}` : "",
@@ -92,7 +93,7 @@ test("W9.2 Arena snapshot supports mirrored Hero+Pet teams and shared assets", (
     isHeroV5RuntimeEnabled: () => false
   };
   vm.createContext(context);
-  vm.runInContext(`${model}\n${adapter}; this.snapshot = buildArenaBattlefieldSnapshot({
+  vm.runInContext(`${aura}\n${model}\n${adapter}; this.snapshot = buildArenaBattlefieldSnapshot({
     battleState: {
       battleId: "arena-1",
       safeActionSeq: 7,
@@ -133,6 +134,7 @@ test("W9.2 Arena snapshot supports mirrored Hero+Pet teams and shared assets", (
 test("W9.2 Arena snapshot supports Hero-only teams", () => {
   const model = source("src/phaser/presentation/ActorPresentationModel.js");
   const adapter = source("src/phaser/presentation/EventBridge.js");
+  const aura = source("src/phaser/presentation/EnhancementAura.js");
   const context = {
     SHARED_PHASER_ASSET_RESOLVER: {
       resolve: value => value || "",
@@ -149,7 +151,7 @@ test("W9.2 Arena snapshot supports Hero-only teams", () => {
     isHeroV5RuntimeEnabled: () => false
   };
   vm.createContext(context);
-  vm.runInContext(`${model}\n${adapter}; this.snapshot = buildArenaBattlefieldSnapshot({
+  vm.runInContext(`${aura}\n${model}\n${adapter}; this.snapshot = buildArenaBattlefieldSnapshot({
     battleState: {
       controlledSide: "a",
       teamIds: ["a", "b"],
@@ -170,6 +172,7 @@ test("W9.2 Arena snapshot supports Hero-only teams", () => {
 test("W9.10 Arena snapshot carries authoritative action cues in log order", () => {
   const model = source("src/phaser/presentation/ActorPresentationModel.js");
   const adapter = source("src/phaser/presentation/EventBridge.js");
+  const aura = source("src/phaser/presentation/EnhancementAura.js");
   const context = {
     SHARED_PHASER_ASSET_RESOLVER: {
       resolve: value => value || "",
@@ -186,7 +189,7 @@ test("W9.10 Arena snapshot carries authoritative action cues in log order", () =
     isHeroV5RuntimeEnabled: () => false
   };
   vm.createContext(context);
-  vm.runInContext(`${model}\n${adapter}; this.snapshot = buildArenaBattlefieldSnapshot({ battleState: {
+  vm.runInContext(`${aura}\n${model}\n${adapter}; this.snapshot = buildArenaBattlefieldSnapshot({ battleState: {
     battleId: "arena-cues", actionSeq: 4, controlledSide: "team_a", teamIds: ["team_a", "team_b"],
     teams: { team_a: { unitIds: ["team_a_hero", "team_a_pet"] }, team_b: { unitIds: ["team_b_hero", "team_b_pet"] } },
     units: {
