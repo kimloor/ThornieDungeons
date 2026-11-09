@@ -368,3 +368,44 @@ test("W2F-1 legacy: rows that do not record the needed fields are a conflict (fa
   legacyRow(db, "req-lg-noplayer-abcd", "junk1", { ...junkBefore(), playerId: undefined });
   assert.equal((await replay(db, "req-lg-noplayer-abcd", { quantity: 2 })).error, "request_id_conflict");
 });
+
+// P2: the whole-stack quantity in a legacy snapshot is resolved with the adminItemStackInfo rule.
+const snapItem = (over) => ({ item_id: "junk1", slot_type: "junk", ...over });
+const wholeStackCase = async (id, item, recorded, expected, req = {}) => {
+  const db = createDb(); legacyRow(db, id, "junk1", junkBefore({ quantityRequested: recorded, item }));
+  const r = await replay(db, id, req);
+  if (expected === "ok") assert.equal(r.already_applied, true, `${id}: expected already_applied`);
+  else assert.equal(r.error, "request_id_conflict", `${id}: expected request_id_conflict`);
+};
+
+test("W2F-1 legacy P2: stackable quantity from extra_json.quantity, or from the quantity column when extra_json has none", async () => {
+  await wholeStackCase("req-p2-extra-abcdef", snapItem({ extra_json: { quantity: 7 }, quantity: 1 }), 7, "ok");           // extra wins over the column
+  await wholeStackCase("req-p2-extra-bad-abcd", snapItem({ extra_json: { quantity: 7 }, quantity: 1 }), 1, "conflict");
+  await wholeStackCase("req-p2-col-abcdefgh", snapItem({ extra_json: {}, quantity: 5 }), 5, "ok");                        // column fallback
+  await wholeStackCase("req-p2-col-nojson-abc", snapItem({ extra_json: "", quantity: 5 }), 5, "ok");
+  await wholeStackCase("req-p2-col-partial-ab", snapItem({ extra_json: {}, quantity: 5 }), 2, "conflict");                // partial stack, no quantity in request
+  await wholeStackCase("req-p2-col-explicit-a", snapItem({ extra_json: {}, quantity: 5 }), 2, "ok", { quantity: 2 });     // explicit quantity equal to the record
+  await wholeStackCase("req-p2-col-explbad-ab", snapItem({ extra_json: {}, quantity: 5 }), 2, "conflict", { quantity: 3 });
+});
+
+test("W2F-1 legacy P2: a non-stackable item is never read as a stack", async () => {
+  await wholeStackCase("req-p2-gear-one-abcd", snapItem({ slot_type: "weapon", extra_json: { quantity: 9 }, quantity: 1 }), 1, "ok");
+  await wholeStackCase("req-p2-gear-nine-abc", snapItem({ slot_type: "weapon", extra_json: { quantity: 9 }, quantity: 1 }), 9, "conflict");
+});
+
+test("W2F-1 legacy P2: malformed or unresolvable quantity data fails closed", async () => {
+  for (const [i, item] of [
+    snapItem({ extra_json: {}, quantity: "abc" }), snapItem({ extra_json: {}, quantity: 0 }), snapItem({ extra_json: {}, quantity: -1 }),
+    snapItem({ extra_json: {}, quantity: 2.5 }), snapItem({ extra_json: { quantity: "x" }, quantity: 3 }), snapItem({ extra_json: { quantity: 0 } }),
+    snapItem({ extra_json: {} }), snapItem({ extra_json: "not json" }), "junk", null, [],
+  ].entries()) await wholeStackCase(`req-p2-bad-${i}-abcdefg`, item, 3, "conflict");
+  await wholeStackCase("req-p2-bad-recorded-ab", snapItem({ extra_json: { quantity: 7 } }), "7", "conflict");
+  await wholeStackCase("req-p2-bad-rec-zero-ab", snapItem({ extra_json: { quantity: 7 } }), 0, "conflict");
+});
+
+test("W2F-1 legacy P2: a legacy row missing playerId, characterId or itemId is a conflict even with quantity", async () => {
+  for (const k of ["playerId", "characterId", "itemId"]) {
+    const db = createDb(); legacyRow(db, `req-p2-miss-${k}-ab`, "junk1", { ...junkBefore(), [k]: undefined });
+    assert.equal((await replay(db, `req-p2-miss-${k}-ab`, { quantity: 2 })).error, "request_id_conflict", k);
+  }
+});

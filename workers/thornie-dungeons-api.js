@@ -9010,24 +9010,35 @@ async function adminSeedRequestHash(body) {
   return adminItemSnapshotHash({ request: JSON.stringify(adminSeedCanonical({ playerId: body?.playerId, characterId: body?.characterId, ops: body?.ops })) });
 }
 // W2-F replay: identical request -> already_applied; same requestId for another item/quantity -> 409 request_id_conflict.
+// Whole-stack quantity of a recorded item snapshot (metadata.before.item), resolved by the SAME rule as adminItemStackInfo:
+// a stackable slot uses extra_json.quantity when it is > 0, otherwise the item's quantity column; a non-stackable item is
+// never treated as a stack (extra_json.quantity is ignored). Malformed or missing quantity sources resolve to null (fail-closed).
+function adminLegacyWholeStack(item) {
+  if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+  let extra = item.extra_json;
+  if (typeof extra === "string") extra = safeParseAdminAuditJson(extra);
+  if (!extra || typeof extra !== "object" || Array.isArray(extra)) extra = {};
+  const colQty = item.quantity;
+  if (colQty !== undefined && colQty !== null && !(Number.isInteger(colQty) && colQty >= 1)) return null;
+  const stackable = ADMIN_ITEM_STACK_SLOTS.has(item.slot_type);
+  if (stackable && extra.quantity !== undefined && !(Number.isInteger(extra.quantity) && extra.quantity >= 1)) return null;
+  if (stackable && extra.quantity === undefined && colQty === undefined) return null;
+  return adminItemStackInfo({ slot_type: item.slot_type, quantity: colQty, extra_json: JSON.stringify(extra) });
+}
 // Audit rows written before requestHash existed (fail-closed fallback). Every legacy row recorded, in metadata.before,
-// the player, character, item and the RESOLVED quantity plus the item snapshot, so all four are compared. A request without
-// a quantity means "the whole stack", which is resolved from the recorded snapshot and compared to the recorded quantity.
+// the player, character, item and the RESOLVED quantity plus the item snapshot, so all of them are compared. A request
+// without a quantity means "the whole stack", resolved from the recorded snapshot and compared to the recorded quantity.
 // Anything the row does not record, or cannot be resolved, is a mismatch (409): a conflict is retryable with a fresh
 // requestId, a false already_applied would hide a request that was never applied.
 function adminLegacyDeleteMatches(prior, request, meta) {
   const before = meta.before && typeof meta.before === "object" ? meta.before : null;
-  if (!before || prior.target_id !== request.itemId) return false;
+  if (!before || prior.target_id !== request.itemId || before.itemId !== request.itemId) return false;
   if (before.playerId !== request.playerId || before.characterId !== request.characterId) return false;
   const recorded = before.quantityRequested;
   if (!Number.isInteger(recorded) || recorded < 1) return false;
   if (request.quantity !== null) return recorded === request.quantity;
-  const item = before.item && typeof before.item === "object" ? before.item : null;
-  if (!item) return false;
-  const extra = item.extra_json && typeof item.extra_json === "object" ? item.extra_json : {};
-  const extraQty = Math.trunc(Number(extra.quantity));
-  const wholeStack = ADMIN_ITEM_STACK_SLOTS.has(item.slot_type) && extraQty > 0 ? extraQty : 1;
-  return recorded === wholeStack;
+  const stack = adminLegacyWholeStack(before.item);
+  return !!stack && recorded === stack.quantity;
 }
 function adminDeleteReplayResponse(prior, requestHash, request) {
   let meta = {};
