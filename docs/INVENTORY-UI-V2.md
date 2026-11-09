@@ -456,6 +456,15 @@ The existing calculated-stat pipeline remains authoritative for all comparison n
 
 The Item Detail/Compare surface must not fully cover the Hero stage. On mobile it should behave as a scrollable bottom sheet with enough upper-stage visibility to observe candidate equipment swaps; closing it restores the authoritative Hero visual.
 
+### Enhancement Aura preview
+
+The central Inventory Hero Preview uses the shared EnhancementAuraRenderer alongside HeroRenderer. Aura stages are derived from the same previewEquipped loadout that drives the visible equipment layers:
+- inspecting a compatible candidate item previews the candidate Weapon/Character Aura immediately;
+- closing or cancelling Compare restores Aura from the authoritative equipped loadout;
+- successful Equip refreshes from confirmed authoritative equipment;
+- missing equipment slots and the four-slot minimum rule follow the Enhancement Aura contract in PHASER-COMBAT-ARENA-V1.md §17;
+- Aura remains cosmetic and optional; its initialization or runtime failure must not block Inventory, equipment controls, or the Hero preview itself.
+
 ### Visual fallback contract
 
 Missing item artwork must fall back per slot while keeping Hero V5 active:

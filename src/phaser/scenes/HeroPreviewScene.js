@@ -20,6 +20,7 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
       this.textureRegistry = createPhaserTextureRegistry({ resolver: this.assetResolver });
       this.heroRoot = null;
       this.heroRenderer = null;
+      this.enhancementAuraRenderer = null;
       this.frameTimer = null;
       this.frameIndex = 0;
       this.failedUrls = new Set();
@@ -112,6 +113,11 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
         displaySize: () => this.displaySize(),
         textureKey: reference => this.assetKey(reference)
       });
+      try {
+        this.enhancementAuraRenderer = new EnhancementAuraRenderer(this, this.heroRoot, () => this.displaySize());
+      } catch (_) {
+        this.enhancementAuraRenderer = null;
+      }
       this.applySnapshot(this.initialSnapshot);
       this.readyNotified = true;
       onReady?.({ scene: this });
@@ -130,6 +136,20 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
       this.heroRoot.setPosition(Math.round(width * this.anchorX), Math.round(height * 0.86));
     }
 
+    updateEnhancementAura() {
+      try {
+        this.enhancementAuraRenderer?.update(this.snapshot?.hero?.enhancementAura, this.heroRenderer);
+      } catch (_) {
+        try { this.enhancementAuraRenderer?.destroy(); } catch (_) { /* optional preview Aura must not break the Hero */ }
+        this.enhancementAuraRenderer = null;
+      }
+    }
+
+    applyHeroFrame(state, index = 0) {
+      this.heroRenderer?.setData(this.snapshot?.hero || {}).applyVisualFrame(state, index);
+      this.updateEnhancementAura();
+    }
+
     stopIdle() {
       this.frameTimer?.remove(false);
       this.frameTimer = null;
@@ -139,7 +159,7 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
       this.stopIdle();
       if (!this.heroRenderer || !this.snapshot?.hero) return;
       this.frameIndex = 0;
-      this.heroRenderer.setData(this.snapshot.hero).applyVisualFrame("idle", 0);
+      this.applyHeroFrame("idle", 0);
       const frameCount = this.heroRenderer.visualFrameCount("idle");
       if (frameCount <= 1) return;
       const delay = Math.max(80, Number(this.snapshot.hero.layerFrames?.frameMs?.idle) || 220);
@@ -148,7 +168,7 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
         loop: true,
         callback: () => {
           this.frameIndex = (this.frameIndex + 1) % frameCount;
-          this.heroRenderer?.setData(this.snapshot.hero).applyVisualFrame("idle", this.frameIndex);
+          this.applyHeroFrame("idle", this.frameIndex);
         }
       });
     }
@@ -203,7 +223,7 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
     handleResize() {
       this.layoutHero();
       if (this.snapshot?.hero) {
-        this.heroRenderer?.setData(this.snapshot.hero).applyVisualFrame("idle", this.frameIndex);
+        this.applyHeroFrame("idle", this.frameIndex);
       }
     }
 
@@ -211,6 +231,8 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
       this.scale.off("resize", this.handleResize, this);
       this.load.off("loaderror", this.handleLoadError);
       this.stopIdle();
+      try { this.enhancementAuraRenderer?.destroy(); } catch (_) { /* preview teardown remains safe */ }
+      this.enhancementAuraRenderer = null;
       this.heroRenderer?.destroy();
       this.heroRenderer = null;
       this.heroRoot?.destroy(true);

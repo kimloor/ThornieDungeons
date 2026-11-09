@@ -691,9 +691,9 @@ W7A A2 adds presentation-only Chapter Boss cues on top of the shared BattleScene
 
 ---
 
-## 17. Enhancement Aura — approved design / implementation pending
+## 17. Enhancement Aura — approved design / implemented on feature branch
 
-This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. It is a design contract only; the Aura feature is **not implemented or production-verified** by this documentation update.
+This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. Runtime implementation is on `feat/enhancement-aura-v1`; focused QA and branch build are pending. Inventory Hero Preview is included in the same branch. It is not merged or production-verified.
 
 ### 17.1 Gameplay rules (presentation-only)
 
@@ -744,20 +744,27 @@ Current implementation points inspected on main:
 - `src/phaser/presentation/VfxManager.js` — shared one-shot frame VFX manager. Its current `play()` creates a finite effect image and destroys it after playback; it is not a persistent Aura controller.
 - `src/phaser/presentation/EquipmentVisualResolver.js` — resolves equipment appearance, not enhancement Aura stages.
 
-Implementation direction:
-1. Derive a small immutable presentation payload (for example `weaponStage` and `characterStage`) from the latest equipped map before or while building the battlefield snapshot. Keep the equipped items and all gameplay authority outside Phaser.
-2. Add a dedicated persistent Aura renderer/controller owned by the Hero actor or its scene lifecycle. Do not repurpose the one-shot VfxManager for continuous Aura.
-3. Render Character Aura behind/around the Hero and Weapon Aura aligned to the actual weapon layer. Preserve authored Hero frame/layer order, facing, scale, and animation.
-4. Inspect the real V3/V5 weapon-layer names and per-frame transforms before attaching Weapon Aura. Do not guess layer names, sprite bounds, manifest keys, or R2 paths.
-5. Reconcile/update existing Aura objects when the stage changes; do not create duplicate emitters/tweens on repeated snapshots.
-6. Destroy timers, emitters, graphics, and tweens on actor/scene shutdown. Optional Aura rendering failure must not affect the Hero, battle flow, or fallback renderer.
-7. Keep the mobile-first effect budget conservative; use bounded/reused particles and provide a low-cost fallback.
+Implemented on `feat/enhancement-aura-v1`:
+1. `resolveEnhancementAura()` derives immutable `weaponStage` and `characterStage` values from the latest equipped map. Equipped item data and gameplay authority remain outside Phaser.
+2. `EnhancementAuraRenderer` is a dedicated persistent controller owned by `HeroActor`; `VfxManager` remains unchanged and one-shot.
+3. Character rings/particles are rendered behind the Hero. Weapon halos clone the actual current weapon layer image and mirror its live texture, crop, position, display size, origin, and rotation; authored sprite bounds are not guessed.
+4. Verified layer names are V3 `weapon` and V5 `sword`. The renderer follows the current animation frame and reorders only its own halo images immediately behind the weapon layer.
+5. Repeated snapshots reconcile existing objects. Stage transitions stop/reuse bounded tweens and particles instead of creating duplicates.
+6. `HeroActor.destroy()` stops and destroys Aura tweens, particles, graphics, and weapon halo images. Aura remains presentation-only.
+7. The effect uses Phaser Graphics and tinted sprite copies rather than WebGL-only FX, so it remains compatible with the Canvas renderer fallback. Particle count is capped at 10; weapon halo count is capped at 3.
 
 The same HeroActor is reused by Dungeon Battle and Arena presentation. The first implementation must explicitly confirm which controlled Hero(s) receive Aura in Arena; do not accidentally show the local player's equipped Aura on an opponent or apply it to every HeroActor by default.
 
-### 17.4 Graphics decisions still open
+Inventory Hero Preview integration:
+- buildHeroPreviewSnapshot() derives the same immutable Aura stages from the current equipped map used to build the preview Hero layers.
+- HeroPreviewScene owns an EnhancementAuraRenderer alongside the shared HeroRenderer. It refreshes Aura after each Idle frame and whenever the preview snapshot or layout changes.
+- Weapon halos continue to mirror the actual V3/V5 weapon layer in the preview renderer; character rings/particles share the same stage palette and bounded effect implementation as Battle.
+- The Inventory preview reads previewEquipped, so Compare candidate swaps immediately preview their Aura without mutating authoritative equipment. Cancel restores the Aura derived from the authoritative loadout.
+- Preview teardown destroys Aura tweens, particles, graphics, and halo images before destroying the Hero root. Aura rendering failure remains optional and cannot disable the Hero preview or Inventory actions.
 
-The four stage thresholds are approved. Exact colors, particle shapes, pulse speed, brightness, and authored Aura artwork are not yet locked. Graphics should propose a cohesive four-stage family for Weapon and Character Aura, with clear visual separation and mobile readability. Do not infer final colors from item rarity.
+### 17.4 Initial visual family implemented
+
+The first runtime pass uses a cohesive four-stage progression independent of item rarity: Stage 1 cyan, Stage 2 violet, Stage 3 amber, and Stage 4 rose. Character Aura uses restrained elliptical rings and a bounded set of softly pulsing particles; higher stages add rings/particles. Weapon Aura uses low-opacity tinted copies of the real weapon sprite behind the authored layer, with additional halo copies at higher stages. Pulse timing is deliberately slow and subtle for mobile readability. These are initial implementation defaults, not a claim of final Graphics/Owner art approval; the renderer can be refined without changing the approved stage rules.
 
 ### 17.5 Player Guide copy — insert into the existing Refine topic
 
@@ -771,4 +778,6 @@ The following Thai copy is prepared for `src/data/infoGuide.js`, topic id `refin
 - ทั้งสองประเภทมี 4 ระดับ: +4, +6, +8 และ +10 โดยระดับที่สูงขึ้นจะแสดงเอฟเฟกต์ที่อลังการขึ้น
 - ระบบจะตรวจอุปกรณ์ที่สวมใส่ใหม่เมื่อเปลี่ยนหรือถอดอุปกรณ์ และทุกครั้งที่เข้าสู่สนามต่อสู้
 
-When this copy is moved into `infoGuide.js`, add matching audited constants/assertions to `tests/info-guide.test.js` and keep the existing `refine` topic id/deep link unchanged.
+The copy is now included in `src/data/infoGuide.js` under the existing `refine` topic id. `tests/info-guide.test.js` asserts the cosmetic-only wording, four defensive slots, excluded slots, and stage thresholds. The existing `refine` topic id/deep link is unchanged.
+
+**Branch verification:** pending GitHub Actions focused tests and generated frontend build. Production verification has not been performed.
