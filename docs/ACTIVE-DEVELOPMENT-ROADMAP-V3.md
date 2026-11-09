@@ -413,7 +413,7 @@ Completed and merged:
 - Durable per-action receipts; Potion inventory decrement, authority transition and receipt commit in one D1 batch.
 - Potion preflight remains read-only; stale revisions do not consume inventory; one-time per-character Potion request IDs prevent replay.
 - Historical consumed Potion requests remain replay-protected.
-- HP/MP carry source is restricted to the Character's latest settled Victory, with same-Floor retry or immediate next-Floor progression only; stale/cross-character/cross-floor references are rejected.
+- **Universal settled-battle resource carry — COMPLETE / MERGED (PR #204, Ver 1.1.44; merge `841a4ca`).** Worker validates the latest settled completion for the authenticated Character and matching Battle Authority receipt. Victory/Fled carry server-authoritative Hero HP/SP and same-active-Pet HP to any unlocked Dungeon floor or Halloween; Defeat starts the next battle at full resources. Same/previous/next/distant unlocked floor selection and Dungeon/Event/Halloween routing are covered by focused regression. Stale, foreign-character, in-progress, unsettled and malformed tokens are rejected; the client submits only `previousBattleId`, never HP/SP/Pet HP. See `BATTLE-SYSTEM-V1.md` §27 and `H01-HALLOWEEN-EVENT-V1.md` resource-carry integration note.
 
 Verification:
 - Battle Core parity exact-head security run [#41433194956](https://github.com/kimloor/ThornieDungeons/actions/runs/41433194956) PASS; branch-associated run [#41433203981](https://github.com/kimloor/ThornieDungeons/actions/runs/41433203981) PASS.
