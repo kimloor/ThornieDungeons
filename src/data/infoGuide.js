@@ -160,11 +160,8 @@ const INFO_GUIDE = {
         { heading: "ตกเลเวลและ Protection Stone",
           body: ["เมื่อเลเวลปัจจุบันตั้งแต่ +" + infoGuideF.downgradeFromLevel + " ขึ้นไป ถ้าลองแล้วล้มเหลว มีโอกาส " + infoGuideF.downgradeChancePct + "% ที่เลเวลลดลง 1 ขั้น อุปกรณ์จะไม่หายไป",
             "Protection Stone ใช้กันการตกเลเวล และจะถูกใช้เฉพาะตอนที่เกิดการตกเลเวลเท่านั้น"],
-          rows: [["ราคา Protection Stone", infoGuideF.protectionStoneDiamonds + " เพชร (ซื้อได้ทีละ 1)"]] }
-        { heading: "ตกเลเวลและ Protection Stone",
-          body: ["เมื่อเลเวลปัจจุบันตั้งแต่ +" + infoGuideF.downgradeFromLevel + " ขึ้นไป ถ้าลองแล้วล้มเหลว มีโอกาส " + infoGuideF.downgradeChancePct + "% ที่เลเวลลดลง 1 ขั้น อุปกรณ์จะไม่หายไป",
-            "Protection Stone ใช้กันการตกเลเวล และจะถูกใช้เฉพาะตอนที่เกิดการตกเลเวลเท่านั้น"],
           rows: [["ราคา Protection Stone", infoGuideF.protectionStoneDiamonds + " เพชร (ซื้อได้ทีละ 1)"]] },
+        { heading: "ออร่าจากการตีบวก",
         { heading: "ออร่าจากการตีบวก",
           body: [
             "ออร่ามี 2 ประเภท คือออร่าอาวุธและออร่าตัวละคร เป็นเอฟเฟกต์เพื่อความสวยงามเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้",
