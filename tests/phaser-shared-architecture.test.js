@@ -547,7 +547,6 @@ test("W7 Hero V5 runtime contract loads before the battle adapter", () => {
 
 test("W7.2 semantic snapshot builds synchronized V5 Base + Wing frames and preserves V3 fallback", () => {
   const auraSource = source("src/phaser/presentation/EnhancementAura.js");
-  const auraSource = source("src/phaser/presentation/EnhancementAura.js");
   const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
   const adapterSource = source("src/phaser/presentation/EventBridge.js");
   const frameIds = ["idle_01","idle_02","idle_03","attack_01","attack_02","attack_03","death_01","death_02"];
@@ -746,6 +745,7 @@ test("W7.3 Azure layer selection follows slot ownership and authored draw order"
 });
 
 test("W7.3 full Azure snapshot composes Base plus seven equipment layers inside Wing R5", () => {
+  const auraSource = source("src/phaser/presentation/EnhancementAura.js");
   const contractSource = source("src/phaser/presentation/HeroV5RuntimeContract.js");
   const adapterSource = source("src/phaser/presentation/EventBridge.js");
   const frameIds = ["idle_01","idle_02","idle_03","attack_01","attack_02","attack_03","death_01","death_02"];
