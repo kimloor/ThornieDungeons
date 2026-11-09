@@ -688,3 +688,87 @@ W7A A2 adds presentation-only Chapter Boss cues on top of the shared BattleScene
 - a resumed already-Enraged Boss is used as the baseline and does not replay the transition;
 - camera flash/shake and actor alpha pulses remain presentation-only queue work;
 - Boss damage multiplier, skill phase, status behavior, save/checkpoint, rewards and result authority remain outside Phaser.
+
+---
+
+## 17. Enhancement Aura — approved design / implementation pending
+
+This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. It is a design contract only; the Aura feature is **not implemented or production-verified** by this documentation update.
+
+### 17.1 Gameplay rules (presentation-only)
+
+Both Aura families use four enhancement thresholds:
+
+| Enhancement level | Aura stage |
+| --- | --- |
+| +0 to +3 | Off |
+| +4 to +5 | Stage 1 |
+| +6 to +7 | Stage 2 |
+| +8 to +9 | Stage 3 |
+| +10 | Stage 4 |
+
+The current Enhancement V2 maximum is +10. The Aura must not change Enhance rates, item stats, combat stats, economy, persistence, rewards, or any gameplay outcome.
+
+**Weapon Aura**
+- Read the enhancement level from the currently equipped `weapon` only.
+- Apply the four stages above directly to that weapon.
+- No equipped weapon means Weapon Aura Off.
+
+**Character Aura**
+- Count exactly four equipped defensive slots: `helmet`, `chest` (Armor), `gloves`, and `boots`.
+- Character Aura stage is determined by the **minimum** enhancement level across those four slots, not their sum or average.
+- A missing/empty slot is level +0 and therefore turns Character Aura Off.
+- Exclude `weapon`, `wings`, and `accessory` completely from this calculation.
+
+Examples:
+- +10 / +10 / +8 / +10 defensive gear -> Character Aura Stage 3.
+- +10 / +10 / +10 / empty Boots -> Character Aura Off.
+- Weapon +10 does not raise Character Aura if any defensive slot is below +4.
+
+### 17.2 Refresh triggers
+
+Re-read the current authoritative equipped loadout and recalculate both Aura stages:
+- after every successful equipment equip, unequip, or slot replacement;
+- whenever the equipped loadout is refreshed from the authoritative application state;
+- on every new Battle Stage / BattleScene entry, including a fresh scene mount or remount.
+
+When a Battle Scene is already mounted and the equipped loadout changes, update the presentation without requiring a full page reload. A new battle must never inherit cached Aura stages from a previous battle or loadout.
+
+### 17.3 Phaser integration contract
+
+Current implementation points inspected on main:
+- `src/phaser/presentation/EventBridge.js` — `buildBattlefieldSnapshot({ ..., equipped })` already receives the equipped map, resolves the Hero visual layers, and creates the Hero presentation snapshot.
+- `src/phaser/actors/HeroActor.js` — shared Hero actor used by the shared BattleScene.
+- `src/phaser/renderers/HeroRenderer.js` — shared layered Hero renderer; it owns authored layer placement/order, not equipment authority.
+- `src/phaser/scenes/BattleScene.js` — creates/synchronizes the HeroActor and is the Battle Stage lifecycle boundary.
+- `src/phaser/presentation/VfxManager.js` — shared one-shot frame VFX manager. Its current `play()` creates a finite effect image and destroys it after playback; it is not a persistent Aura controller.
+- `src/phaser/presentation/EquipmentVisualResolver.js` — resolves equipment appearance, not enhancement Aura stages.
+
+Implementation direction:
+1. Derive a small immutable presentation payload (for example `weaponStage` and `characterStage`) from the latest equipped map before or while building the battlefield snapshot. Keep the equipped items and all gameplay authority outside Phaser.
+2. Add a dedicated persistent Aura renderer/controller owned by the Hero actor or its scene lifecycle. Do not repurpose the one-shot VfxManager for continuous Aura.
+3. Render Character Aura behind/around the Hero and Weapon Aura aligned to the actual weapon layer. Preserve authored Hero frame/layer order, facing, scale, and animation.
+4. Inspect the real V3/V5 weapon-layer names and per-frame transforms before attaching Weapon Aura. Do not guess layer names, sprite bounds, manifest keys, or R2 paths.
+5. Reconcile/update existing Aura objects when the stage changes; do not create duplicate emitters/tweens on repeated snapshots.
+6. Destroy timers, emitters, graphics, and tweens on actor/scene shutdown. Optional Aura rendering failure must not affect the Hero, battle flow, or fallback renderer.
+7. Keep the mobile-first effect budget conservative; use bounded/reused particles and provide a low-cost fallback.
+
+The same HeroActor is reused by Dungeon Battle and Arena presentation. The first implementation must explicitly confirm which controlled Hero(s) receive Aura in Arena; do not accidentally show the local player's equipped Aura on an opponent or apply it to every HeroActor by default.
+
+### 17.4 Graphics decisions still open
+
+The four stage thresholds are approved. Exact colors, particle shapes, pulse speed, brightness, and authored Aura artwork are not yet locked. Graphics should propose a cohesive four-stage family for Weapon and Character Aura, with clear visual separation and mobile readability. Do not infer final colors from item rarity.
+
+### 17.5 Player Guide copy — insert into the existing Refine topic
+
+The following Thai copy is prepared for `src/data/infoGuide.js`, topic id `refine`. Publish it in the same release that makes the Aura feature available; do not expose it in the live Guide before the runtime behavior ships.
+
+**หัวข้อ: ออร่าจากการตีบวก**
+- ออร่ามี 2 ประเภท คือ ออร่าอาวุธและออร่าตัวละคร โดยเป็นเอฟเฟกต์เพื่อความสวยงามเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้
+- ออร่าอาวุธดูจากระดับตีบวกของอาวุธที่สวมใส่โดยตรง
+- ออร่าตัวละครดูจากระดับตีบวกขั้นต่ำของอุปกรณ์ป้องกัน 4 ชิ้น ได้แก่ หมวก ชุดเกราะ ถุงมือ และรองเท้า ต้องพัฒนาให้ครบทุกชิ้นจึงจะปลดล็อกออร่าระดับนั้นได้
+- อาวุธ ปีก และเครื่องประดับไม่นำมาคำนวณออร่าตัวละคร
+- ทั้งสองประเภทมี 4 ระดับ: +4, +6, +8 และ +10 โดยระดับที่สูงขึ้นจะแสดงเอฟเฟกต์ที่อลังการขึ้น
+- ระบบจะตรวจอุปกรณ์ที่สวมใส่ใหม่เมื่อเปลี่ยนหรือถอดอุปกรณ์ และทุกครั้งที่เข้าสู่สนามต่อสู้
+
+When this copy is moved into `infoGuide.js`, add matching audited constants/assertions to `tests/info-guide.test.js` and keep the existing `refine` topic id/deep link unchanged.
