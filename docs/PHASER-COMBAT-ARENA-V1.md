@@ -693,7 +693,7 @@ W7A A2 adds presentation-only Chapter Boss cues on top of the shared BattleScene
 
 ## 17. Enhancement Aura — approved design / implemented on feature branch
 
-This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. Runtime implementation is on `feat/enhancement-aura-v1`; focused QA and branch build are pending. It is not merged or production-verified.
+This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. Runtime implementation is on `feat/enhancement-aura-v1`; focused QA and branch build are pending. Inventory Hero Preview is included in the same branch. It is not merged or production-verified.
 
 ### 17.1 Gameplay rules (presentation-only)
 
@@ -754,6 +754,13 @@ Implemented on `feat/enhancement-aura-v1`:
 7. The effect uses Phaser Graphics and tinted sprite copies rather than WebGL-only FX, so it remains compatible with the Canvas renderer fallback. Particle count is capped at 10; weapon halo count is capped at 3.
 
 The same HeroActor is reused by Dungeon Battle and Arena presentation. The first implementation must explicitly confirm which controlled Hero(s) receive Aura in Arena; do not accidentally show the local player's equipped Aura on an opponent or apply it to every HeroActor by default.
+
+Inventory Hero Preview integration:
+- buildHeroPreviewSnapshot() derives the same immutable Aura stages from the current equipped map used to build the preview Hero layers.
+- HeroPreviewScene owns an EnhancementAuraRenderer alongside the shared HeroRenderer. It refreshes Aura after each Idle frame and whenever the preview snapshot or layout changes.
+- Weapon halos continue to mirror the actual V3/V5 weapon layer in the preview renderer; character rings/particles share the same stage palette and bounded effect implementation as Battle.
+- The Inventory preview reads previewEquipped, so Compare candidate swaps immediately preview their Aura without mutating authoritative equipment. Cancel restores the Aura derived from the authoritative loadout.
+- Preview teardown destroys Aura tweens, particles, graphics, and halo images before destroying the Hero root. Aura rendering failure remains optional and cannot disable the Hero preview or Inventory actions.
 
 ### 17.4 Initial visual family implemented
 

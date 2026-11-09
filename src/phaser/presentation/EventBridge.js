@@ -93,7 +93,8 @@ function buildHeroPreviewSnapshot({ heroName = "Hero", equipped = {}, heroV5 = t
       facing: "right",
       visualMode: heroFrames.mode || "v3",
       layers: heroFrames.idle?.[0] || [],
-      layerFrames: heroFrames
+      layerFrames: heroFrames,
+      enhancementAura: resolveEnhancementAura(equipped)
     }
   });
 }

@@ -71,3 +71,20 @@ test("Aura follows the verified V3/V5 weapon layers and cleans up with HeroActor
   assert.match(heroActor, /this\.enhancementAuraRenderer\?\.update/);
   assert.match(heroActor, /this\.enhancementAuraRenderer\?\.destroy/);
 });
+
+
+test("Inventory Hero preview snapshot derives Aura from its current preview loadout", () => {
+  const bridge = read("src/phaser/presentation/EventBridge.js");
+  assert.match(bridge, /function buildHeroPreviewSnapshot\(\{ heroName = "Hero", equipped = \{\}, heroV5 = true \} = \{\}\)/);
+  const preview = bridge.slice(bridge.indexOf("function buildHeroPreviewSnapshot"), bridge.indexOf("function buildBattlefieldSnapshot"));
+  assert.match(preview, /enhancementAura: resolveEnhancementAura\(equipped\)/);
+  assert.match(preview, /layerFrames: heroFrames/);
+});
+
+test("Inventory HeroPreviewScene reuses EnhancementAuraRenderer, refreshes per preview frame, and cleans it up", () => {
+  const scene = read("src/phaser/scenes/HeroPreviewScene.js");
+  assert.match(scene, /new EnhancementAuraRenderer\(this, this\.heroRoot, \(\) => this\.displaySize\(\)\)/);
+  assert.match(scene, /update\(this\.snapshot\?\.hero\?\.enhancementAura, this\.heroRenderer\)/);
+  assert.match(scene, /this\.applyHeroFrame\("idle", this\.frameIndex\)/);
+  assert.match(scene, /this\.enhancementAuraRenderer\?\.destroy\(\)/);
+});
