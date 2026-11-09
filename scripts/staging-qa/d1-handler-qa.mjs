@@ -16,7 +16,7 @@ const OUT = env.QA_OUT_DIR || "qa-artifacts";
 const SHA = env.QA_COMMIT_SHA || "unknown";
 const WORKER_VERSION = env.QA_WORKER_VERSION || "unknown";
 const RACE_N = Number(env.QA_RACE_ITERATIONS || 20);
-const EXPECTED_SCENARIOS = 33;
+const EXPECTED_SCENARIOS = 34;
 
 // ---- safety gates -------------------------------------------------------
 function abort(msg) { console.error("BLOCKED: " + msg); console.log("::error::BLOCKED: " + String(msg).slice(0, 400)); process.exit(2); }
@@ -465,6 +465,32 @@ async function main() {
     c.expect("audit actor is the admin session player (player_id column), target is the character", a.length === 1 && a[0].target_id === state.cid);
     const who = sqlRun(`SELECT player_id FROM admin_audit_log WHERE event_type='ADMIN_SEED' AND player_id=${q(state.admin)}`);
     c.expect("actor recorded", who.length === 1);
+  });
+
+  await scenario(34, "W2F-1 legacy audit replay (no requestHash) on real D1: fail-closed, no re-delete, no new audit", async (c) => {
+    seedJunk("qa-junk-1", 7); // stack of 7
+    const S34 = state;
+    const legacy = (rid, before) => sqlRun(`INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) VALUES (${q("adm-del-" + rid)}, ${q(S34.admin)}, 'ADMIN_ITEM_DELETE', 'item', 'qa-junk-1', ${q(JSON.stringify({ outcome: "ok", before, changedKeys: ["quantity"] }))}, datetime('now'))`);
+    const B = (over = {}) => ({ playerId: S34.pid, characterId: S34.cid, itemId: "qa-junk-1", quantityRequested: 2, item: { item_id: "qa-junk-1", slot_type: "junk", extra_json: { junkId: "scrap", quantity: 7 } }, ...over });
+    const raw = async (rid, over = {}) => ({ ...(await call("POST", { action: "adminDeleteItem", playerId: S34.pid, characterId: S34.cid, itemId: "qa-junk-1", reason: REASON, confirmText: "qa-junk-1", snapshotHash: "0".repeat(64), requestId: rid, ...over }, S34.token)) });
+    const A = newReq(), W = newReq(), E = newReq(), N = newReq();
+    legacy(A, B()); legacy(W, B({ quantityRequested: 7 })); sqlRun(`INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) VALUES (${q("adm-del-" + E)}, ${q(S34.admin)}, 'ADMIN_ITEM_DELETE', 'item', 'qa-junk-1', '{}', datetime('now'))`);
+    const nb = B(); delete nb.quantityRequested; legacy(N, nb);
+    const a0 = count(audits(), (x) => x.event_type === "ADMIN_ITEM_DELETE");
+    const expectConflict = (label, r) => c.expect(label + " -> 409 request_id_conflict", r.status === 409 && r.body?.error === "request_id_conflict", r.body);
+    const r1 = c.rec("1 match (qty 2)", await raw(A, { quantity: 2 }));
+    c.expect("1 match -> 200 already_applied", r1.status === 200 && r1.body?.already_applied === true, r1.body);
+    expectConflict("2 quantity differs (3 vs recorded 2)", c.rec("2 qty differs", await raw(A, { quantity: 3 })));
+    expectConflict("3 player differs", c.rec("3 player differs", await raw(A, { quantity: 2, playerId: "qa-other-player" })));
+    expectConflict("4 character differs", c.rec("4 character differs", await raw(A, { quantity: 2, characterId: "qa-other-char" })));
+    expectConflict("5a null quantity vs recorded 2 of 7 (null is not a wildcard)", c.rec("5a null vs partial", await raw(A)));
+    const r5b = c.rec("5b null quantity vs recorded whole stack 7", await raw(W));
+    c.expect("5b null quantity vs recorded whole stack -> already_applied", r5b.status === 200 && r5b.body?.already_applied === true, r5b.body);
+    expectConflict("5c metadata {} (nothing recorded)", c.rec("5c empty metadata", await raw(E, { quantity: 2 })));
+    expectConflict("5d quantityRequested not recorded", c.rec("5d no quantityRequested", await raw(N, { quantity: 2 })));
+    const left = JSON.parse(items().find((i) => i.item_id === "qa-junk-1")?.extra_json || "{}").quantity;
+    c.expect("6 replays never deleted anything (stack still 7)", left === 7, left);
+    c.expect("7 replays created no audit row and no ownership event", count(audits(), (x) => x.event_type === "ADMIN_ITEM_DELETE") === a0 && count(events(), (e) => e.event_type === "admin_deleted") === 0, { a0, now: count(audits(), (x) => x.event_type === "ADMIN_ITEM_DELETE") });
   });
 
   reset(); // QA rows only; shared staging D1 -> put the flags back exactly as found
