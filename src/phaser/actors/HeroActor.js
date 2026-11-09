@@ -8,7 +8,11 @@ class HeroActor extends PhaserBattleActor {
       displaySize: () => this.displaySize(),
       textureKey: reference => this.scene.assetKey(reference)
     });
-    this.enhancementAuraRenderer = new EnhancementAuraRenderer(scene, this.visualRoot, () => this.displaySize());
+    try {
+      this.enhancementAuraRenderer = new EnhancementAuraRenderer(scene, this.visualRoot, () => this.displaySize());
+    } catch (_) {
+      this.enhancementAuraRenderer = null;
+    }
   }
 
   isV5Presentation() {
@@ -40,11 +44,16 @@ class HeroActor extends PhaserBattleActor {
 
   applyVisualFrame(state, index = 0) {
     this.heroRenderer?.setData(this.data).applyVisualFrame(state, index);
-    this.enhancementAuraRenderer?.update(this.data?.enhancementAura, this.heroRenderer);
+    try {
+      this.enhancementAuraRenderer?.update(this.data?.enhancementAura, this.heroRenderer);
+    } catch (_) {
+      try { this.enhancementAuraRenderer?.destroy(); } catch (_) { /* optional Aura failure must not affect combat */ }
+      this.enhancementAuraRenderer = null;
+    }
   }
 
   destroy() {
-    this.enhancementAuraRenderer?.destroy();
+    try { this.enhancementAuraRenderer?.destroy(); } catch (_) { /* actor teardown remains authoritative */ }
     this.enhancementAuraRenderer = null;
     this.heroRenderer?.destroy();
     this.heroRenderer = null;

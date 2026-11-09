@@ -57,6 +57,7 @@ class EnhancementAuraRenderer {
     this.characterRoot.add(this.characterGraphics);
     this.characterParticles = [];
     this.characterTweens = [];
+    this.characterSize = 0;
     this.weaponHalos = [];
     this.weaponTweens = [];
     this.destroyed = false;
@@ -74,13 +75,18 @@ class EnhancementAuraRenderer {
 
   clearCharacterParticles() {
     this.stopTweens(this.characterTweens);
-    this.characterParticles.forEach(particle => particle?.destroy?.());
+    this.characterParticles.forEach(particle => {
+      if (this.characterRoot?.remove) this.characterRoot.remove(particle, true);
+      else particle?.destroy?.();
+    });
     this.characterParticles = [];
   }
 
   updateCharacter(stage) {
-    if (stage === this.characterStage) return;
+    const size = this.displaySize();
+    if (stage === this.characterStage && Math.abs(size - this.characterSize) < 1) return;
     this.characterStage = stage;
+    this.characterSize = size;
     this.clearCharacterParticles();
     this.characterGraphics.clear();
     if (stage <= 0) {
@@ -89,7 +95,6 @@ class EnhancementAuraRenderer {
     }
 
     const color = ENHANCEMENT_AURA_PALETTE[stage];
-    const size = this.displaySize();
     const ringCount = stage >= 4 ? 3 : stage >= 2 ? 2 : 1;
     for (let index = 0; index < ringCount; index += 1) {
       const width = size * (0.72 + index * 0.13);
@@ -136,13 +141,17 @@ class EnhancementAuraRenderer {
     this.characterRoot.setVisible(true).setAlpha(1);
   }
 
-  ensureWeaponHalos() {
+  ensureWeaponHalos(textureKey) {
+    const created = [];
+    if (!textureKey) return created;
     while (this.weaponHalos.length < 3) {
-      const halo = this.scene.add.image(0, 0, "__MISSING");
+      const halo = this.scene.add.image(0, 0, textureKey);
       halo.setOrigin(0.5, 1).setVisible(false);
       this.root.add(halo);
       this.weaponHalos.push(halo);
+      created.push(halo);
     }
+    return created;
   }
 
   updateWeapon(stage, heroRenderer) {
@@ -151,46 +160,48 @@ class EnhancementAuraRenderer {
     const weaponImage = entry?.image;
     const currentLayer = (heroRenderer?.currentLayers || []).find(layer => layer.name === layerName);
     const usable = stage > 0 && weaponImage?.visible && weaponImage?.texture?.key && currentLayer;
-    if (stage !== this.weaponStage) {
+    const stageChanged = stage !== this.weaponStage;
+    if (stageChanged) {
       this.weaponStage = stage;
       this.stopTweens(this.weaponTweens);
-      if (stage > 0) {
-        this.ensureWeaponHalos();
-        const color = ENHANCEMENT_AURA_PALETTE[stage];
-        const count = stage >= 4 ? 3 : stage >= 3 ? 2 : 1;
-        this.weaponHalos.forEach((halo, index) => {
-          halo.setTint(color).setVisible(index < count).setAlpha(0.20 - index * 0.035);
-          if (index < count) {
-            const tween = this.scene.tweens?.add?.({
-              targets: halo,
-              alpha: Math.max(0.035, 0.12 - index * 0.025),
-              duration: 760 + index * 130,
-              yoyo: true,
-              repeat: -1,
-              ease: "Sine.easeInOut"
-            });
-            if (tween) this.weaponTweens.push(tween);
-          }
-        });
-      } else {
-        this.weaponHalos.forEach(halo => halo.setVisible(false));
-      }
+      if (stage <= 0) this.weaponHalos.forEach(halo => halo.setVisible(false));
     }
-
     if (!usable) {
       this.weaponHalos.forEach(halo => halo.setVisible(false));
+      this.stopTweens(this.weaponTweens);
       return;
     }
 
-    this.ensureWeaponHalos();
+    const key = weaponImage.texture.key;
+    const created = this.ensureWeaponHalos(key);
     const color = ENHANCEMENT_AURA_PALETTE[stage];
     const count = stage >= 4 ? 3 : stage >= 3 ? 2 : 1;
+    const startPulse = stageChanged || created.length > 0 || this.weaponTweens.length === 0;
+    if (startPulse) {
+      this.stopTweens(this.weaponTweens);
+      this.weaponHalos.forEach((halo, index) => {
+        if (index >= count) {
+          halo.setVisible(false);
+          return;
+        }
+        halo.setTint(color).setAlpha(0.20 - index * 0.035);
+        const tween = this.scene.tweens?.add?.({
+          targets: halo,
+          alpha: Math.max(0.035, 0.12 - index * 0.025),
+          duration: 760 + index * 130,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut"
+        });
+        if (tween) this.weaponTweens.push(tween);
+      });
+    }
+
     this.weaponHalos.forEach((halo, index) => {
       if (index >= count) {
         halo.setVisible(false);
         return;
       }
-      const key = weaponImage.texture.key;
       if (halo.texture?.key !== key) halo.setTexture(key);
       halo
         .setTint(color)
@@ -236,9 +247,12 @@ class EnhancementAuraRenderer {
     this.stopTweens(this.characterTweens);
     this.stopTweens(this.weaponTweens);
     this.clearCharacterParticles();
-    this.characterGraphics?.destroy?.();
+    if (this.root?.remove) this.root.remove(this.characterRoot, false);
     this.characterRoot?.destroy?.(true);
-    this.weaponHalos.forEach(halo => halo?.destroy?.());
+    this.weaponHalos.forEach(halo => {
+      if (this.root?.remove) this.root.remove(halo, false);
+      halo?.destroy?.();
+    });
     this.characterParticles = [];
     this.weaponHalos = [];
     this.characterRoot = null;
