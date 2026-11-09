@@ -16,7 +16,7 @@ const OUT = env.QA_OUT_DIR || "qa-artifacts";
 const SHA = env.QA_COMMIT_SHA || "unknown";
 const WORKER_VERSION = env.QA_WORKER_VERSION || "unknown";
 const RACE_N = Number(env.QA_RACE_ITERATIONS || 20);
-const EXPECTED_SCENARIOS = 34;
+const EXPECTED_SCENARIOS = 35;
 
 // ---- safety gates -------------------------------------------------------
 function abort(msg) { console.error("BLOCKED: " + msg); console.log("::error::BLOCKED: " + String(msg).slice(0, 400)); process.exit(2); }
@@ -491,6 +491,43 @@ async function main() {
     const left = JSON.parse(items().find((i) => i.item_id === "qa-junk-1")?.extra_json || "{}").quantity;
     c.expect("6 replays never deleted anything (stack still 7)", left === 7, left);
     c.expect("7 replays created no audit row and no ownership event", count(audits(), (x) => x.event_type === "ADMIN_ITEM_DELETE") === a0 && count(events(), (e) => e.event_type === "admin_deleted") === 0, { a0, now: count(audits(), (x) => x.event_type === "ADMIN_ITEM_DELETE") });
+  });
+
+  await scenario(35, "W2F-1 legacy P2: whole-stack resolved like adminItemStackInfo (column fallback, non-stackable, malformed, missing itemId)", async (c) => {
+    seedJunk("qa-junk-1", 7);
+    const S35 = state;
+    const base = (over = {}) => ({ playerId: S35.pid, characterId: S35.cid, itemId: "qa-junk-1", quantityRequested: 2, ...over });
+    const a0 = count(audits(), (x) => x.event_type === "ADMIN_ITEM_DELETE");
+    let added = 0;
+    const run = async (label, before, expect, over = {}) => {
+      const rid = newReq();
+      sqlRun(`INSERT INTO admin_audit_log (audit_id, player_id, event_type, target_type, target_id, metadata_json, created_at) VALUES (${q("adm-del-" + rid)}, ${q(S35.admin)}, 'ADMIN_ITEM_DELETE', 'item', 'qa-junk-1', ${q(JSON.stringify({ outcome: "ok", before, changedKeys: ["quantity"] }))}, datetime('now'))`);
+      added++;
+      const r = c.rec(label, await call("POST", { action: "adminDeleteItem", playerId: S35.pid, characterId: S35.cid, itemId: "qa-junk-1", reason: REASON, confirmText: "qa-junk-1", snapshotHash: "0".repeat(64), requestId: rid, ...over }, S35.token));
+      const ok = expect === "ok" ? (r.status === 200 && r.body?.already_applied === true) : (r.status === 409 && r.body?.error === "request_id_conflict");
+      c.expect(`${label} -> ${expect === "ok" ? "200 already_applied" : "409 request_id_conflict"}`, ok, r.body);
+    };
+    const it = (over) => ({ item_id: "qa-junk-1", slot_type: "junk", ...over });
+    await run("stackable extra_json.quantity=7 (column 1), recorded 7, no quantity", base({ quantityRequested: 7, item: it({ extra_json: { quantity: 7 }, quantity: 1 }) }), "ok");
+    await run("stackable extra_json.quantity=7 (column 1), recorded 1, no quantity", base({ quantityRequested: 1, item: it({ extra_json: { quantity: 7 }, quantity: 1 }) }), "conflict");
+    await run("stackable quantity column only (5), recorded 5, no quantity", base({ quantityRequested: 5, item: it({ extra_json: {}, quantity: 5 }) }), "ok");
+    await run("stackable quantity column only (5), recorded 2 (partial), no quantity", base({ quantityRequested: 2, item: it({ extra_json: {}, quantity: 5 }) }), "conflict");
+    await run("stackable column only, explicit quantity equals record", base({ quantityRequested: 2, item: it({ extra_json: {}, quantity: 5 }) }), "ok", { quantity: 2 });
+    await run("stackable column only, explicit quantity differs from record", base({ quantityRequested: 2, item: it({ extra_json: {}, quantity: 5 }) }), "conflict", { quantity: 3 });
+    await run("non-stackable (extra_json.quantity=9 ignored), recorded 1, no quantity", base({ quantityRequested: 1, item: it({ slot_type: "weapon", extra_json: { quantity: 9 }, quantity: 1 }) }), "ok");
+    await run("non-stackable (extra_json.quantity=9 ignored), recorded 9, no quantity", base({ quantityRequested: 9, item: it({ slot_type: "weapon", extra_json: { quantity: 9 }, quantity: 1 }) }), "conflict");
+    await run("malformed column quantity 'abc'", base({ quantityRequested: 3, item: it({ extra_json: {}, quantity: "abc" }) }), "conflict");
+    await run("malformed column quantity 0", base({ quantityRequested: 3, item: it({ extra_json: {}, quantity: 0 }) }), "conflict");
+    await run("malformed extra_json.quantity 'x'", base({ quantityRequested: 3, item: it({ extra_json: { quantity: "x" }, quantity: 3 }) }), "conflict");
+    await run("no quantity source at all (stackable)", base({ quantityRequested: 3, item: it({ extra_json: {} }) }), "conflict");
+    await run("no item snapshot, no request quantity", base({ quantityRequested: 3 }), "conflict");
+    await run("missing before.itemId (explicit quantity)", base({ itemId: undefined, item: it({ extra_json: { quantity: 7 } }) }), "conflict", { quantity: 2 });
+    await run("missing before.playerId (explicit quantity)", base({ playerId: undefined }), "conflict", { quantity: 2 });
+    await run("missing before.characterId (explicit quantity)", base({ characterId: undefined }), "conflict", { quantity: 2 });
+    await run("missing quantityRequested (explicit quantity)", base({ quantityRequested: undefined }), "conflict", { quantity: 2 });
+    const left = JSON.parse(items().find((i) => i.item_id === "qa-junk-1")?.extra_json || "{}").quantity;
+    c.expect("replays never deleted anything (stack still 7)", left === 7, left);
+    c.expect("replays created no audit row beyond the legacy rows inserted", count(audits(), (x) => x.event_type === "ADMIN_ITEM_DELETE") === a0 + added && count(events(), (e) => e.event_type === "admin_deleted") === 0, { a0, added, now: count(audits(), (x) => x.event_type === "ADMIN_ITEM_DELETE") });
   });
 
   reset(); // QA rows only; shared staging D1 -> put the flags back exactly as found
