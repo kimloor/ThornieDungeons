@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.47" />
+<meta name="application-version" content="1.1.48" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.47";
+  content: "Ver 1.1.48";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -7959,16 +7959,16 @@ const INFO_GUIDE = {
         { heading: "ตกเลเวลและ Protection Stone",
           body: ["เมื่อเลเวลปัจจุบันตั้งแต่ +" + infoGuideF.downgradeFromLevel + " ขึ้นไป ถ้าลองแล้วล้มเหลว มีโอกาส " + infoGuideF.downgradeChancePct + "% ที่เลเวลลดลง 1 ขั้น อุปกรณ์จะไม่หายไป",
             "Protection Stone ใช้กันการตกเลเวล และจะถูกใช้เฉพาะตอนที่เกิดการตกเลเวลเท่านั้น"],
-          rows: [["ราคา Protection Stone", infoGuideF.protectionStoneDiamonds + " เพชร (ซื้อได้ทีละ 1)"]] }
-      ]
-    },
+          rows: [["ราคา Protection Stone", infoGuideF.protectionStoneDiamonds + " เพชร (ซื้อได้ทีละ 1)"]] },
         { heading: "ออร่าจากการตีบวก",
           body: [
             "ออร่ามี 2 ประเภท คือออร่าอาวุธและออร่าตัวละคร เป็นเอฟเฟกต์เพื่อความสวยงามเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้",
             "ออร่าอาวุธดูจากระดับตีบวกของอาวุธที่สวมใส่โดยตรง ส่วนออร่าตัวละครดูจากระดับตีบวกขั้นต่ำของอุปกรณ์ป้องกัน 4 ชิ้น ได้แก่ หมวก ชุดเกราะ ถุงมือ และรองเท้า โดยต้องสวมใส่ครบทุกชิ้น",
             "อาวุธ ปีก และเครื่องประดับไม่นำมาคำนวณออร่าตัวละคร ระบบจะตรวจอุปกรณ์ใหม่เมื่อเปลี่ยนหรือถอดอุปกรณ์ และทุกครั้งที่เข้าสู่สนามต่อสู้"
           ],
-          rows: [["ระดับออร่า", "+4: Stage 1 · +6: Stage 2 · +8: Stage 3 · +10: Stage 4"]] },
+          rows: [["ระดับออร่า", "+4: Stage 1 · +6: Stage 2 · +8: Stage 3 · +10: Stage 4"]] }
+      ]
+    },
     {
       id: "enchant", icon: "\u2728", title: "Enchant", subtitle: "ออปชันพิเศษบนอุปกรณ์",
       blocks: [
@@ -8345,11 +8345,14 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.47", date: "2026-11-09", title: "เตรียมเครื่องมือทดสอบหลังบ้าน",
+      version: "1.1.48", date: "2026-11-09", title: "เตรียมเครื่องมือทดสอบหลังบ้าน",
       items: ["เตรียมเครื่องมือสำหรับผู้ดูแลระบบเพื่อใช้ทดสอบระบบกับบัญชีทดสอบ (ยังปิดใช้งานอยู่) ไม่มีการเปลี่ยนแปลงต่อการเล่นหรือข้อมูลตัวละครของผู้เล่น"]
     },
     history: [
-      { version: "1.1.44", date: "2026-11-04", title: "ขยายการส่งต่อทรัพยากรทุกด่านและ Halloween", items: ["ส่งต่อ HP/SP/Pet HP จาก Victory/Fled ไปยังด่านเดิม ด่านก่อนหน้า ด่านถัดไป ด่านที่ปลดล็อก และ Halloween", "Defeat เริ่ม Battle ใหม่ด้วย HP/SP/Pet HP เต็ม โดย Worker ตรวจ Battle ID ล่าสุดและผล Settlement", "ไม่รับค่า HP/SP/Pet HP จาก Client และคงกฎ Event Floor/Halloween เดิม"] },
+      { version: "1.1.47", date: "2026-11-09", title: "อัปเดตคู่มือเกม: ออร่าจากการตีบวก",
+        items: ["เพิ่มหัวข้อออร่าจากการตีบวกไว้ในหมวด Refine ของคู่มือเกม", "อธิบายเงื่อนไขออร่าอาวุธและออร่าตัวละคร รวมถึงระดับ +4, +6, +8 และ +10", "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"] },
+      { version: "1.1.44", date: "2026-11-04", title: "ขยายการส่งต่อทรัพยากรทุกด่านและ Halloween",
+        items: ["ส่งต่อ HP/SP/Pet HP จาก Victory/Fled ไปยังด่านเดิม ด่านก่อนหน้า ด่านถัดไป ด่านที่ปลดล็อก และ Halloween", "Defeat เริ่ม Battle ใหม่ด้วย HP/SP/Pet HP เต็ม โดย Worker ตรวจ Battle ID ล่าสุดและผล Settlement", "ไม่รับค่า HP/SP/Pet HP จาก Client และคงกฎ Event Floor/Halloween เดิม"] },
       { version: "1.1.33", date: "2026-10-29", title: "อัปเดตการโหลดภาพอุปกรณ์ Idle", items: ["เพิ่ม Revision ให้ภาพ Leather และกางเกง Azure"] },
       { version: "1.1.32", date: "2026-10-29", title: "แก้กางเกงแสดงผลเมื่อสวมอุปกรณ์ผสม", items: ["จำกัดภาพมือที่ซ้อนหน้าดาบ Leather ไม่ให้ทับกางเกง"] },
       { version: "1.1.31", date: "2026-10-29", title: "แก้สีตัวอักษรหน้ารายละเอียดไอเทม", items: ["คืนสีตัวอักษรและปุ่มให้ถูกต้องในหน้าต่างเปรียบเทียบไอเทมบนมือถือ"] },

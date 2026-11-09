@@ -90,7 +90,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tests/enhancement-aura.test.js tests/phaser-shared-architecture.test.js tests/battle-ui-contract.test.js tests/dungeon-v2-foundation.test.js tests/dungeon-v2-event-floor.test.js tests/raid-wings-v2.test.js tests/h01-halloween-event.test.js tests/inventory-order.test.js tests/staging-battle-load-test.test.js tests/auth-v2.test.js tests/staging-bulk-test-account-provisioner.test.js
+          node --test tests/enhancement-aura-guide.test.js tests/enhancement-aura.test.js tests/phaser-shared-architecture.test.js tests/battle-ui-contract.test.js tests/dungeon-v2-foundation.test.js tests/dungeon-v2-event-floor.test.js tests/raid-wings-v2.test.js tests/h01-halloween-event.test.js tests/inventory-order.test.js tests/staging-battle-load-test.test.js tests/auth-v2.test.js tests/staging-bulk-test-account-provisioner.test.js
           node --check scripts/staging-battle-load-test.mjs
           node --check scripts/staging-bulk-test-account-provisioner.mjs
           node --check workers/modules/auth.js
