@@ -119,10 +119,12 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.44", date: "2026-11-04", title: "ขยายการส่งต่อทรัพยากรทุกด่านและ Halloween",
-      items: ["ส่งต่อ HP/SP/Pet HP จาก Victory/Fled ไปยังด่านเดิม ด่านก่อนหน้า ด่านถัดไป ด่านที่ปลดล็อก และ Halloween", "Defeat เริ่ม Battle ใหม่ด้วย HP/SP/Pet HP เต็ม โดย Worker ตรวจ Battle ID ล่าสุดและผล Settlement", "ไม่รับค่า HP/SP/Pet HP จาก Client และคงกฎ Event Floor/Halloween เดิม"]
+      version: "1.1.47", date: "2026-11-09", title: "อัปเดตคู่มือเกม: ออร่าจากการตีบวก",
+      items: ["เพิ่มหัวข้อออร่าจากการตีบวกไว้ในหมวด Refine ของคู่มือเกม", "อธิบายเงื่อนไขออร่าอาวุธและออร่าตัวละคร รวมถึงระดับ +4, +6, +8 และ +10", "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"]
     },
     history: [
+      { version: "1.1.44", date: "2026-11-04", title: "ขยายการส่งต่อทรัพยากรทุกด่านและ Halloween",
+        items: ["ส่งต่อ HP/SP/Pet HP จาก Victory/Fled ไปยังด่านเดิม ด่านก่อนหน้า ด่านถัดไป ด่านที่ปลดล็อก และ Halloween", "Defeat เริ่ม Battle ใหม่ด้วย HP/SP/Pet HP เต็ม โดย Worker ตรวจ Battle ID ล่าสุดและผล Settlement", "ไม่รับค่า HP/SP/Pet HP จาก Client และคงกฎ Event Floor/Halloween เดิม"] },
       { version: "1.1.33", date: "2026-10-29", title: "อัปเดตการโหลดภาพอุปกรณ์ Idle", items: ["เพิ่ม Revision ให้ภาพ Leather และกางเกง Azure"] },
       { version: "1.1.32", date: "2026-10-29", title: "แก้กางเกงแสดงผลเมื่อสวมอุปกรณ์ผสม", items: ["จำกัดภาพมือที่ซ้อนหน้าดาบ Leather ไม่ให้ทับกางเกง"] },
       { version: "1.1.31", date: "2026-10-29", title: "แก้สีตัวอักษรหน้ารายละเอียดไอเทม", items: ["คืนสีตัวอักษรและปุ่มให้ถูกต้องในหน้าต่างเปรียบเทียบไอเทมบนมือถือ"] },
