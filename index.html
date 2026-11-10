@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.48" />
+<meta name="application-version" content="1.1.49" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.48";
+  content: "Ver 1.1.49";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -8345,7 +8345,7 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.48", date: "2026-11-09", title: "เตรียมเครื่องมือทดสอบหลังบ้าน",
+      version: "1.1.49", date: "2026-11-10", title: "เตรียมเครื่องมือทดสอบหลังบ้าน",
       items: ["เตรียมเครื่องมือสำหรับผู้ดูแลระบบเพื่อใช้ทดสอบระบบกับบัญชีทดสอบ (ยังปิดใช้งานอยู่) ไม่มีการเปลี่ยนแปลงต่อการเล่นหรือข้อมูลตัวละครของผู้เล่น"]
     },
     history: [
@@ -13756,14 +13756,11 @@ class EnhancementAuraRenderer {
   reorder(heroRenderer) {
     const root = this.root;
     if (!root?.list || typeof root.moveTo !== "function") return;
-    if (root.list.includes(this.characterRoot)) root.moveTo(this.characterRoot, 0);
-    const layerName = String(heroRenderer?.data?.visualMode || "").startsWith("v5-g2") ? "sword" : "weapon";
-    const weaponImage = heroRenderer?.layerImages?.find(item => item.name === layerName)?.image;
-    let targetIndex = weaponImage ? root.list.indexOf(weaponImage) : -1;
-    if (targetIndex < 0) return;
+    // Aura is intentionally the outermost presentation layer: raise it above
+    // every Hero equipment/body layer after each frame is applied.
+    if (root.list.includes(this.characterRoot)) root.moveTo(this.characterRoot, root.list.length - 1);
     this.weaponHalos.filter(halo => halo.visible && root.list.includes(halo)).forEach(halo => {
-      root.moveTo(halo, targetIndex);
-      targetIndex += 1;
+      root.moveTo(halo, root.list.length - 1);
     });
   }
 

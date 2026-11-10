@@ -111,7 +111,7 @@ Design mockup: Claude Design canvas "Admin QA Seed (W2-H) — Page Design" (3 bo
 - Version bump on shipped H1/H2/H3; tests need `item_provenance` / `item_ownership_events` tables; register new error codes in the admin client.
 - Provenance origin type `admin_seed`, ownership event type `admin_seeded`.
 
-## 10. H1 implementation record (Ver 1.1.48 after syncing with main 1.1.47; was 1.1.45 when staging-tested, PR #202, branch `feat/w2h-h1-admin-seed-shell`)
+## 10. H1 implementation record (Ver 1.1.49 after syncing with main 1.1.48; was 1.1.45 when staging-tested, PR #202, branch `feat/w2h-h1-admin-seed-shell`)
 Shipped DISABLED (`game_config.admin_seed_enabled` absent = off). Scope: framework + `gold` canary only. Independent review (2026-11-03) found P1-A..D and P2-A..C; all addressed below and awaiting independent re-review.
 
 **API**
@@ -195,3 +195,6 @@ Workflow `prod-d1-restore-point.yml` (QA branch) ran `wrangler d1 time-travel in
 - Run `42717925510`; workflow commit `c740e34c` (branch `qa/h1-w2fg-staging-d1`); code deployed and tested `51d5c3bd` (PR head at dispatch, Ver 1.1.48, includes main `cc5eccce`); staging Worker version `eb2f6d5e-e4cf-47e1-ae7e-c4cb45a36da6`; staging D1 `c16e0b11-cf83-468c-a533-0ecbf522082f`; evidence branch commit `dbf2a742` (`qa-evidence/h1-w2fg-42717925510`).
 - `evidence.json`: 35/35 PASS, 148 checks, none failed; the credential/D1-identity step, the no-cron/no-route staging config, migrations and deploy steps all succeeded; no token/password strings in the evidence files. Scenario 34 (8 legacy replays) and new scenario 35 (17 cases: extra_json vs column quantity, non-stackable, malformed, missing player/character/item/quantity) PASS; stack stayed 7 and no audit/ownership row was added by any replay.
 - Not verified: the Actions artifact zip (not downloadable from the review sandbox; `evidence.json` read from the evidence branch). The workflow step label still says "33 scenarios" (cosmetic, tooling branch). Browser QA is mock-API only; no Production QA; flag `admin_seed_enabled` stays OFF; PR not merged or deployed.
+
+### Final sync before merge (2026-11-10)
+- `main` advanced to `104af247` (Ver 1.1.48, Enhancement Aura render fix) after the review of `a758ef4c`, so this PR was synced again by a normal merge (no conflicts, no force push) and bumped to **Ver 1.1.49** to avoid reusing 1.1.48. The sync commit changes only version files, the Info Center entry version, the roadmap line, the version test and these docs; no Worker/admin/seed code. The staging evidence above tested `51d5c3bd` (Ver 1.1.48-era code) and does not cover this sync commit; Production QA has not been done and the flag stays OFF.

@@ -221,14 +221,11 @@ class EnhancementAuraRenderer {
   reorder(heroRenderer) {
     const root = this.root;
     if (!root?.list || typeof root.moveTo !== "function") return;
-    if (root.list.includes(this.characterRoot)) root.moveTo(this.characterRoot, 0);
-    const layerName = String(heroRenderer?.data?.visualMode || "").startsWith("v5-g2") ? "sword" : "weapon";
-    const weaponImage = heroRenderer?.layerImages?.find(item => item.name === layerName)?.image;
-    let targetIndex = weaponImage ? root.list.indexOf(weaponImage) : -1;
-    if (targetIndex < 0) return;
+    // Aura is intentionally the outermost presentation layer: raise it above
+    // every Hero equipment/body layer after each frame is applied.
+    if (root.list.includes(this.characterRoot)) root.moveTo(this.characterRoot, root.list.length - 1);
     this.weaponHalos.filter(halo => halo.visible && root.list.includes(halo)).forEach(halo => {
-      root.moveTo(halo, targetIndex);
-      targetIndex += 1;
+      root.moveTo(halo, root.list.length - 1);
     });
   }
 
