@@ -36,6 +36,7 @@ const THORNIE_PHASER_RUNTIME = (() => {
         state = { status: "error", version: THORNIE_PHASER_VERSION, error: nextError };
         reject(nextError);
       };
+      timeoutId = setTimeout(() => fail(new Error("Phaser runtime load timed out")), 8000);
       const ready = () => {
         const runtime = currentPhaser();
         if (!runtime) return fail(new Error("Phaser runtime loaded without Phaser.Game"));
