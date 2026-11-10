@@ -91,3 +91,34 @@ test("Inventory HeroPreviewScene reuses EnhancementAuraRenderer, refreshes per p
   assert.match(scene, /this\.applyHeroFrame\("idle", this\.frameIndex\)/);
   assert.match(scene, /this\.enhancementAuraRenderer\?\.destroy\(\)/);
 });
+
+
+test("Aura failures route through shared catcher with bounded context", () => {
+  const catcherSource = read("src/systems/battleErrorCatcher.js");
+  const actor = read("src/phaser/actors/HeroActor.js");
+  const preview = read("src/phaser/scenes/HeroPreviewScene.js");
+  assert.match(catcherSource, /capturePresentation/);
+  assert.match(catcherSource, /enhancement_aura_failed/);
+  assert.match(actor, /phase: "create"/);
+  assert.match(actor, /phase: "update"/);
+  assert.match(preview, /capturePresentation/);
+});
+
+test("Shared catcher logs sanitized Aura failures and obeys its switch", () => {
+  delete globalThis.BATTLE_ERROR_CATCHER;
+  require("../src/systems/battleErrorCatcher.js");
+  const catcher = globalThis.BATTLE_ERROR_CATCHER;
+  const originalWarn = console.warn;
+  const messages = [];
+  console.warn = (...args) => messages.push(args);
+  try {
+    catcher.capturePresentation({ thrown: Object.assign(new Error("private detail"), { code: "AURA_RENDER_FAILED" }), surface: "inventory", phase: "update" });
+    assert.equal(messages.length, 1);
+    const payload = JSON.parse(messages[0][1]);
+    assert.deepEqual(payload, { event: "enhancement_aura_failed", system: "phaser_presentation", component: "enhancement_aura", reason: "aura_render_failed", version: "1.1.49", surface: "inventory", phase: "update" });
+    assert.equal(JSON.stringify(payload).includes("private detail"), false);
+    catcher.setEnabled(false);
+    catcher.capturePresentation({ thrown: new Error("hidden"), surface: "dungeon", phase: "create" });
+    assert.equal(messages.length, 1);
+  } finally { catcher.setEnabled(true); console.warn = originalWarn; }
+});

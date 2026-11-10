@@ -9,11 +9,12 @@ function heroPreviewFallbackLayerNames(name) {
   return name ? [name] : [];
 }
 
-function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onReady, onError } = {}) {
+function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, surface = "inventory", onReady, onError } = {}) {
   return class HeroPreviewScene extends Phaser.Scene {
     constructor() {
       super({ key: "HeroPreviewScene" });
       this.initialSnapshot = initialSnapshot || null;
+      this.auraSurface = surface;
       this.snapshot = null;
       this.pendingSnapshot = null;
       this.assetResolver = SHARED_PHASER_ASSET_RESOLVER;
@@ -115,7 +116,8 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
       });
       try {
         this.enhancementAuraRenderer = new EnhancementAuraRenderer(this, this.heroRoot, () => this.displaySize());
-      } catch (_) {
+      } catch (error) {
+        globalThis.BATTLE_ERROR_CATCHER?.capturePresentation?.({ thrown: error, surface: this.auraSurface, phase: "create" });
         this.enhancementAuraRenderer = null;
       }
       this.applySnapshot(this.initialSnapshot);
@@ -139,7 +141,8 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
     updateEnhancementAura() {
       try {
         this.enhancementAuraRenderer?.update(this.snapshot?.hero?.enhancementAura, this.heroRenderer);
-      } catch (_) {
+      } catch (error) {
+        globalThis.BATTLE_ERROR_CATCHER?.capturePresentation?.({ thrown: error, surface: this.auraSurface, phase: "update" });
         try { this.enhancementAuraRenderer?.destroy(); } catch (_) { /* optional preview Aura must not break the Hero */ }
         this.enhancementAuraRenderer = null;
       }

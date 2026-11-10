@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.49" />
+<meta name="application-version" content="1.1.50" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.49";
+  content: "Ver 1.1.50";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -8345,7 +8345,7 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.49", date: "2026-11-10", title: "เตรียมเครื่องมือทดสอบหลังบ้าน",
+      version: "1.1.50", date: "2026-11-10", title: "เตรียมเครื่องมือทดสอบหลังบ้าน",
       items: ["เตรียมเครื่องมือสำหรับผู้ดูแลระบบเพื่อใช้ทดสอบระบบกับบัญชีทดสอบ (ยังปิดใช้งานอยู่) ไม่มีการเปลี่ยนแปลงต่อการเล่นหรือข้อมูลตัวละครของผู้เล่น"]
     },
     history: [
@@ -10478,6 +10478,18 @@ if (typeof module !== "undefined") module.exports = {
   root.BATTLE_ERROR_CATCHER = Object.freeze({
     setEnabled(value) { enabled = !!value; return enabled; },
     isEnabled() { return enabled; },
+    capturePresentation({ thrown, surface, phase } = {}) {
+      if (!enabled) return null;
+      const safeSurface = ["inventory", "dungeon", "arena"].includes(surface) ? surface : "unknown";
+      const safePhase = safeCode(phase) || "unknown";
+      const reason = safeCode(thrown?.code) || `aura_${safePhase}_failed`;
+      const diagnostic = {
+        event: "enhancement_aura_failed", system: "phaser_presentation",
+        component: "enhancement_aura", reason, version: "1.1.49", surface: safeSurface, phase: safePhase
+      };
+      try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
+      return { reason, surface: safeSurface, phase: safePhase };
+    },
     capture({ response, thrown, action, battleId, authorityRev, safeActionSeq, requestId } = {}) {
       if (!enabled) return null;
       const reason = safeCode(response?.error) || safeCode(response?.reason) || safeCode(thrown?.code) || "unknown_error";
@@ -14819,6 +14831,7 @@ class HeroRenderer {
 class HeroActor extends PhaserBattleActor {
   constructor(scene, data, options = {}) {
     super(scene, data, { baseSize: 150, depth: 7, ...options });
+    this.auraSurface = options.auraSurface || "dungeon";
     this.heroRenderer = new HeroRenderer(scene, {
       root: this.visualRoot,
       data: this.data,
@@ -14827,7 +14840,8 @@ class HeroActor extends PhaserBattleActor {
     });
     try {
       this.enhancementAuraRenderer = new EnhancementAuraRenderer(scene, this.visualRoot, () => this.displaySize());
-    } catch (_) {
+    } catch (error) {
+      globalThis.BATTLE_ERROR_CATCHER?.capturePresentation?.({ thrown: error, surface: this.auraSurface, phase: "create" });
       this.enhancementAuraRenderer = null;
     }
   }
@@ -14863,7 +14877,8 @@ class HeroActor extends PhaserBattleActor {
     this.heroRenderer?.setData(this.data).applyVisualFrame(state, index);
     try {
       this.enhancementAuraRenderer?.update(this.data?.enhancementAura, this.heroRenderer);
-    } catch (_) {
+    } catch (error) {
+      globalThis.BATTLE_ERROR_CATCHER?.capturePresentation?.({ thrown: error, surface: this.auraSurface, phase: "update" });
       try { this.enhancementAuraRenderer?.destroy(); } catch (_) { /* optional Aura failure must not affect combat */ }
       this.enhancementAuraRenderer = null;
     }
@@ -15226,7 +15241,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         this.createArenaActors();
         return;
       }
-      this.actors.hero = new HeroActor(this, this.snapshot.hero || {});
+      this.actors.hero = new HeroActor(this, this.snapshot.hero || {}, { auraSurface: "dungeon" });
       if (this.snapshot.pet) this.actors.pet = new PetActor(this, this.snapshot.pet);
       this.actors.monsters = (this.snapshot.monsters || []).map(monster => new MonsterActor(this, monster, id => onTargetSelected?.(id)));
     }
@@ -15237,9 +15252,9 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         || null;
     }
 
-    createArenaActor(data, selectable = false) {
+    createArenaActor(data, selectable = false, auraSurface = "arena") {
       if (!data) return null;
-      const options = selectable ? { onSelect: id => onTargetSelected?.(id) } : {};
+      const options = { auraSurface, ...(selectable ? { onSelect: id => onTargetSelected?.(id) } : {}) };
       return data.kind === "pet"
         ? new PetActor(this, data, options)
         : new HeroActor(this, data, options);
@@ -15737,11 +15752,12 @@ function heroPreviewFallbackLayerNames(name) {
   return name ? [name] : [];
 }
 
-function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onReady, onError } = {}) {
+function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, surface = "inventory", onReady, onError } = {}) {
   return class HeroPreviewScene extends Phaser.Scene {
     constructor() {
       super({ key: "HeroPreviewScene" });
       this.initialSnapshot = initialSnapshot || null;
+      this.auraSurface = surface;
       this.snapshot = null;
       this.pendingSnapshot = null;
       this.assetResolver = SHARED_PHASER_ASSET_RESOLVER;
@@ -15843,7 +15859,8 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
       });
       try {
         this.enhancementAuraRenderer = new EnhancementAuraRenderer(this, this.heroRoot, () => this.displaySize());
-      } catch (_) {
+      } catch (error) {
+        globalThis.BATTLE_ERROR_CATCHER?.capturePresentation?.({ thrown: error, surface: this.auraSurface, phase: "create" });
         this.enhancementAuraRenderer = null;
       }
       this.applySnapshot(this.initialSnapshot);
@@ -15867,7 +15884,8 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
     updateEnhancementAura() {
       try {
         this.enhancementAuraRenderer?.update(this.snapshot?.hero?.enhancementAura, this.heroRenderer);
-      } catch (_) {
+      } catch (error) {
+        globalThis.BATTLE_ERROR_CATCHER?.capturePresentation?.({ thrown: error, surface: this.auraSurface, phase: "update" });
         try { this.enhancementAuraRenderer?.destroy(); } catch (_) { /* optional preview Aura must not break the Hero */ }
         this.enhancementAuraRenderer = null;
       }

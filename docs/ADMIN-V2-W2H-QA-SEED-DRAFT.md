@@ -111,7 +111,7 @@ Design mockup: Claude Design canvas "Admin QA Seed (W2-H) — Page Design" (3 bo
 - Version bump on shipped H1/H2/H3; tests need `item_provenance` / `item_ownership_events` tables; register new error codes in the admin client.
 - Provenance origin type `admin_seed`, ownership event type `admin_seeded`.
 
-## 10. H1 implementation record (Ver 1.1.49 after syncing with main 1.1.48; was 1.1.45 when staging-tested, PR #202, branch `feat/w2h-h1-admin-seed-shell`)
+## 10. H1 implementation record (Ver 1.1.50 after syncing with main 1.1.49; was 1.1.45 when staging-tested, PR #202, branch `feat/w2h-h1-admin-seed-shell`)
 Shipped DISABLED (`game_config.admin_seed_enabled` absent = off). Scope: framework + `gold` canary only. Independent review (2026-11-03) found P1-A..D and P2-A..C; all addressed below and awaiting independent re-review.
 
 **API**
@@ -198,3 +198,4 @@ Workflow `prod-d1-restore-point.yml` (QA branch) ran `wrangler d1 time-travel in
 
 ### Final sync before merge (2026-11-10)
 - `main` advanced to `104af247` (Ver 1.1.48, Enhancement Aura render fix) after the review of `a758ef4c`, so this PR was synced again by a normal merge (no conflicts, no force push) and bumped to **Ver 1.1.49** to avoid reusing 1.1.48. The sync commit changes only version files, the Info Center entry version, the roadmap line, the version test and these docs; no Worker/admin/seed code. The staging evidence above tested `51d5c3bd` (Ver 1.1.48-era code) and does not cover this sync commit; Production QA has not been done and the flag stays OFF.
+- Synced once more with `main` `23215130` (Ver 1.1.49, Aura fix #209) immediately before merge and bumped to **Ver 1.1.50**; version/docs only, no Worker/admin/seed code. The merge method is a squash merge, matching how main's history is recorded.
