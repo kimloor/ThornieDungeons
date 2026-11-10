@@ -533,3 +533,12 @@ At the Owner's request, the shared EnhancementAuraRenderer temporarily bypasses 
 - Character Aura ring centers are now positioned around `+0.05 × displaySize` from the Hero root baseline, with particles centered at the same lower-body/ground reference. This matches the Owner's marked target near the feet rather than wrapping the torso/head.
 - Weapon Aura now displays a small temporary diagnostic label directly beneath the Hero preview. It reports the expected weapon layer, whether that layer is ready/missing/hidden, and the available layer names. This makes the check usable on iPhone without remote browser developer tools. The bounded console record remains available for deeper transform/crop inspection.
 - No combat, equipment, enhancement-stage, or save authority is changed. Forced Stage 4 remains a temporary visual diagnostic pending Owner approval of the Aura rendering.
+
+
+## 25. Golden Power Aura Style module (Ver 1.1.55)
+
+- Aura appearance is configured through the replaceable `ENHANCEMENT_AURA_STYLES` registry. `goldenPower` is the initial style; future styles can be added without changing enhancement-stage calculation.
+- Enhancement thresholds remain +4/+6/+8/+10. Stage selects only one of four palette colors (pale gold, bright gold, amber, golden flame).
+- Effect intensity is fixed across stages: ring count/width/alpha, particle count/size/orbit/alpha, pulse duration and weapon halo count/alpha do not increase with enhancement level.
+- Removed the temporary forced Stage 4 override. Character and Weapon Aura now use the actual equipped loadout stage, so each stage's color is observable.
+- Character Aura remains positioned at the Owner-approved lower-body/ground reference. Weapon diagnostic label remains temporarily enabled for mobile QA.
