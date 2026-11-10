@@ -781,3 +781,9 @@ The following Thai copy is prepared for `src/data/infoGuide.js`, topic id `refin
 The copy is now included in `src/data/infoGuide.js` under the existing `refine` topic id. `tests/info-guide.test.js` asserts the cosmetic-only wording, four defensive slots, excluded slots, and stage thresholds. The existing `refine` topic id/deep link is unchanged.
 
 **Branch verification:** pending GitHub Actions focused tests and generated frontend build. Production verification has not been performed.
+
+### 17.5 Aura outermost-layer visibility fix — Ver 1.1.48
+
+- The Character Aura container and visible Weapon Aura halos are reordered to the end of the Hero presentation root after updates, placing them above all Hero body/equipment layers.
+- This is a visibility-first diagnostic release. Aura size, color, and intensity are intentionally unchanged until the Owner confirms the effect is visible in Production.
+- Regression coverage checks that the Aura elements are promoted to the final display-list indices. CI/build and live visual confirmation remain separate gates.

@@ -64,6 +64,9 @@ test("Aura follows the verified V3/V5 weapon layers and cleans up with HeroActor
   assert.match(renderer, /currentLayer\.crop/);
   assert.match(renderer, /weaponImage\.displayWidth/);
   assert.match(renderer, /weaponImage\.angle/);
+  assert.match(renderer, /Aura is intentionally the outermost presentation layer/);
+  assert.match(renderer, /root\.moveTo\(this\.characterRoot, root\.list\.length - 1\)/);
+  assert.match(renderer, /root\.moveTo\(halo, root\.list\.length - 1\)/);
   assert.match(renderer, /this\.stopTweens\(this\.characterTweens\)/);
   assert.match(renderer, /this\.stopTweens\(this\.weaponTweens\)/);
   assert.match(heroRenderer, /this\.currentLayers = layers/);
