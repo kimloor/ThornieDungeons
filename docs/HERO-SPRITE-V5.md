@@ -519,3 +519,10 @@ At the Owner's request, the shared EnhancementAuraRenderer temporarily bypasses 
 - Weapon Aura is forced to Stage 4 but still requires a visible, resolved weapon sprite layer to clone; it cannot render when no weapon layer exists.
 - This is a temporary renderer-isolation test, not a change to the approved enhancement rules.
 - Remove the forced override after the Owner confirms the visual result, then restore the normal loadout-derived stage values.
+
+
+## 23. Enhancement Aura runtime placement diagnostic (Ver 1.1.53)
+
+- Character Aura is positioned relative to the Hero root/display size, which is anchored near the sprite baseline; the previous -0.46 × size ring and -0.49 × size particle center placed the effect too high on the current Hero composition.
+- The torso-focused placement uses ring centers around -0.28 × size and particle center around -0.30 × size. This is a presentation adjustment only; it does not change Hero V5 canvas coordinates, authored sprite layers, equipment anchors, or gameplay values.
+- Weapon Aura reports a bounded weapon-aura-diagnostic console event when its expected sword (V5 G2) or weapon (V3) layer changes state. It records visual mode, available layer names, visibility, texture key, transform, display dimensions, and crop; it does not include player identifiers or loadout contents.

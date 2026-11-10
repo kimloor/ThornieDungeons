@@ -115,7 +115,7 @@ test("Shared catcher logs sanitized Aura failures and obeys its switch", () => {
     catcher.capturePresentation({ thrown: Object.assign(new Error("private detail"), { code: "AURA_RENDER_FAILED" }), surface: "inventory", phase: "update" });
     assert.equal(messages.length, 1);
     const payload = JSON.parse(messages[0][1]);
-    assert.deepEqual(payload, { event: "enhancement_aura_failed", system: "phaser_presentation", component: "enhancement_aura", reason: "aura_render_failed", version: "1.1.51", surface: "inventory", phase: "update" });
+    assert.deepEqual(payload, { event: "enhancement_aura_failed", system: "phaser_presentation", component: "enhancement_aura", reason: "aura_render_failed", version: "1.1.53", surface: "inventory", phase: "update" });
     assert.equal(JSON.stringify(payload).includes("private detail"), false);
     catcher.setEnabled(false);
     catcher.capturePresentation({ thrown: new Error("hidden"), surface: "dungeon", phase: "create" });
@@ -128,4 +128,19 @@ test("Temporary visibility diagnostic bypasses enhancement/loadout Aura stages",
   assert.match(renderer, /TEMPORARY OWNER-REQUESTED VISIBILITY DIAGNOSTIC/);
   assert.match(renderer, /const forceVisible = true/);
   assert.match(renderer, /forceVisible \? 4/);
+});
+
+
+test("Character Aura is positioned around the torso instead of the head", () => {
+  const renderer = read("src/phaser/presentation/EnhancementAura.js");
+  assert.match(renderer, /strokeEllipse\(0, -size \* \(0\.28 \+ index \* 0\.025\)/);
+  assert.match(renderer, /-size \* 0\.30 \+ Math\.sin\(angle\) \* size \* 0\.22/);
+});
+
+test("Weapon Aura emits bounded diagnostics when the selected weapon layer is unavailable", () => {
+  const renderer = read("src/phaser/presentation/EnhancementAura.js");
+  assert.match(renderer, /weapon_aura_diagnostic/);
+  assert.match(renderer, /weapon_layer_missing/);
+  assert.match(renderer, /availableLayers: layerNames\.slice\(0, 24\)/);
+  assert.match(renderer, /weaponImage\.displayWidth/);
 });

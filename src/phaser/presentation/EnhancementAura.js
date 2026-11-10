@@ -60,6 +60,7 @@ class EnhancementAuraRenderer {
     this.characterSize = 0;
     this.weaponHalos = [];
     this.weaponTweens = [];
+    this.weaponDiagnosticSignature = "";
     this.destroyed = false;
     root?.add(this.characterRoot);
   }
@@ -101,7 +102,7 @@ class EnhancementAuraRenderer {
       const height = size * (0.16 + index * 0.055);
       this.characterGraphics
         .lineStyle(1.25 + stage * 0.35, color, Math.max(0.16, 0.42 - index * 0.09))
-        .strokeEllipse(0, -size * (0.46 + index * 0.035), width, height);
+        .strokeEllipse(0, -size * (0.28 + index * 0.025), width, height);
     }
 
     const particleCount = Math.min(10, 2 + stage * 2);
@@ -109,7 +110,7 @@ class EnhancementAuraRenderer {
       const angle = (Math.PI * 2 * index) / particleCount;
       const particle = this.scene.add.circle(
         Math.cos(angle) * size * 0.39,
-        -size * 0.49 + Math.sin(angle) * size * 0.28,
+        -size * 0.30 + Math.sin(angle) * size * 0.22,
         Math.max(1.5, size * (0.009 + stage * 0.0015)),
         color,
         0.82
@@ -159,7 +160,15 @@ class EnhancementAuraRenderer {
     const entry = heroRenderer?.layerImages?.find(item => item.name === layerName);
     const weaponImage = entry?.image;
     const currentLayer = (heroRenderer?.currentLayers || []).find(layer => layer.name === layerName);
-    const usable = stage > 0 && weaponImage?.visible && weaponImage?.texture?.key && currentLayer;
+    const layerNames = (heroRenderer?.currentLayers || []).map(layer => String(layer?.name || "")).filter(Boolean);
+    const reason = stage <= 0 ? "stage_disabled" : !currentLayer ? "weapon_layer_missing" : !weaponImage ? "weapon_image_missing" : !weaponImage.visible ? "weapon_image_hidden" : !weaponImage.texture?.key ? "weapon_texture_missing" : "weapon_layer_ready";
+    const usable = reason === "weapon_layer_ready";
+    const diagnostic = { event: "weapon_aura_diagnostic", reason, visualMode: String(heroRenderer?.data?.visualMode || "unknown").slice(0, 40), expectedLayer: layerName, availableLayers: layerNames.slice(0, 24), textureKey: String(weaponImage?.texture?.key || "").slice(0, 160), visible: !!weaponImage?.visible, x: Number.isFinite(Number(weaponImage?.x)) ? Number(weaponImage.x) : null, y: Number.isFinite(Number(weaponImage?.y)) ? Number(weaponImage.y) : null, displayWidth: Number.isFinite(Number(weaponImage?.displayWidth)) ? Number(weaponImage.displayWidth) : null, displayHeight: Number.isFinite(Number(weaponImage?.displayHeight)) ? Number(weaponImage.displayHeight) : null, originX: Number.isFinite(Number(weaponImage?.originX)) ? Number(weaponImage.originX) : null, originY: Number.isFinite(Number(weaponImage?.originY)) ? Number(weaponImage.originY) : null, angle: Number.isFinite(Number(weaponImage?.angle)) ? Number(weaponImage.angle) : null, crop: Array.isArray(currentLayer?.crop) ? currentLayer.crop.slice(0, 4) : null };
+    const signature = JSON.stringify(diagnostic);
+    if (signature !== this.weaponDiagnosticSignature) {
+      this.weaponDiagnosticSignature = signature;
+      try { globalThis.console?.info?.("[weapon-aura-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
+    }
     const stageChanged = stage !== this.weaponStage;
     if (stageChanged) {
       this.weaponStage = stage;
@@ -256,6 +265,7 @@ class EnhancementAuraRenderer {
     });
     this.characterParticles = [];
     this.weaponHalos = [];
+    this.weaponDiagnosticSignature = "";
     this.characterRoot = null;
     this.characterGraphics = null;
     this.root = null;

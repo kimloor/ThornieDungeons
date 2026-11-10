@@ -283,3 +283,8 @@ A diagnostic addition is complete when:
 4. focused regression covers the failure class where practical;
 5. Production logging volume is acceptable;
 6. related docs are updated when the diagnostic establishes a reusable contract.
+
+
+### Enhancement Aura visual diagnostics (Ver 1.1.53)
+
+The client emits a bounded [weapon-aura-diagnostic] console record only when the selected weapon-layer state changes. The record contains the visual mode, expected/available layer names, visibility, texture key, transform, display dimensions, and crop. It excludes player identifiers, inventory payloads, exception messages, and credentials. Use it to distinguish a missing/hidden layer from an incorrect weapon transform; do not infer a positional defect when the expected layer is absent.
