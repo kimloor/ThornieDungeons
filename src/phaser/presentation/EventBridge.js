@@ -94,7 +94,8 @@ function buildHeroPreviewSnapshot({ heroName = "Hero", equipped = {}, heroV5 = t
       visualMode: heroFrames.mode || "v3",
       layers: heroFrames.idle?.[0] || [],
       layerFrames: heroFrames,
-      enhancementAura: resolveEnhancementAura(equipped)
+      enhancementAura: resolveEnhancementAura(equipped),
+      presentationSurface: "inventory"
     }
   });
 }
@@ -142,7 +143,8 @@ function buildBattlefieldSnapshot({ battleState, heroName = "Hero", equipped = {
       visualMode: heroFrames.mode || "v3",
       layers: heroLayers,
       layerFrames: heroFrames,
-      enhancementAura: resolveEnhancementAura(equipped)
+      enhancementAura: resolveEnhancementAura(equipped),
+      presentationSurface: "dungeon"
     },
     pet: pet ? {
       ...pet,
@@ -356,7 +358,8 @@ function buildArenaBattlefieldSnapshot({
         visualMode: heroFrames.mode || "v3",
         layers: heroFrames.idle?.[0] || [],
         layerFrames: heroFrames,
-        enhancementAura: role === "attacker" ? resolveEnhancementAura(equipped) : null
+        enhancementAura: role === "attacker" ? resolveEnhancementAura(equipped) : null,
+        presentationSurface: "arena"
       } : null,
       pet: pet ? {
         ...pet,
