@@ -1,4 +1,5 @@
 name: Deploy ThornieDungeons Frontend
+# Keep this workflow dispatchable after generated index.html commits from the frontend build job.
 
 on:
   push:
