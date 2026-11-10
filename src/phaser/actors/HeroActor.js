@@ -8,9 +8,11 @@ class HeroActor extends PhaserBattleActor {
       displaySize: () => this.displaySize(),
       textureKey: reference => this.scene.assetKey(reference)
     });
+    globalThis.BATTLE_ERROR_CATCHER?.setEnabled(true);
     try {
       this.enhancementAuraRenderer = new EnhancementAuraRenderer(scene, this.visualRoot, () => this.displaySize());
-    } catch (_) {
+    } catch (error) {
+      globalThis.BATTLE_ERROR_CATCHER?.captureAura({ surface: this.data?.presentationSurface || "battle", phase: "renderer_init", error, characterStage: this.data?.enhancementAura?.characterStage, weaponStage: this.data?.enhancementAura?.weaponStage });
       this.enhancementAuraRenderer = null;
     }
   }
@@ -46,14 +48,19 @@ class HeroActor extends PhaserBattleActor {
     this.heroRenderer?.setData(this.data).applyVisualFrame(state, index);
     try {
       this.enhancementAuraRenderer?.update(this.data?.enhancementAura, this.heroRenderer);
-    } catch (_) {
-      try { this.enhancementAuraRenderer?.destroy(); } catch (_) { /* optional Aura failure must not affect combat */ }
+    } catch (error) {
+      globalThis.BATTLE_ERROR_CATCHER?.captureAura({ surface: this.data?.presentationSurface || "battle", phase: "renderer_update", error, characterStage: this.data?.enhancementAura?.characterStage, weaponStage: this.data?.enhancementAura?.weaponStage });
+      try { this.enhancementAuraRenderer?.destroy(); } catch (teardownError) {
+        globalThis.BATTLE_ERROR_CATCHER?.captureAura({ surface: this.data?.presentationSurface || "battle", phase: "renderer_recovery", error: teardownError });
+      }
       this.enhancementAuraRenderer = null;
     }
   }
 
   destroy() {
-    try { this.enhancementAuraRenderer?.destroy(); } catch (_) { /* actor teardown remains authoritative */ }
+    try { this.enhancementAuraRenderer?.destroy(); } catch (error) {
+      globalThis.BATTLE_ERROR_CATCHER?.captureAura({ surface: this.data?.presentationSurface || "battle", phase: "renderer_destroy", error });
+    }
     this.enhancementAuraRenderer = null;
     this.heroRenderer?.destroy();
     this.heroRenderer = null;
