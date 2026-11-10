@@ -218,6 +218,15 @@ unsafe evidence remains server-side and successful flows stay quiet.
 Dungeon Potion / Basic Attack rejections use the shared `BATTLE_ERROR_CATCHER` client boundary.
 Toggle it with `BATTLE_ERROR_CATCHER.setEnabled(false)` or re-enable with `setEnabled(true)`. It emits only sanitized stable codes, HTTP status, action type, Battle ID, revision and sequence correlation; raw response bodies and exception messages are never emitted. Disabled mode retains the generic player error.
 
+### Phaser Enhancement Aura presentation
+
+The shared `BATTLE_ERROR_CATCHER.capturePresentation` boundary records Aura renderer
+construction/update failures as `enhancement_aura_failed` under `phaser_presentation`.
+It includes only the bounded surface (`inventory`, `dungeon`, or `arena`) and phase
+(`create` or `update`), plus a sanitized reason code. Exception messages, stacks,
+player/loadout data, and request payloads are excluded. Failed renderers are disabled
+without interrupting the Hero or combat flow. The shared catcher switch controls these events.
+
 ## 9. Temporary diagnostic investigations
 
 A temporary Production diagnostic is allowed when a Production-only issue cannot be reproduced safely elsewhere, provided that:

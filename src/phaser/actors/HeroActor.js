@@ -2,6 +2,7 @@
 class HeroActor extends PhaserBattleActor {
   constructor(scene, data, options = {}) {
     super(scene, data, { baseSize: 150, depth: 7, ...options });
+    this.auraSurface = options.auraSurface || "dungeon";
     this.heroRenderer = new HeroRenderer(scene, {
       root: this.visualRoot,
       data: this.data,
@@ -10,7 +11,8 @@ class HeroActor extends PhaserBattleActor {
     });
     try {
       this.enhancementAuraRenderer = new EnhancementAuraRenderer(scene, this.visualRoot, () => this.displaySize());
-    } catch (_) {
+    } catch (error) {
+      globalThis.BATTLE_ERROR_CATCHER?.capturePresentation?.({ thrown: error, surface: this.auraSurface, phase: "create" });
       this.enhancementAuraRenderer = null;
     }
   }
@@ -46,7 +48,8 @@ class HeroActor extends PhaserBattleActor {
     this.heroRenderer?.setData(this.data).applyVisualFrame(state, index);
     try {
       this.enhancementAuraRenderer?.update(this.data?.enhancementAura, this.heroRenderer);
-    } catch (_) {
+    } catch (error) {
+      globalThis.BATTLE_ERROR_CATCHER?.capturePresentation?.({ thrown: error, surface: this.auraSurface, phase: "update" });
       try { this.enhancementAuraRenderer?.destroy(); } catch (_) { /* optional Aura failure must not affect combat */ }
       this.enhancementAuraRenderer = null;
     }
