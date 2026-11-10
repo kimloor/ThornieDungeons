@@ -10,7 +10,7 @@
     isEnabled() { return enabled; },
     capturePresentation({ thrown, surface, phase } = {}) {
       if (!enabled) return null;
-      const safeSurface = safeCode(surface) || "unknown";
+      const safeSurface = ["inventory", "dungeon", "arena"].includes(surface) ? surface : "unknown";
       const safePhase = safeCode(phase) || "unknown";
       const reason = safeCode(thrown?.code) || `aura_${safePhase}_failed`;
       const diagnostic = {
