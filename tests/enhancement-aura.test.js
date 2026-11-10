@@ -91,3 +91,22 @@ test("Inventory HeroPreviewScene reuses EnhancementAuraRenderer, refreshes per p
   assert.match(scene, /this\.applyHeroFrame\("idle", this\.frameIndex\)/);
   assert.match(scene, /this\.enhancementAuraRenderer\?\.destroy\(\)/);
 });
+
+
+test("Aura runtime failures are routed to the shared diagnostic catcher with safe context", () => {
+  const catcher = read("src/systems/battleErrorCatcher.js");
+  const actor = read("src/phaser/actors/HeroActor.js");
+  const preview = read("src/phaser/scenes/HeroPreviewScene.js");
+  const bridge = read("src/phaser/presentation/EventBridge.js");
+  assert.match(catcher, /captureAura\\(/);
+  assert.match(catcher, /event: "enhancement_aura_failed"/);
+  assert.match(catcher, /system: "phaser_presentation"/);
+  assert.match(actor, /BATTLE_ERROR_CATCHER\\?\\.setEnabled\\(true\\)/);
+  assert.match(actor, /phase: "renderer_update"/);
+  assert.match(actor, /phase: "renderer_init"/);
+  assert.match(preview, /surface: "inventory"/);
+  assert.match(preview, /phase: "renderer_update"/);
+  assert.match(bridge, /presentationSurface: "dungeon"/);
+  assert.match(bridge, /presentationSurface: "arena"/);
+  assert.match(bridge, /presentationSurface: "inventory"/);
+});
