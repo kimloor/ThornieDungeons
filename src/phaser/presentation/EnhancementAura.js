@@ -61,6 +61,10 @@ class EnhancementAuraRenderer {
     this.weaponHalos = [];
     this.weaponTweens = [];
     this.weaponDiagnosticSignature = "";
+    this.weaponDiagnosticText = typeof scene.add.text === "function"
+      ? scene.add.text(0, 0, "", { fontFamily: "Arial, sans-serif", fontSize: "10px", color: "#ffffff", backgroundColor: "#21152f", padding: { x: 5, y: 3 }, align: "center" }).setOrigin(0.5, 0).setVisible(false)
+      : null;
+    if (this.weaponDiagnosticText) root?.add(this.weaponDiagnosticText);
     this.destroyed = false;
     root?.add(this.characterRoot);
   }
@@ -102,7 +106,7 @@ class EnhancementAuraRenderer {
       const height = size * (0.16 + index * 0.055);
       this.characterGraphics
         .lineStyle(1.25 + stage * 0.35, color, Math.max(0.16, 0.42 - index * 0.09))
-        .strokeEllipse(0, -size * (0.28 + index * 0.025), width, height);
+        .strokeEllipse(0, size * (0.05 + index * 0.015), width, height);
     }
 
     const particleCount = Math.min(10, 2 + stage * 2);
@@ -110,7 +114,7 @@ class EnhancementAuraRenderer {
       const angle = (Math.PI * 2 * index) / particleCount;
       const particle = this.scene.add.circle(
         Math.cos(angle) * size * 0.39,
-        -size * 0.30 + Math.sin(angle) * size * 0.22,
+        size * 0.05 + Math.sin(angle) * size * 0.12,
         Math.max(1.5, size * (0.009 + stage * 0.0015)),
         color,
         0.82
@@ -167,6 +171,10 @@ class EnhancementAuraRenderer {
     const signature = JSON.stringify(diagnostic);
     if (signature !== this.weaponDiagnosticSignature) {
       this.weaponDiagnosticSignature = signature;
+      const layerSummary = layerNames.slice(0, 5).join(",") || "none";
+      this.weaponDiagnosticText?.setText?.(`Weapon Aura: ${reason}\\n${layerName} / ${layerSummary}`);
+      this.weaponDiagnosticText?.setPosition?.(0, this.displaySize() * 0.66);
+      this.weaponDiagnosticText?.setVisible?.(true);
       try { globalThis.console?.info?.("[weapon-aura-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
     }
     const stageChanged = stage !== this.weaponStage;
@@ -236,6 +244,7 @@ class EnhancementAuraRenderer {
     this.weaponHalos.filter(halo => halo.visible && root.list.includes(halo)).forEach(halo => {
       root.moveTo(halo, root.list.length - 1);
     });
+    if (this.weaponDiagnosticText && root.list.includes(this.weaponDiagnosticText)) root.moveTo(this.weaponDiagnosticText, root.list.length - 1);
   }
 
   update(aura, heroRenderer) {
@@ -265,6 +274,8 @@ class EnhancementAuraRenderer {
     });
     this.characterParticles = [];
     this.weaponHalos = [];
+    this.weaponDiagnosticText?.destroy?.();
+    this.weaponDiagnosticText = null;
     this.weaponDiagnosticSignature = "";
     this.characterRoot = null;
     this.characterGraphics = null;

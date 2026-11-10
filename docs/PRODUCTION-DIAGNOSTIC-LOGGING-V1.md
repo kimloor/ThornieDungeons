@@ -288,3 +288,8 @@ A diagnostic addition is complete when:
 ### Enhancement Aura visual diagnostics (Ver 1.1.53)
 
 The client emits a bounded [weapon-aura-diagnostic] console record only when the selected weapon-layer state changes. The record contains the visual mode, expected/available layer names, visibility, texture key, transform, display dimensions, and crop. It excludes player identifiers, inventory payloads, exception messages, and credentials. Use it to distinguish a missing/hidden layer from an incorrect weapon transform; do not infer a positional defect when the expected layer is absent.
+
+
+### Enhancement Aura mobile diagnostic label (Ver 1.1.54)
+
+Inventory Hero preview displays a temporary compact Weapon Aura diagnostic label below the Hero. It shows the renderer's selected weapon layer and current reason code plus up to five available layer names. This allows mobile QA without remote Web Inspector. The label is presentation-only and is destroyed with the Aura renderer; detailed transform/crop values remain in the bounded console diagnostic.

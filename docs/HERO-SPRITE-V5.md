@@ -526,3 +526,10 @@ At the Owner's request, the shared EnhancementAuraRenderer temporarily bypasses 
 - Character Aura is positioned relative to the Hero root/display size, which is anchored near the sprite baseline; the previous -0.46 × size ring and -0.49 × size particle center placed the effect too high on the current Hero composition.
 - The torso-focused placement uses ring centers around -0.28 × size and particle center around -0.30 × size. This is a presentation adjustment only; it does not change Hero V5 canvas coordinates, authored sprite layers, equipment anchors, or gameplay values.
 - Weapon Aura reports a bounded weapon-aura-diagnostic console event when its expected sword (V5 G2) or weapon (V3) layer changes state. It records visual mode, available layer names, visibility, texture key, transform, display dimensions, and crop; it does not include player identifiers or loadout contents.
+
+
+## 24. Enhancement Aura lower-body placement and mobile diagnostics (Ver 1.1.54)
+
+- Character Aura ring centers are now positioned around `+0.05 × displaySize` from the Hero root baseline, with particles centered at the same lower-body/ground reference. This matches the Owner's marked target near the feet rather than wrapping the torso/head.
+- Weapon Aura now displays a small temporary diagnostic label directly beneath the Hero preview. It reports the expected weapon layer, whether that layer is ready/missing/hidden, and the available layer names. This makes the check usable on iPhone without remote browser developer tools. The bounded console record remains available for deeper transform/crop inspection.
+- No combat, equipment, enhancement-stage, or save authority is changed. Forced Stage 4 remains a temporary visual diagnostic pending Owner approval of the Aura rendering.
