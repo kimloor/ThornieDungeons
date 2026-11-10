@@ -787,3 +787,12 @@ The copy is now included in `src/data/infoGuide.js` under the existing `refine` 
 - The Character Aura container and visible Weapon Aura halos are reordered to the end of the Hero presentation root after updates, placing them above all Hero body/equipment layers.
 - This is a visibility-first diagnostic release. Aura size, color, and intensity are intentionally unchanged until the Owner confirms the effect is visible in Production.
 - Regression coverage checks that the Aura elements are promoted to the final display-list indices. CI/build and live visual confirmation remain separate gates.
+
+
+### 17.6 Enhancement Aura diagnostic capture — Ver 1.1.49
+
+- Inventory preview and shared Dungeon/Arena HeroActor explicitly enable the existing `BATTLE_ERROR_CATCHER` before Aura renderer initialization.
+- Aura initialization, update, recovery teardown, and normal teardown failures are sent to the existing structured `[production-diagnostic]` console channel as `enhancement_aura_failed`.
+- Diagnostics include only sanitized surface (`inventory`, `dungeon`, `arena`, or `battle`), phase, stable reason/name, visible version, and bounded Aura stage numbers. No error message, stack, player identifiers, equipment payload, or credentials are emitted.
+- Aura remains optional: a renderer failure is captured and the Hero/combat/Inventory flow continues unchanged.
+- This change instruments failure paths; it does not claim that Aura is now visually fixed. QA must inspect the diagnostic event on all three surfaces and use the captured phase/reason to target the next fix.
