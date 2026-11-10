@@ -227,6 +227,13 @@ It includes only the bounded surface (`inventory`, `dungeon`, or `arena`) and ph
 player/loadout data, and request payloads are excluded. Failed renderers are disabled
 without interrupting the Hero or combat flow. The shared catcher switch controls these events.
 
+Phaser runtime/scene startup failures are recorded separately as `phaser_stage_failed` by
+`captureRuntime`. The bounded surface is `inventory`, `dungeon`, or `arena`; phase is
+`runtime_load` or `scene_start`. This remains a browser-console diagnostic (not a Worker log).
+The runtime script load is bounded to 8 seconds and Inventory/Dungeon/Arena scene startup to
+12 seconds; timeout tears down the incomplete presentation and exposes the existing fallback
+without changing battle authority or player data.
+
 ## 9. Temporary diagnostic investigations
 
 A temporary Production diagnostic is allowed when a Production-only issue cannot be reproduced safely elsewhere, provided that:

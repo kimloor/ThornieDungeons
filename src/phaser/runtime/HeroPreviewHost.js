@@ -5,6 +5,8 @@ function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, on
   let destroyed = false;
   let resizeObserver = null;
   let windowResize = null;
+  let startupTimer = null;
+  let startupReady = false;
   let currentSnapshot = snapshot || null;
 
   function measuredHostSize() {
@@ -60,6 +62,9 @@ function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, on
           scene = payload?.scene || null;
           if (scene) scene.sync(currentSnapshot);
           if (payload?.destroyed) { scene = null; return; }
+          startupReady = true;
+          if (startupTimer) clearTimeout(startupTimer);
+          startupTimer = null;
           onReady?.({ game, scene, version: THORNIE_PHASER_RUNTIME.version });
         },
         onError
@@ -77,6 +82,13 @@ function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, on
         render: { antialias: true, pixelArt: false, roundPixels: false },
         scene: SceneClass
       });
+      startupTimer = setTimeout(() => {
+        if (destroyed || startupReady) return;
+        const error = new Error("Phaser Inventory preview scene startup timed out");
+        globalThis.BATTLE_ERROR_CATCHER?.captureRuntime?.({ thrown: error, surface: "inventory", phase: "scene_start" });
+        onError?.(error);
+        destroy();
+      }, 12000);
       if (game?.canvas?.style) {
         game.canvas.style.background = "transparent";
         game.canvas.style.backgroundColor = "transparent";
@@ -95,7 +107,10 @@ function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, on
         if (!destroyed) resize();
       });
     } catch (error) {
-      if (!destroyed) onError?.(error);
+      if (!destroyed) {
+        globalThis.BATTLE_ERROR_CATCHER?.captureRuntime?.({ thrown: error, surface: "inventory", phase: "runtime_load" });
+        onError?.(error);
+      }
     }
   }
 
@@ -107,6 +122,8 @@ function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, on
   function destroy() {
     if (destroyed) return;
     destroyed = true;
+    if (startupTimer) clearTimeout(startupTimer);
+    startupTimer = null;
     resizeObserver?.disconnect();
     resizeObserver = null;
     if (windowResize) window.removeEventListener("resize", windowResize);

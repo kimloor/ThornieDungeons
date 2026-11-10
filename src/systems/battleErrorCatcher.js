@@ -8,6 +8,18 @@
   root.BATTLE_ERROR_CATCHER = Object.freeze({
     setEnabled(value) { enabled = !!value; return enabled; },
     isEnabled() { return enabled; },
+    captureRuntime({ thrown, surface, phase } = {}) {
+      if (!enabled) return null;
+      const safeSurface = ["inventory", "dungeon", "arena"].includes(surface) ? surface : "unknown";
+      const safePhase = safeCode(phase) || "unknown";
+      const reason = safeCode(thrown?.code) || `phaser_${safePhase}_failed`;
+      const diagnostic = {
+        event: "phaser_stage_failed", system: "phaser_presentation",
+        component: "phaser_stage", reason, version: "1.1.51", surface: safeSurface, phase: safePhase
+      };
+      try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
+      return { reason, surface: safeSurface, phase: safePhase };
+    },
     capturePresentation({ thrown, surface, phase } = {}) {
       if (!enabled) return null;
       const safeSurface = ["inventory", "dungeon", "arena"].includes(surface) ? surface : "unknown";
@@ -15,7 +27,7 @@
       const reason = safeCode(thrown?.code) || `aura_${safePhase}_failed`;
       const diagnostic = {
         event: "enhancement_aura_failed", system: "phaser_presentation",
-        component: "enhancement_aura", reason, version: "1.1.49", surface: safeSurface, phase: safePhase
+        component: "enhancement_aura", reason, version: "1.1.51", surface: safeSurface, phase: safePhase
       };
       try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
       return { reason, surface: safeSurface, phase: safePhase };

@@ -5,6 +5,8 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
   let destroyed = false;
   let resizeObserver = null;
   let windowResize = null;
+  let startupTimer = null;
+  let startupReady = false;
   let currentSnapshot = snapshot || null;
   const bridge = createPresentationEventBridge({
     syncType: "BATTLEFIELD_SYNC",
@@ -45,6 +47,9 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
           scene = payload?.scene || null;
           if (scene) bridge.sync(currentSnapshot);
           if (payload?.destroyed) { scene = null; return; }
+          startupReady = true;
+          if (startupTimer) clearTimeout(startupTimer);
+          startupTimer = null;
           onReady?.({ game, scene, version: THORNIE_PHASER_RUNTIME.version });
         },
         onError,
@@ -63,6 +68,17 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
         render: { antialias: true, pixelArt: false, roundPixels: false },
         scene: SceneClass
       });
+      startupTimer = setTimeout(() => {
+        if (destroyed || startupReady) return;
+        const error = new Error("Phaser Dungeon/Arena scene startup timed out");
+        globalThis.BATTLE_ERROR_CATCHER?.captureRuntime?.({
+          thrown: error,
+          surface: currentSnapshot?.mode === "arena" ? "arena" : "dungeon",
+          phase: "scene_start"
+        });
+        onError?.(error);
+        destroy();
+      }, 12000);
       if (game?.canvas?.style) {
         game.canvas.style.background = "transparent";
         game.canvas.style.backgroundColor = "transparent";
@@ -75,7 +91,14 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
         window.addEventListener("resize", windowResize, { passive: true });
       }
     } catch (error) {
-      if (!destroyed) onError?.(error);
+      if (!destroyed) {
+        globalThis.BATTLE_ERROR_CATCHER?.captureRuntime?.({
+          thrown: error,
+          surface: currentSnapshot?.mode === "arena" ? "arena" : "dungeon",
+          phase: "runtime_load"
+        });
+        onError?.(error);
+      }
     }
   }
 
@@ -107,6 +130,8 @@ function createBattlefieldHost({ mountNode, snapshot, onReady, onError, onDestro
   function destroy() {
     if (destroyed) return;
     destroyed = true;
+    if (startupTimer) clearTimeout(startupTimer);
+    startupTimer = null;
     resizeObserver?.disconnect();
     resizeObserver = null;
     if (windowResize) window.removeEventListener("resize", windowResize);
