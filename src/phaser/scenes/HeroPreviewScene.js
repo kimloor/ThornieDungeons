@@ -113,9 +113,11 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
         displaySize: () => this.displaySize(),
         textureKey: reference => this.assetKey(reference)
       });
+      globalThis.BATTLE_ERROR_CATCHER?.setEnabled(true);
       try {
         this.enhancementAuraRenderer = new EnhancementAuraRenderer(this, this.heroRoot, () => this.displaySize());
-      } catch (_) {
+      } catch (error) {
+        globalThis.BATTLE_ERROR_CATCHER?.captureAura({ surface: "inventory", phase: "renderer_init", error, characterStage: this.initialSnapshot?.hero?.enhancementAura?.characterStage, weaponStage: this.initialSnapshot?.hero?.enhancementAura?.weaponStage });
         this.enhancementAuraRenderer = null;
       }
       this.applySnapshot(this.initialSnapshot);
@@ -139,8 +141,11 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
     updateEnhancementAura() {
       try {
         this.enhancementAuraRenderer?.update(this.snapshot?.hero?.enhancementAura, this.heroRenderer);
-      } catch (_) {
-        try { this.enhancementAuraRenderer?.destroy(); } catch (_) { /* optional preview Aura must not break the Hero */ }
+      } catch (error) {
+        globalThis.BATTLE_ERROR_CATCHER?.captureAura({ surface: "inventory", phase: "renderer_update", error, characterStage: this.snapshot?.hero?.enhancementAura?.characterStage, weaponStage: this.snapshot?.hero?.enhancementAura?.weaponStage });
+        try { this.enhancementAuraRenderer?.destroy(); } catch (teardownError) {
+          globalThis.BATTLE_ERROR_CATCHER?.captureAura({ surface: "inventory", phase: "renderer_recovery", error: teardownError });
+        }
         this.enhancementAuraRenderer = null;
       }
     }
@@ -231,7 +236,9 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, onRead
       this.scale.off("resize", this.handleResize, this);
       this.load.off("loaderror", this.handleLoadError);
       this.stopIdle();
-      try { this.enhancementAuraRenderer?.destroy(); } catch (_) { /* preview teardown remains safe */ }
+      try { this.enhancementAuraRenderer?.destroy(); } catch (error) {
+        globalThis.BATTLE_ERROR_CATCHER?.captureAura({ surface: "inventory", phase: "renderer_destroy", error });
+      }
       this.enhancementAuraRenderer = null;
       this.heroRenderer?.destroy();
       this.heroRenderer = null;
