@@ -8,6 +8,22 @@
   root.BATTLE_ERROR_CATCHER = Object.freeze({
     setEnabled(value) { enabled = !!value; return enabled; },
     isEnabled() { return enabled; },
+    captureAura({ surface, phase, error, characterStage, weaponStage } = {}) {
+      if (!enabled) return null;
+      const safeField = value => {
+        const text = String(value == null ? "" : value).trim().toLowerCase();
+        return /^[a-z0-9][a-z0-9_-]{0,39}$/.test(text) ? text : "unknown";
+      };
+      const stage = value => Number.isInteger(Number(value)) ? Math.max(0, Math.min(4, Number(value))) : null;
+      const diagnostic = {
+        event: "enhancement_aura_failed", system: "phaser_presentation",
+        reason: safeField(error?.code || error?.name || "renderer_error"),
+        version: "1.1.49", surface: safeField(surface), phase: safeField(phase),
+        aura: { characterStage: stage(characterStage), weaponStage: stage(weaponStage) }
+      };
+      try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
+      return diagnostic;
+    },
     capture({ response, thrown, action, battleId, authorityRev, safeActionSeq, requestId } = {}) {
       if (!enabled) return null;
       const reason = safeCode(response?.error) || safeCode(response?.reason) || safeCode(thrown?.code) || "unknown_error";
