@@ -57,10 +57,10 @@ test("Inventory order: Sort stores the sorted ids and the overlay receives the o
 
 test("Ver 1.1.53: visible badge, meta and roadmap are in sync", () => {
   const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
-  assert.match(read("src/data/styles.js"), /content: "Ver 1\.1\.51"/);
-  assert.match(read("head.html"), /name="application-version" content="1\.1\.51"/);
+  assert.match(read("src/data/styles.js"), /content: "Ver 1\.1\.53"/);
+  assert.match(read("head.html"), /name="application-version" content="1\.1\.53"/);
   // Generated index.html is checked after node build.js by the Frontend Production workflow.
   // The main-branch build job commits that generated output before Battle Core parity runs.
   // Keep this source/version assertion aligned with the production build marker.
-  assert.match(read("docs/ACTIVE-DEVELOPMENT-ROADMAP-V3.md"), /Visible game version\s+Ver 1\.1\.51/);
+  assert.match(read("docs/ACTIVE-DEVELOPMENT-ROADMAP-V3.md"), /Visible game version\s+Ver 1\.1\.53/);
 });
