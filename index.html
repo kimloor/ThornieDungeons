@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.51" />
+<meta name="application-version" content="1.1.53" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.51";
+  content: "Ver 1.1.53";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -10485,7 +10485,7 @@ if (typeof module !== "undefined") module.exports = {
       const reason = safeCode(thrown?.code) || `phaser_${safePhase}_failed`;
       const diagnostic = {
         event: "phaser_stage_failed", system: "phaser_presentation",
-        component: "phaser_stage", reason, version: "1.1.51", surface: safeSurface, phase: safePhase
+        component: "phaser_stage", reason, version: "1.1.53", surface: safeSurface, phase: safePhase
       };
       try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
       return { reason, surface: safeSurface, phase: safePhase };
@@ -10497,7 +10497,7 @@ if (typeof module !== "undefined") module.exports = {
       const reason = safeCode(thrown?.code) || `aura_${safePhase}_failed`;
       const diagnostic = {
         event: "enhancement_aura_failed", system: "phaser_presentation",
-        component: "enhancement_aura", reason, version: "1.1.51", surface: safeSurface, phase: safePhase
+        component: "enhancement_aura", reason, version: "1.1.53", surface: safeSurface, phase: safePhase
       };
       try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
       return { reason, surface: safeSurface, phase: safePhase };
@@ -13620,6 +13620,7 @@ class EnhancementAuraRenderer {
     this.characterSize = 0;
     this.weaponHalos = [];
     this.weaponTweens = [];
+    this.weaponDiagnosticSignature = "";
     this.destroyed = false;
     root?.add(this.characterRoot);
   }
@@ -13661,7 +13662,7 @@ class EnhancementAuraRenderer {
       const height = size * (0.16 + index * 0.055);
       this.characterGraphics
         .lineStyle(1.25 + stage * 0.35, color, Math.max(0.16, 0.42 - index * 0.09))
-        .strokeEllipse(0, -size * (0.46 + index * 0.035), width, height);
+        .strokeEllipse(0, -size * (0.28 + index * 0.025), width, height);
     }
 
     const particleCount = Math.min(10, 2 + stage * 2);
@@ -13669,7 +13670,7 @@ class EnhancementAuraRenderer {
       const angle = (Math.PI * 2 * index) / particleCount;
       const particle = this.scene.add.circle(
         Math.cos(angle) * size * 0.39,
-        -size * 0.49 + Math.sin(angle) * size * 0.28,
+        -size * 0.30 + Math.sin(angle) * size * 0.22,
         Math.max(1.5, size * (0.009 + stage * 0.0015)),
         color,
         0.82
@@ -13719,7 +13720,15 @@ class EnhancementAuraRenderer {
     const entry = heroRenderer?.layerImages?.find(item => item.name === layerName);
     const weaponImage = entry?.image;
     const currentLayer = (heroRenderer?.currentLayers || []).find(layer => layer.name === layerName);
-    const usable = stage > 0 && weaponImage?.visible && weaponImage?.texture?.key && currentLayer;
+    const layerNames = (heroRenderer?.currentLayers || []).map(layer => String(layer?.name || "")).filter(Boolean);
+    const reason = stage <= 0 ? "stage_disabled" : !currentLayer ? "weapon_layer_missing" : !weaponImage ? "weapon_image_missing" : !weaponImage.visible ? "weapon_image_hidden" : !weaponImage.texture?.key ? "weapon_texture_missing" : "weapon_layer_ready";
+    const usable = reason === "weapon_layer_ready";
+    const diagnostic = { event: "weapon_aura_diagnostic", reason, visualMode: String(heroRenderer?.data?.visualMode || "unknown").slice(0, 40), expectedLayer: layerName, availableLayers: layerNames.slice(0, 24), textureKey: String(weaponImage?.texture?.key || "").slice(0, 160), visible: !!weaponImage?.visible, x: Number.isFinite(Number(weaponImage?.x)) ? Number(weaponImage.x) : null, y: Number.isFinite(Number(weaponImage?.y)) ? Number(weaponImage.y) : null, displayWidth: Number.isFinite(Number(weaponImage?.displayWidth)) ? Number(weaponImage.displayWidth) : null, displayHeight: Number.isFinite(Number(weaponImage?.displayHeight)) ? Number(weaponImage.displayHeight) : null, originX: Number.isFinite(Number(weaponImage?.originX)) ? Number(weaponImage.originX) : null, originY: Number.isFinite(Number(weaponImage?.originY)) ? Number(weaponImage.originY) : null, angle: Number.isFinite(Number(weaponImage?.angle)) ? Number(weaponImage.angle) : null, crop: Array.isArray(currentLayer?.crop) ? currentLayer.crop.slice(0, 4) : null };
+    const signature = JSON.stringify(diagnostic);
+    if (signature !== this.weaponDiagnosticSignature) {
+      this.weaponDiagnosticSignature = signature;
+      try { globalThis.console?.info?.("[weapon-aura-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
+    }
     const stageChanged = stage !== this.weaponStage;
     if (stageChanged) {
       this.weaponStage = stage;
@@ -13791,8 +13800,12 @@ class EnhancementAuraRenderer {
 
   update(aura, heroRenderer) {
     if (this.destroyed) return;
-    const characterStage = Math.max(0, Math.min(4, Math.floor(Number(aura?.characterStage) || 0)));
-    const weaponStage = Math.max(0, Math.min(4, Math.floor(Number(aura?.weaponStage) || 0)));
+    // TEMPORARY OWNER-REQUESTED VISIBILITY DIAGNOSTIC:
+    // bypass enhancement/loadout stage gates so the renderer is visibly exercised
+    // on Inventory preview and battlefield HeroActor. Remove after visual diagnosis.
+    const forceVisible = true;
+    const characterStage = forceVisible ? 4 : Math.max(0, Math.min(4, Math.floor(Number(aura?.characterStage) || 0)));
+    const weaponStage = forceVisible ? 4 : Math.max(0, Math.min(4, Math.floor(Number(aura?.weaponStage) || 0)));
     this.updateCharacter(characterStage);
     this.updateWeapon(weaponStage, heroRenderer);
     this.reorder(heroRenderer);
@@ -13812,6 +13825,7 @@ class EnhancementAuraRenderer {
     });
     this.characterParticles = [];
     this.weaponHalos = [];
+    this.weaponDiagnosticSignature = "";
     this.characterRoot = null;
     this.characterGraphics = null;
     this.root = null;
