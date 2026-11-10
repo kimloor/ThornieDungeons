@@ -1,4 +1,0 @@
--- W2 Guild Donation V1 recovery marker.
--- See 0020 and workers/thornie-dungeons-api.js.
--- Intentionally no SQL statements; this migration only advances the historical
--- migration filename that previously contained the apply trigger.
