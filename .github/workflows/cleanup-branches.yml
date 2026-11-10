@@ -188,7 +188,12 @@ jobs:
             if [ "$tip_epoch" -gt "$cutoff_epoch" ]; then row "$name" "$sha" "skip: newer than ${MIN_AGE_DAYS:-3} days"; skipped=$((skipped+1)); continue; fi
 
             # Fully merged? (a) nothing ahead of default branch
-            ahead="$(gh api "repos/$REPO/compare/$default_branch...$sha" --jq .ahead_by)"
+            # Orphan branches (for example qa-evidence/*) share no history with the default branch, so the compare API
+            # answers 404 and, under `set -e`, would abort the whole run. Skip such a branch instead of failing.
+            if ! ahead="$(gh api "repos/$REPO/compare/$default_branch...$sha" --jq .ahead_by 2>/dev/null)"; then
+              row "$name" "$sha" "skip: cannot compare with $default_branch (no common history)"
+              skipped=$((skipped+1)); continue
+            fi
             merged_how=""
             if [ "$ahead" = "0" ]; then
               merged_how="merged (0 commits ahead)"
