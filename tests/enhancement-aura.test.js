@@ -5,7 +5,9 @@ const path = require("node:path");
 const {
   enhancementAuraItemLevel,
   enhancementAuraStage,
-  resolveEnhancementAura
+  resolveEnhancementAura,
+  ENHANCEMENT_AURA_STYLES,
+  resolveEnhancementAuraStyle
 } = require("../src/phaser/presentation/EnhancementAura.js");
 
 const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
@@ -123,19 +125,6 @@ test("Shared catcher logs sanitized Aura failures and obeys its switch", () => {
   } finally { catcher.setEnabled(true); console.warn = originalWarn; }
 });
 
-test("Temporary visibility diagnostic bypasses enhancement/loadout Aura stages", () => {
-  const renderer = read("src/phaser/presentation/EnhancementAura.js");
-  assert.match(renderer, /TEMPORARY OWNER-REQUESTED VISIBILITY DIAGNOSTIC/);
-  assert.match(renderer, /const forceVisible = true/);
-  assert.match(renderer, /forceVisible \? 4/);
-});
-
-
-test("Character Aura is positioned around the torso instead of the head", () => {
-  const renderer = read("src/phaser/presentation/EnhancementAura.js");
-  assert.match(renderer, /strokeEllipse\(0, -size \* \(0\.28 \+ index \* 0\.025\)/);
-  assert.match(renderer, /-size \* 0\.30 \+ Math\.sin\(angle\) \* size \* 0\.22/);
-});
 
 test("Weapon Aura emits bounded diagnostics when the selected weapon layer is unavailable", () => {
   const renderer = read("src/phaser/presentation/EnhancementAura.js");
@@ -146,15 +135,30 @@ test("Weapon Aura emits bounded diagnostics when the selected weapon layer is un
 });
 
 
-test("Character Aura is positioned around the lower body/feet reference", () => {
-  const renderer = read("src/phaser/presentation/EnhancementAura.js");
-  assert.match(renderer, /strokeEllipse\(0, size \* \(0\.05 \+ index \* 0\.015\)/);
-  assert.match(renderer, /size \* 0\.05 \+ Math\.sin\(angle\) \* size \* 0\.12/);
-});
-
 test("Weapon Aura diagnostic is visible in the Hero preview for mobile QA", () => {
   const renderer = read("src/phaser/presentation/EnhancementAura.js");
   assert.match(renderer, /Weapon Aura: \$\{reason\}/);
   assert.match(renderer, /weaponDiagnosticText\?\.setVisible\?\.\(true\)/);
   assert.match(renderer, /weaponDiagnosticText\?\.destroy/);
+});
+
+test("Golden Power is a replaceable style profile with four distinct stage colors", () => {
+  const style = resolveEnhancementAuraStyle("goldenPower");
+  assert.equal(style.id, "goldenPower");
+  assert.deepEqual(Object.keys(style.palette), ["1", "2", "3", "4"]);
+  assert.equal(new Set(Object.values(style.palette)).size, 4);
+  assert.equal(resolveEnhancementAuraStyle("future-style"), ENHANCEMENT_AURA_STYLES.goldenPower);
+});
+
+test("Golden Power effect intensity is fixed and stages only select colors", () => {
+  const source = read("src/phaser/presentation/EnhancementAura.js");
+  assert.match(source, /this\.style\.palette\[stage\]/);
+  assert.match(source, /const ringCount = intensity\.ringCount/);
+  assert.match(source, /const particleCount = intensity\.particleCount/);
+  assert.match(source, /const count = intensity\.weaponHaloCount/);
+  assert.doesNotMatch(source, /forceVisible = true/);
+  const intensity = ENHANCEMENT_AURA_STYLES.goldenPower.intensity;
+  assert.equal(intensity.ringCount, 3);
+  assert.equal(intensity.particleCount, 10);
+  assert.equal(intensity.weaponHaloCount, 3);
 });

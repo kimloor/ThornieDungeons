@@ -5,12 +5,24 @@ const ENHANCEMENT_AURA_THRESHOLDS = Object.freeze([
   Object.freeze({ min: 8, stage: 3 }),
   Object.freeze({ min: 10, stage: 4 })
 ]);
-const ENHANCEMENT_AURA_PALETTE = Object.freeze({
-  1: 0x72d7ff,
-  2: 0x9c8aff,
-  3: 0xffc56b,
-  4: 0xff82cf
+// Replaceable appearance profiles; enhancement stage selects color only.
+const ENHANCEMENT_AURA_STYLES = Object.freeze({
+  goldenPower: Object.freeze({
+    id: "goldenPower",
+    name: "Golden Power",
+    palette: Object.freeze({ 1: 0xfff0a6, 2: 0xffd447, 3: 0xffa52f, 4: 0xff7138 }),
+    intensity: Object.freeze({
+      ringCount: 3, ringLineWidth: 2.6, ringAlpha: 0.34,
+      particleCount: 10, particleAlpha: 0.82, particleRadius: 0.0105,
+      particleOrbitX: 0.39, particleOrbitY: 0.12, pulseDuration: 1120,
+      weaponHaloCount: 3, weaponHaloAlpha: 0.20, weaponHaloPulseAlpha: 0.12
+    })
+  })
 });
+const DEFAULT_ENHANCEMENT_AURA_STYLE = "goldenPower";
+function resolveEnhancementAuraStyle(styleId = DEFAULT_ENHANCEMENT_AURA_STYLE) {
+  return ENHANCEMENT_AURA_STYLES[String(styleId)] || ENHANCEMENT_AURA_STYLES[DEFAULT_ENHANCEMENT_AURA_STYLE];
+}
 
 function enhancementAuraItemLevel(item) {
   if (!item || typeof item !== "object") return 0;
@@ -46,10 +58,11 @@ function resolveEnhancementAura(equipped = {}) {
 }
 
 class EnhancementAuraRenderer {
-  constructor(scene, root, displaySize = () => 150) {
+  constructor(scene, root, displaySize = () => 150, styleId = DEFAULT_ENHANCEMENT_AURA_STYLE) {
     this.scene = scene;
     this.root = root;
     this.displaySizeSource = displaySize;
+    this.style = resolveEnhancementAuraStyle(styleId);
     this.characterStage = -1;
     this.weaponStage = -1;
     this.characterRoot = scene.add.container(0, 0).setVisible(false);
@@ -99,25 +112,26 @@ class EnhancementAuraRenderer {
       return;
     }
 
-    const color = ENHANCEMENT_AURA_PALETTE[stage];
-    const ringCount = stage >= 4 ? 3 : stage >= 2 ? 2 : 1;
+    const color = this.style.palette[stage];
+    const intensity = this.style.intensity;
+    const ringCount = intensity.ringCount;
     for (let index = 0; index < ringCount; index += 1) {
       const width = size * (0.72 + index * 0.13);
       const height = size * (0.16 + index * 0.055);
       this.characterGraphics
-        .lineStyle(1.25 + stage * 0.35, color, Math.max(0.16, 0.42 - index * 0.09))
+        .lineStyle(intensity.ringLineWidth, color, Math.max(0.16, intensity.ringAlpha - index * 0.09))
         .strokeEllipse(0, size * (0.05 + index * 0.015), width, height);
     }
 
-    const particleCount = Math.min(10, 2 + stage * 2);
+    const particleCount = intensity.particleCount;
     for (let index = 0; index < particleCount; index += 1) {
       const angle = (Math.PI * 2 * index) / particleCount;
       const particle = this.scene.add.circle(
-        Math.cos(angle) * size * 0.39,
-        size * 0.05 + Math.sin(angle) * size * 0.12,
-        Math.max(1.5, size * (0.009 + stage * 0.0015)),
+        Math.cos(angle) * size * intensity.particleOrbitX,
+        size * 0.05 + Math.sin(angle) * size * intensity.particleOrbitY,
+        Math.max(1.5, size * intensity.particleRadius),
         color,
-        0.82
+        intensity.particleAlpha
       );
       this.characterRoot.add(particle);
       this.characterParticles.push(particle);
@@ -137,7 +151,7 @@ class EnhancementAuraRenderer {
     const pulse = this.scene.tweens?.add?.({
       targets: this.characterRoot,
       alpha: 0.62,
-      duration: Math.max(700, 1120 - stage * 70),
+      duration: intensity.pulseDuration,
       yoyo: true,
       repeat: -1,
       ease: "Sine.easeInOut"
@@ -191,8 +205,9 @@ class EnhancementAuraRenderer {
 
     const key = weaponImage.texture.key;
     const created = this.ensureWeaponHalos(key);
-    const color = ENHANCEMENT_AURA_PALETTE[stage];
-    const count = stage >= 4 ? 3 : stage >= 3 ? 2 : 1;
+    const color = this.style.palette[stage];
+    const intensity = this.style.intensity;
+    const count = intensity.weaponHaloCount;
     const startPulse = stageChanged || created.length > 0 || this.weaponTweens.length === 0;
     if (startPulse) {
       this.stopTweens(this.weaponTweens);
@@ -201,10 +216,10 @@ class EnhancementAuraRenderer {
           halo.setVisible(false);
           return;
         }
-        halo.setTint(color).setAlpha(0.20 - index * 0.035);
+        halo.setTint(color).setAlpha(intensity.weaponHaloAlpha - index * 0.035);
         const tween = this.scene.tweens?.add?.({
           targets: halo,
-          alpha: Math.max(0.035, 0.12 - index * 0.025),
+          alpha: Math.max(0.035, intensity.weaponHaloPulseAlpha - index * 0.025),
           duration: 760 + index * 130,
           yoyo: true,
           repeat: -1,
@@ -249,12 +264,9 @@ class EnhancementAuraRenderer {
 
   update(aura, heroRenderer) {
     if (this.destroyed) return;
-    // TEMPORARY OWNER-REQUESTED VISIBILITY DIAGNOSTIC:
-    // bypass enhancement/loadout stage gates so the renderer is visibly exercised
-    // on Inventory preview and battlefield HeroActor. Remove after visual diagnosis.
-    const forceVisible = true;
-    const characterStage = forceVisible ? 4 : Math.max(0, Math.min(4, Math.floor(Number(aura?.characterStage) || 0)));
-    const weaponStage = forceVisible ? 4 : Math.max(0, Math.min(4, Math.floor(Number(aura?.weaponStage) || 0)));
+    // Equipped enhancement stage selects palette only; style intensity stays constant.
+    const characterStage = Math.max(0, Math.min(4, Math.floor(Number(aura?.characterStage) || 0)));
+    const weaponStage = Math.max(0, Math.min(4, Math.floor(Number(aura?.weaponStage) || 0)));
     this.updateCharacter(characterStage);
     this.updateWeapon(weaponStage, heroRenderer);
     this.reorder(heroRenderer);
@@ -287,7 +299,9 @@ class EnhancementAuraRenderer {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     ENHANCEMENT_AURA_THRESHOLDS,
-    ENHANCEMENT_AURA_PALETTE,
+    ENHANCEMENT_AURA_STYLES,
+    DEFAULT_ENHANCEMENT_AURA_STYLE,
+    resolveEnhancementAuraStyle,
     enhancementAuraItemLevel,
     enhancementAuraStage,
     resolveEnhancementAura,
