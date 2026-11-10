@@ -972,3 +972,18 @@ test("W7.3 Ver 1.0.15 Idle Azure sword follows the approved grip-alignment refer
   assert.match(patch.visualIntent, /Blade descends down-right from the hand/);
 });
 
+
+
+test("Phaser startup timeout contracts cover runtime, Inventory and Battlefield hosts", () => {
+  const runtime = source("src/phaser/runtime/PhaserRuntime.js");
+  const preview = source("src/phaser/runtime/HeroPreviewHost.js");
+  const battle = source("src/phaser/runtime/BattlefieldHost.js");
+  const catcher = source("src/systems/battleErrorCatcher.js");
+  assert.match(runtime, /Phaser runtime load timed out/);
+  assert.match(runtime, /setTimeout\(\(\) => fail\(new Error\("Phaser runtime load timed out"\)\), 8000\)/);
+  assert.match(preview, /Phaser Inventory preview scene startup timed out/);
+  assert.match(battle, /Phaser Dungeon\/Arena scene startup timed out/);
+  assert.match(preview, /}, 12000\)/);
+  assert.match(battle, /}, 12000\)/);
+  assert.match(catcher, /event: "phaser_stage_failed"/);
+});
