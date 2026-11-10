@@ -30,8 +30,11 @@ const THORNIE_PHASER_RUNTIME = (() => {
 
     state = { status: "loading", version: THORNIE_PHASER_VERSION, error: null };
     promise = new Promise((resolve, reject) => {
+      let timeoutId = setTimeout(() => fail(new Error("Phaser runtime load timed out")), 8000);
       let script = document.querySelector(`script[data-thornie-phaser-runtime="${THORNIE_PHASER_VERSION}"]`);
       const fail = error => {
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = null;
         const nextError = error instanceof Error ? error : new Error("Phaser runtime failed to load");
         state = { status: "error", version: THORNIE_PHASER_VERSION, error: nextError };
         reject(nextError);
@@ -43,6 +46,8 @@ const THORNIE_PHASER_RUNTIME = (() => {
         if (actualVersion && actualVersion !== THORNIE_PHASER_VERSION) {
           return fail(new Error(`Phaser version mismatch: expected ${THORNIE_PHASER_VERSION}, got ${actualVersion}`));
         }
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = null;
         state = { status: "ready", version: THORNIE_PHASER_VERSION, error: null };
         resolve(runtime);
       };
