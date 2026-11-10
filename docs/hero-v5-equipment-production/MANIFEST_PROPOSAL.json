@@ -1,0 +1,172 @@
+{
+  "robot": {
+    "layerOrder": [
+      "coverage_underlay",
+      "torso_armor",
+      "legs_boots",
+      "arm_rear",
+      "helmet",
+      "sword",
+      "arm_front"
+    ],
+    "frames": {
+      "idle_01": {
+        "coverage_underlay": "hero/v5/g2/equipment/robot/idle_01/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/robot/idle_01/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/robot/idle_01/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/robot/idle_01/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/robot/idle_01/helmet.png",
+        "sword": "hero/v5/g2/equipment/robot/idle_01/sword.png",
+        "arm_front": "hero/v5/g2/equipment/robot/idle_01/arm_front.png"
+      },
+      "idle_02": {
+        "coverage_underlay": "hero/v5/g2/equipment/robot/idle_02/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/robot/idle_02/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/robot/idle_02/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/robot/idle_02/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/robot/idle_02/helmet.png",
+        "sword": "hero/v5/g2/equipment/robot/idle_02/sword.png",
+        "arm_front": "hero/v5/g2/equipment/robot/idle_02/arm_front.png"
+      },
+      "idle_03": {
+        "coverage_underlay": "hero/v5/g2/equipment/robot/idle_03/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/robot/idle_03/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/robot/idle_03/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/robot/idle_03/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/robot/idle_03/helmet.png",
+        "sword": "hero/v5/g2/equipment/robot/idle_03/sword.png",
+        "arm_front": "hero/v5/g2/equipment/robot/idle_03/arm_front.png"
+      },
+      "attack_01": {
+        "coverage_underlay": "hero/v5/g2/equipment/robot/attack_01/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/robot/attack_01/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/robot/attack_01/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/robot/attack_01/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/robot/attack_01/helmet.png",
+        "sword": "hero/v5/g2/equipment/robot/attack_01/sword.png",
+        "arm_front": "hero/v5/g2/equipment/robot/attack_01/arm_front.png"
+      },
+      "attack_02": {
+        "coverage_underlay": "hero/v5/g2/equipment/robot/attack_02/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/robot/attack_02/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/robot/attack_02/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/robot/attack_02/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/robot/attack_02/helmet.png",
+        "sword": "hero/v5/g2/equipment/robot/attack_02/sword.png",
+        "arm_front": "hero/v5/g2/equipment/robot/attack_02/arm_front.png"
+      },
+      "attack_03": {
+        "coverage_underlay": "hero/v5/g2/equipment/robot/attack_03/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/robot/attack_03/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/robot/attack_03/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/robot/attack_03/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/robot/attack_03/helmet.png",
+        "sword": "hero/v5/g2/equipment/robot/attack_03/sword.png",
+        "arm_front": "hero/v5/g2/equipment/robot/attack_03/arm_front.png"
+      },
+      "death_01": {
+        "coverage_underlay": "hero/v5/g2/equipment/robot/death_01/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/robot/death_01/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/robot/death_01/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/robot/death_01/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/robot/death_01/helmet.png",
+        "sword": "hero/v5/g2/equipment/robot/death_01/sword.png",
+        "arm_front": "hero/v5/g2/equipment/robot/death_01/arm_front.png"
+      },
+      "death_02": {
+        "coverage_underlay": "hero/v5/g2/equipment/robot/death_02/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/robot/death_02/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/robot/death_02/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/robot/death_02/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/robot/death_02/helmet.png",
+        "sword": "hero/v5/g2/equipment/robot/death_02/sword.png",
+        "arm_front": "hero/v5/g2/equipment/robot/death_02/arm_front.png"
+      }
+    }
+  },
+  "skeleton": {
+    "layerOrder": [
+      "coverage_underlay",
+      "torso_armor",
+      "legs_boots",
+      "arm_rear",
+      "helmet",
+      "sword",
+      "arm_front"
+    ],
+    "frames": {
+      "idle_01": {
+        "coverage_underlay": "hero/v5/g2/equipment/skeleton/idle_01/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/skeleton/idle_01/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/skeleton/idle_01/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/skeleton/idle_01/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/skeleton/idle_01/helmet.png",
+        "sword": "hero/v5/g2/equipment/skeleton/idle_01/sword.png",
+        "arm_front": "hero/v5/g2/equipment/skeleton/idle_01/arm_front.png"
+      },
+      "idle_02": {
+        "coverage_underlay": "hero/v5/g2/equipment/skeleton/idle_02/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/skeleton/idle_02/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/skeleton/idle_02/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/skeleton/idle_02/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/skeleton/idle_02/helmet.png",
+        "sword": "hero/v5/g2/equipment/skeleton/idle_02/sword.png",
+        "arm_front": "hero/v5/g2/equipment/skeleton/idle_02/arm_front.png"
+      },
+      "idle_03": {
+        "coverage_underlay": "hero/v5/g2/equipment/skeleton/idle_03/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/skeleton/idle_03/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/skeleton/idle_03/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/skeleton/idle_03/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/skeleton/idle_03/helmet.png",
+        "sword": "hero/v5/g2/equipment/skeleton/idle_03/sword.png",
+        "arm_front": "hero/v5/g2/equipment/skeleton/idle_03/arm_front.png"
+      },
+      "attack_01": {
+        "coverage_underlay": "hero/v5/g2/equipment/skeleton/attack_01/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/skeleton/attack_01/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/skeleton/attack_01/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/skeleton/attack_01/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/skeleton/attack_01/helmet.png",
+        "sword": "hero/v5/g2/equipment/skeleton/attack_01/sword.png",
+        "arm_front": "hero/v5/g2/equipment/skeleton/attack_01/arm_front.png"
+      },
+      "attack_02": {
+        "coverage_underlay": "hero/v5/g2/equipment/skeleton/attack_02/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/skeleton/attack_02/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/skeleton/attack_02/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/skeleton/attack_02/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/skeleton/attack_02/helmet.png",
+        "sword": "hero/v5/g2/equipment/skeleton/attack_02/sword.png",
+        "arm_front": "hero/v5/g2/equipment/skeleton/attack_02/arm_front.png"
+      },
+      "attack_03": {
+        "coverage_underlay": "hero/v5/g2/equipment/skeleton/attack_03/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/skeleton/attack_03/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/skeleton/attack_03/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/skeleton/attack_03/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/skeleton/attack_03/helmet.png",
+        "sword": "hero/v5/g2/equipment/skeleton/attack_03/sword.png",
+        "arm_front": "hero/v5/g2/equipment/skeleton/attack_03/arm_front.png"
+      },
+      "death_01": {
+        "coverage_underlay": "hero/v5/g2/equipment/skeleton/death_01/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/skeleton/death_01/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/skeleton/death_01/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/skeleton/death_01/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/skeleton/death_01/helmet.png",
+        "sword": "hero/v5/g2/equipment/skeleton/death_01/sword.png",
+        "arm_front": "hero/v5/g2/equipment/skeleton/death_01/arm_front.png"
+      },
+      "death_02": {
+        "coverage_underlay": "hero/v5/g2/equipment/skeleton/death_02/coverage_underlay.png",
+        "torso_armor": "hero/v5/g2/equipment/skeleton/death_02/torso_armor.png",
+        "legs_boots": "hero/v5/g2/equipment/skeleton/death_02/legs_boots.png",
+        "arm_rear": "hero/v5/g2/equipment/skeleton/death_02/arm_rear.png",
+        "helmet": "hero/v5/g2/equipment/skeleton/death_02/helmet.png",
+        "sword": "hero/v5/g2/equipment/skeleton/death_02/sword.png",
+        "arm_front": "hero/v5/g2/equipment/skeleton/death_02/arm_front.png"
+      }
+    }
+  }
+}

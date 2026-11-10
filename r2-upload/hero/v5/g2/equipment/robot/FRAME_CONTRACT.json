@@ -1,0 +1,87 @@
+{
+  "status": "APPROVED_FOR_PUBLICATION",
+  "canvas": [
+    768,
+    768
+  ],
+  "origin": [
+    0,
+    0
+  ],
+  "frameNames": [
+    "idle_01",
+    "idle_02",
+    "idle_03",
+    "attack_01",
+    "attack_02",
+    "attack_03",
+    "death_01",
+    "death_02"
+  ],
+  "layerOrder": [
+    "coverage_underlay",
+    "torso_armor",
+    "legs_boots",
+    "arm_rear",
+    "helmet",
+    "sword",
+    "arm_front"
+  ],
+  "fullDrawOrder": [
+    "wing_far",
+    "base",
+    "hair_back",
+    "hair_front",
+    "coverage_underlay",
+    "torso_armor",
+    "legs_boots",
+    "arm_rear",
+    "helmet",
+    "sword",
+    "arm_front",
+    "wing_near"
+  ],
+  "runtimeTransforms": false,
+  "swordSourceGrip": [
+    383.48870636550305,
+    595.2936344969199
+  ],
+  "targetGrips": {
+    "idle_01": [
+      270,
+      505
+    ],
+    "idle_02": [
+      270,
+      493
+    ],
+    "idle_03": [
+      270,
+      501
+    ],
+    "attack_01": [
+      310,
+      309
+    ],
+    "attack_02": [
+      489,
+      448
+    ],
+    "attack_03": [
+      413,
+      551
+    ]
+  },
+  "deathSword": "transparent empty layer, matching Azure",
+  "base": "Unmodified canonical Hero V5 G2 base",
+  "coverage": "Dark sealed undersuit uses exact base silhouette; helm covers the face.",
+  "limitations": [
+    "Runtime integration and in-game QA pending. No item binding exists."
+  ],
+  "fullFaceHelmet": true,
+  "hideHairLayers": [
+    "hair_back",
+    "hair_front"
+  ],
+  "originNote": "Native 768x768 canvas composited at (0,0), matching Azure and approved review. Corrects candidate contract metadata [0,7]; no pixels moved."
+}

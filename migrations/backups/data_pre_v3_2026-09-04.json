@@ -1,0 +1,38 @@
+{
+  "taken_at": "2026-09-04T01:00:28Z",
+  "note": "Full data snapshot before migration_v3. players.password redacted for hygiene (not needed for rollback, only structural/gameplay data is).",
+  "players": [
+    { "id": "kim", "password": "[REDACTED]", "created_at": "2026-08-25T11:51:22.217Z", "diamonds": 885, "active_slot": 0 }
+  ],
+  "characters": [
+    {
+      "character_id": "char-1788267361623-u5virov9", "player_id": "kim", "slot_index": 0, "name": "kim01",
+      "level": 13, "xp": 248, "stat_points": 0, "str": 15, "vit": 0, "agi": 10, "dex": 25, "luk": 10,
+      "gold": 1048, "unlocked_floor": 19, "potions": 2, "protection_stones": 0, "chest_pity": 1,
+      "pets_json": "[{\"instId\":\"pet-1788267746292-olvn9\",\"defId\":\"sprout\",\"level\":1,\"xp\":0,\"stats\":{\"str\":4,\"vit\":4,\"agi\":4,\"dex\":4,\"luk\":4}}]",
+      "active_pet_id": "pet-1788267746292-olvn9",
+      "created_at": "2026-09-01T12:56:01.623Z", "updated_at": "2026-09-03T02:44:19.438Z"
+    },
+    {
+      "character_id": "char-1788267685728-9yyhcd6z", "player_id": "kim", "slot_index": 1, "name": "kim02",
+      "level": 1, "xp": 0, "stat_points": 0, "str": 0, "vit": 0, "agi": 0, "dex": 0, "luk": 0,
+      "gold": 0, "unlocked_floor": 1, "potions": 2, "protection_stones": 0, "chest_pity": 0,
+      "pets_json": "[]", "active_pet_id": "",
+      "created_at": "2026-09-01T13:01:25.728Z", "updated_at": "2026-09-01T13:01:25.728Z"
+    }
+  ],
+  "items": [
+    {"item_id":"junk-iron-1788267381898-81a9z","player_id":"kim","slot_type":"junk","equipped":0,"inventory_slot":"","item_template_id":"","rarity":"common","name":"เหล็ก","item_level":0,"enhance_level":0,"bound":0,"quantity":1,"atk":0,"def":0,"hp":0,"mp":0,"extra_json":"{\"empowerSlots\":[],\"junkId\":\"iron\",\"quantity\":24,\"icon\":\"🔩\"}","created_at":"2026-09-01T12:56:29.106Z","updated_at":"2026-09-03T02:43:36.413Z","character_id":"char-1788267361623-u5virov9"},
+    {"item_id":"junk-stone-1788267523227-fq8dk","player_id":"kim","slot_type":"junk","equipped":0,"inventory_slot":"","item_template_id":"","rarity":"common","name":"หิน","item_level":0,"enhance_level":0,"bound":0,"quantity":1,"atk":0,"def":0,"hp":0,"mp":0,"extra_json":"{\"empowerSlots\":[],\"junkId\":\"stone\",\"quantity\":5,\"icon\":\"🪨\"}","created_at":"2026-09-01T12:59:45.819Z","updated_at":"2026-09-03T02:43:36.413Z","character_id":"char-1788267361623-u5virov9"},
+    {"item_id":"junk-wood-1788267541143-llb9u","player_id":"kim","slot_type":"junk","equipped":0,"inventory_slot":"","item_template_id":"","rarity":"common","name":"ไม้","item_level":0,"enhance_level":0,"bound":0,"quantity":1,"atk":0,"def":0,"hp":0,"mp":0,"extra_json":"{\"empowerSlots\":[],\"junkId\":\"wood\",\"quantity\":9,\"icon\":\"🪵\"}","created_at":"2026-09-01T13:00:15.528Z","updated_at":"2026-09-03T02:43:36.413Z","character_id":"char-1788267361623-u5virov9"},
+    {"item_id":"1788267865348-z97mo","player_id":"kim","slot_type":"gloves","equipped":1,"inventory_slot":"","item_template_id":"","rarity":"elite","name":"Leather Gauntlets","item_level":0,"enhance_level":0,"bound":0,"quantity":1,"atk":9,"def":0,"hp":0,"mp":0,"extra_json":"{\"empowerSlots\":[{\"key\":\"mp\",\"label\":\"MP\",\"icon\":\"💧\",\"value\":15},{\"key\":\"defPct\",\"label\":\"DEF\",\"icon\":\"🛡️\",\"value\":0.1},{\"key\":\"critChance\",\"label\":\"Crit\",\"icon\":\"💥\",\"value\":4.2},{\"key\":\"dropBonus\",\"label\":\"Drop\",\"icon\":\"🎁\",\"value\":4.1},{\"key\":\"defPct\",\"label\":\"DEF\",\"icon\":\"🛡️\",\"value\":0.1}]}","created_at":"2026-09-01T13:05:26.234Z","updated_at":"2026-09-03T02:43:36.413Z","character_id":"char-1788267361623-u5virov9"},
+    {"item_id":"1788267954383-imjed","player_id":"kim","slot_type":"chest","equipped":1,"inventory_slot":"","item_template_id":"","rarity":"elite","name":"Leather Vest","item_level":0,"enhance_level":0,"bound":0,"quantity":1,"atk":0,"def":13,"hp":0,"mp":0,"extra_json":"{\"empowerSlots\":[{\"key\":\"defPct\",\"label\":\"DEF\",\"icon\":\"🛡️\",\"value\":0.1},{\"key\":\"hp\",\"label\":\"HP\",\"icon\":\"❤️\",\"value\":19},null,null,null]}","created_at":"2026-09-01T13:07:32.255Z","updated_at":"2026-09-03T02:43:36.413Z","character_id":"char-1788267361623-u5virov9"},
+    {"item_id":"junk-grass-1788329116695-2vzhe","player_id":"kim","slot_type":"junk","equipped":0,"inventory_slot":"","item_template_id":"","rarity":"common","name":"หญ้า","item_level":0,"enhance_level":0,"bound":0,"quantity":1,"atk":0,"def":0,"hp":0,"mp":0,"extra_json":"{\"empowerSlots\":[],\"junkId\":\"grass\",\"quantity\":6,\"icon\":\"🌿\"}","created_at":"2026-09-02T06:05:25.319Z","updated_at":"2026-09-03T02:43:36.413Z","character_id":"char-1788267361623-u5virov9"},
+    {"item_id":"junk-manaOre-1788267392525-8m32z","player_id":"kim","slot_type":"junk","equipped":0,"inventory_slot":"","item_template_id":"","rarity":"common","name":"หินมานา","item_level":0,"enhance_level":0,"bound":0,"quantity":1,"atk":0,"def":0,"hp":0,"mp":0,"extra_json":"{\"empowerSlots\":[],\"junkId\":\"manaOre\",\"quantity\":3,\"icon\":\"🔮\"}","created_at":"2026-09-03T00:38:03.529Z","updated_at":"2026-09-03T02:43:36.413Z","character_id":"char-1788267361623-u5virov9"},
+    {"item_id":"1788403130482-hvexg","player_id":"kim","slot_type":"weapon","equipped":1,"inventory_slot":"","item_template_id":"","rarity":"mythic","name":"Steel Rapier","item_level":0,"enhance_level":0,"bound":0,"quantity":1,"atk":59,"def":0,"hp":0,"mp":0,"extra_json":"{\"empowerSlots\":[null,null,null,null,null,null,null]}","created_at":"2026-09-03T02:39:15.299Z","updated_at":"2026-09-03T02:43:36.413Z","character_id":"char-1788267361623-u5virov9"},
+    {"item_id":"1788403185111-8mkrx","player_id":"kim","slot_type":"weapon","equipped":0,"inventory_slot":"","item_template_id":"","rarity":"unique","name":"Flame Saber","item_level":0,"enhance_level":0,"bound":0,"quantity":1,"atk":29,"def":0,"hp":0,"mp":0,"extra_json":"{\"empowerSlots\":[null,null,null]}","created_at":"2026-09-03T02:40:57.700Z","updated_at":"2026-09-03T02:43:36.413Z","character_id":"char-1788267361623-u5virov9"}
+  ],
+  "progress_legacy": [
+    {"player_id":"kim","bank_gold":86,"diamonds":860,"best_floor":4,"potions":2,"char_level":2,"char_xp":53,"char_points":0,"char_str":0,"char_vit":0,"char_dex":0,"char_luk":0,"pets_json":"[{\"instId\":\"pet-1788052281971-r4l6y\",\"defId\":\"sprout\",\"level\":1,\"xp\":0,\"stats\":{\"str\":4,\"vit\":4,\"agi\":4,\"dex\":4,\"luk\":4}}]","active_pet_id":"pet-1788052281971-r4l6y","updated_at":"2026-08-30T01:16:06.737Z"}
+  ]
+}

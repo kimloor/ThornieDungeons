@@ -1,0 +1,210 @@
+{
+  "status": "DEATH_01_OWNER_APPROVED",
+  "mainChecked": "614d8e363efa074d257319f3e3578a56196c2a06",
+  "risk": "MEDIUM",
+  "ownerAccepted": "2026-10-28 latest placement-review-v2 after.png at 52252e222217c3b8207093d7dff59e3974c74698",
+  "approvedOfflineShifts": {
+    "helmet": [
+      -2,
+      -8
+    ],
+    "torso_armor": [
+      -2,
+      -6
+    ]
+  },
+  "torsoFacing": "front / reclined three-quarter",
+  "files": [
+    {
+      "layer": "coverage_underlay",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/coverage_underlay.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
+    },
+    {
+      "layer": "torso_armor",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/torso_armor.png",
+      "sha256": "e6c380b7d98d663c4c8b4393465ec19a1935133fee7b5a2dc212e2a9e9d2532a",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        315,
+        357,
+        489,
+        473
+      ],
+      "alphaNonzeroPixels": 11822,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "layer": "legs_boots",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/legs_boots.png",
+      "sha256": "9fcd347f0001fbbb0934f96261be2daa32d58ee1be19f2d452a56924a3e1c64f",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        363,
+        435,
+        530,
+        618
+      ],
+      "alphaNonzeroPixels": 17044,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "layer": "arm_rear",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/arm_rear.png",
+      "sha256": "a93ce88b4979c403de81be3f8c9b27c8106761c43a72c98ac760fd2d4c094655",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        275,
+        375,
+        380,
+        510
+      ],
+      "alphaNonzeroPixels": 6240,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "layer": "helmet",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/helmet.png",
+      "sha256": "04ae98f95c297540401252a991c9dbe787fe03c3e7d7e28d7fdf4ac613decd58",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        230,
+        189,
+        431,
+        382
+      ],
+      "alphaNonzeroPixels": 19955,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "layer": "sword",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": null,
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "emptyReason": "Death pose releases weapon; Azure Death contract has no required grip and transparent sword."
+    },
+    {
+      "layer": "arm_front",
+      "path": "docs/g16-leather-g2/g3/death-review/exports/death_01/arm_front.png",
+      "sha256": "789d5b4da55c87650b189b5b529be1cc8847402c05c1867e8a8196faf25ca052",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "origin": [
+        0,
+        0
+      ],
+      "alphaBounds": [
+        447,
+        386,
+        554,
+        460
+      ],
+      "alphaNonzeroPixels": 3508,
+      "edgeAlphaNonzero": 0
+    }
+  ],
+  "azureSources": [
+    {
+      "layer": "coverage_underlay",
+      "path": "r2-upload/hero/v5/g2/equipment/azure/death_01/coverage_underlay.png",
+      "sha256": "5c2ec80e7d520c01d20cd58193ddc487a85c540f04db4f780a493b3a846a903c"
+    },
+    {
+      "layer": "torso_armor",
+      "path": "r2-upload/hero/v5/g2/equipment/azure/death_01/torso_armor.png",
+      "sha256": "4bf800fb5d99815dd45506d0dccb3313164f01a62b511863407621b200f6e02b"
+    },
+    {
+      "layer": "legs_boots",
+      "path": "r2-upload/hero/v5/g2/equipment/azure/death_01/legs_boots.png",
+      "sha256": "21ba7b7a1d72156bbae40d476f5c4d785bd933a944bd1422d89a257f04b7a91c"
+    },
+    {
+      "layer": "arm_rear",
+      "path": "r2-upload/hero/v5/g2/equipment/azure/death_01/arm_rear.png",
+      "sha256": "3d86f1e52bc2b1a5be6e9bd8b5647b30b4ebcc53877c94d98b9e5b5d5cdfaf8c"
+    },
+    {
+      "layer": "helmet",
+      "path": "r2-upload/hero/v5/g2/equipment/azure/death_01/helmet.png",
+      "sha256": "da735aa91ab050654d6ca15609b919a85872d40c0a506ea5b8e8012efc67b258"
+    },
+    {
+      "layer": "sword",
+      "path": "r2-upload/hero/v5/g2/equipment/azure/death_01/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b"
+    },
+    {
+      "layer": "arm_front",
+      "path": "r2-upload/hero/v5/g2/equipment/azure/death_01/arm_front.png",
+      "sha256": "7a7a11dbf532098d37af6b9b182d003584e58cc6877ade4cc913a30eee3ef818"
+    }
+  ],
+  "protectedPngCount": 57,
+  "protectedByteIdentical": true,
+  "baseResampled": false,
+  "runtimeChanged": false,
+  "runtimeOffsetBaked": false,
+  "productionManifestChanged": false,
+  "death01VisualAcceptance": true,
+  "technicalChecks": "PASS; final all-frame gate is in ../VALIDATION.json"
+}

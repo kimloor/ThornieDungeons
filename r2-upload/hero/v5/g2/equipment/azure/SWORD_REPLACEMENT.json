@@ -1,0 +1,135 @@
+{
+  "status": "approved_user_replacement",
+  "revision": "azure_royal_bastion_compact_grip",
+  "scope": "Azure V5 G2 sword master and six active sword frame layers only",
+  "paths": "overwrite existing R2 keys; no new runtime remapping",
+  "sourceDesign": "Royal Bastion mockup B with shortened and narrowed grip",
+  "sourceGrip": [
+    384,
+    625
+  ],
+  "targetGrip": {
+    "idle_01": [
+      270,
+      505
+    ],
+    "idle_02": [
+      270,
+      493
+    ],
+    "idle_03": [
+      270,
+      501
+    ],
+    "attack_01": [
+      310,
+      309
+    ],
+    "attack_02": [
+      489,
+      448
+    ],
+    "attack_03": [
+      413,
+      551
+    ]
+  },
+  "files": {
+    "masters/AZURE_SWORD_UPRIGHT.png": {
+      "sha256": "32ce59632532b1ea3bf5bc74dedd0260642b8d11ef04fb994f112c0c41112061",
+      "canvas": [
+        768,
+        768
+      ],
+      "bbox": [
+        260,
+        34,
+        507,
+        734
+      ]
+    },
+    "idle_01/sword_w7_idle_v3.png": {
+      "sha256": "8cf7a65a35e70defcc9420ec1b72e533f76bbdbc45e3675700d851bb3212b410",
+      "canvas": [
+        768,
+        768
+      ],
+      "bbox": [
+        231,
+        467,
+        480,
+        711
+      ]
+    },
+    "idle_02/sword_w7_idle_v3.png": {
+      "sha256": "cca249f877ae6237c12ed9c500b9eff1aaa56be809c3cd843337bd60476d986c",
+      "canvas": [
+        768,
+        768
+      ],
+      "bbox": [
+        231,
+        455,
+        480,
+        699
+      ]
+    },
+    "idle_03/sword_w7_idle_v3.png": {
+      "sha256": "52f7567dbf078c6903184639cba5c7bd660fbb73d044878543bd991bde7d8e72",
+      "canvas": [
+        768,
+        768
+      ],
+      "bbox": [
+        231,
+        463,
+        480,
+        707
+      ]
+    },
+    "attack_01/sword.png": {
+      "sha256": "0b96a711d24c2d3c4eaaa911cc512a6659c9388683e2e1a83b24d11f6cf43cc7",
+      "canvas": [
+        768,
+        768
+      ],
+      "bbox": [
+        76,
+        131,
+        354,
+        345
+      ]
+    },
+    "attack_02/sword.png": {
+      "sha256": "073337dd445e234098177b810764cbf8d3adc5cd2faacbc11bf51545f1fa50b9",
+      "canvas": [
+        768,
+        768
+      ],
+      "bbox": [
+        445,
+        166,
+        685,
+        501
+      ]
+    },
+    "attack_03/sword.png": {
+      "sha256": "cb0bd129b72cd48de7d7ef37081db173538963bc5c03ea6cdad61bde9016a589",
+      "canvas": [
+        768,
+        768
+      ],
+      "bbox": [
+        353,
+        491,
+        740,
+        679
+      ]
+    }
+  },
+  "unchangedDeathSwordLayers": [
+    "death_01/sword.png",
+    "death_02/sword.png"
+  ],
+  "note": "Frame swords are baked offline from the revised master. Historical SOURCE_VALIDATION.json and IDLE_SWORD_RUNTIME_PATCH.json describe the previous source package and W7 placement; they are retained as historical records."
+}

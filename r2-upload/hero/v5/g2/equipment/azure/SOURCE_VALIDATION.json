@@ -1,0 +1,1130 @@
+{
+  "status": "TECHNICAL_PASS_VISUAL_REVIEW_REQUIRED",
+  "project_lead_approval": false,
+  "runtime_integrated": false,
+  "published_to_r2": false,
+  "source_main": "413c549d176f5a30945cd6b1389c8faa30629cfd",
+  "source_base_package": "HERO_V5_G2_PROJECT_LEAD_HANDOFF.zip",
+  "source_base_package_sha256": "aab841df163a08dc75c4d3783975b2e3ef49838c325cb93904c53af23e1a1079",
+  "source_wing_package": "HERO_V5_G2_WING_TEMPLATE_REVIEW_R5_FULL.zip",
+  "source_wing_package_sha256": "bd09f64b0ab55e42274184cac0505fc133eaa88ad3dbbe417b8548f0497454a4",
+  "checks": {
+    "exactly_8_equipment_frame_folders": true,
+    "exactly_56_equipment_frame_pngs": true,
+    "rgba_768_transparent_no_canvas_edge_clipping": true,
+    "base_wing_main_git_blob_matches": true,
+    "all_locked_reference_copies_byte_identical": true,
+    "torso_pants_opaque_core_coverage": true,
+    "composites_exactly_match_declared_order": true,
+    "sword_presence_matches_user_choice": true,
+    "gif_frame_counts_correct": true,
+    "wing_near_is_outermost": true,
+    "hero_or_wing_pixels_redrawn": false,
+    "runtime_interpolation_used": false
+  },
+  "frames": {
+    "idle_01": {
+      "torso_leg_opaque_reference_pixels": 22204,
+      "uncovered_core_pixels": 0,
+      "sword_expected_visible": false,
+      "sword_actual_visible": false,
+      "composite_exact_render_match": true,
+      "canvas_origin": [
+        0,
+        0
+      ]
+    },
+    "idle_02": {
+      "torso_leg_opaque_reference_pixels": 22204,
+      "uncovered_core_pixels": 0,
+      "sword_expected_visible": false,
+      "sword_actual_visible": false,
+      "composite_exact_render_match": true,
+      "canvas_origin": [
+        0,
+        0
+      ]
+    },
+    "idle_03": {
+      "torso_leg_opaque_reference_pixels": 22204,
+      "uncovered_core_pixels": 0,
+      "sword_expected_visible": false,
+      "sword_actual_visible": false,
+      "composite_exact_render_match": true,
+      "canvas_origin": [
+        0,
+        0
+      ]
+    },
+    "attack_01": {
+      "torso_leg_opaque_reference_pixels": 22465,
+      "uncovered_core_pixels": 0,
+      "sword_expected_visible": true,
+      "sword_actual_visible": true,
+      "composite_exact_render_match": true,
+      "canvas_origin": [
+        0,
+        0
+      ]
+    },
+    "attack_02": {
+      "torso_leg_opaque_reference_pixels": 22288,
+      "uncovered_core_pixels": 0,
+      "sword_expected_visible": true,
+      "sword_actual_visible": true,
+      "composite_exact_render_match": true,
+      "canvas_origin": [
+        0,
+        0
+      ]
+    },
+    "attack_03": {
+      "torso_leg_opaque_reference_pixels": 20147,
+      "uncovered_core_pixels": 0,
+      "sword_expected_visible": true,
+      "sword_actual_visible": true,
+      "composite_exact_render_match": true,
+      "canvas_origin": [
+        0,
+        0
+      ]
+    },
+    "death_01": {
+      "torso_leg_opaque_reference_pixels": 21875,
+      "uncovered_core_pixels": 0,
+      "sword_expected_visible": false,
+      "sword_actual_visible": false,
+      "composite_exact_render_match": true,
+      "canvas_origin": [
+        0,
+        0
+      ]
+    },
+    "death_02": {
+      "torso_leg_opaque_reference_pixels": 11531,
+      "uncovered_core_pixels": 0,
+      "sword_expected_visible": false,
+      "sword_actual_visible": false,
+      "composite_exact_render_match": true,
+      "canvas_origin": [
+        0,
+        0
+      ]
+    }
+  },
+  "equipment_pngs": [
+    {
+      "file": "azure/idle_01/coverage_underlay.png",
+      "sha256": "88e31b85625d1df431bee32764e119609be3d71fb37dc3ebb9824d25fee07ae7",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 556375,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        244,
+        379,
+        464,
+        646
+      ]
+    },
+    {
+      "file": "azure/idle_01/torso_armor.png",
+      "sha256": "6817f335678d0b0d1d303601dea7715f62efcf020c4a8206d6aabd74a74b615b",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 577548,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        295,
+        377,
+        428,
+        522
+      ]
+    },
+    {
+      "file": "azure/idle_01/legs_boots.png",
+      "sha256": "c40d2789e7572479c11f545819dd5cbdc38a2f166087912ac8d8c575b56ea4a4",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 577636,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        262,
+        522,
+        437,
+        643
+      ]
+    },
+    {
+      "file": "azure/idle_01/arm_rear.png",
+      "sha256": "7f9390140fb1b999be848bdf780bb247debd636abf6ece671e8f6c7fad1c80de",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 586869,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        401,
+        416,
+        464,
+        531
+      ]
+    },
+    {
+      "file": "azure/idle_01/helmet.png",
+      "sha256": "02f952a76c0fcf23638542a0a7bb00d40f1ddb3ec3c74aa78909536881c589b8",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 578885,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        253,
+        250,
+        447,
+        377
+      ]
+    },
+    {
+      "file": "azure/idle_01/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 589824,
+      "edge_alpha_pixels": 0,
+      "bbox": null
+    },
+    {
+      "file": "azure/idle_01/arm_front.png",
+      "sha256": "ed56392fc8bf0ee97088ce2d3bca2bf2eff7766b10b7d5703b7df4889844e0df",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 581065,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        237,
+        374,
+        326,
+        534
+      ]
+    },
+    {
+      "file": "azure/idle_02/coverage_underlay.png",
+      "sha256": "bc4ec195b5e953a30b8d68c6e6809e6bf4f03297b645e2d34b3b238c2ce5ee78",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 556375,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        244,
+        367,
+        464,
+        634
+      ]
+    },
+    {
+      "file": "azure/idle_02/torso_armor.png",
+      "sha256": "80ef98894cd1be91aab5d895dd1920c1ffd89632ac4d81c537340700efef3c86",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 577548,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        295,
+        365,
+        428,
+        510
+      ]
+    },
+    {
+      "file": "azure/idle_02/legs_boots.png",
+      "sha256": "23751dbc847b75bf9a6200072033512444d88a2eb4de93bdc126936b4a70c796",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 577636,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        262,
+        510,
+        437,
+        631
+      ]
+    },
+    {
+      "file": "azure/idle_02/arm_rear.png",
+      "sha256": "7d9c170cbffdeabd0af92c089c1f7dadf51010abad6f5b55416f71d7b30fd356",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 586869,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        401,
+        404,
+        464,
+        519
+      ]
+    },
+    {
+      "file": "azure/idle_02/helmet.png",
+      "sha256": "e8fc433936f1f7894de3dbf7ddfd9d38668c05a0e8b4bfdab05df8c4aa15fc1b",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 578885,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        253,
+        238,
+        447,
+        365
+      ]
+    },
+    {
+      "file": "azure/idle_02/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 589824,
+      "edge_alpha_pixels": 0,
+      "bbox": null
+    },
+    {
+      "file": "azure/idle_02/arm_front.png",
+      "sha256": "a7012b2d4bed1b786c0077a04f5f5db3418bca94f90af202939fff629daa2f29",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 581065,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        237,
+        362,
+        326,
+        522
+      ]
+    },
+    {
+      "file": "azure/idle_03/coverage_underlay.png",
+      "sha256": "a226f4cf3959ef96fc28a3610dc839fa3b7da2f7c691ade83e103185ae4a1419",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 556375,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        244,
+        375,
+        464,
+        642
+      ]
+    },
+    {
+      "file": "azure/idle_03/torso_armor.png",
+      "sha256": "c598bb6fa50af554a0bb5fa02ff4a79b9e65cee61fe592b7a6f1cb61e6f7ce81",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 577548,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        295,
+        373,
+        428,
+        518
+      ]
+    },
+    {
+      "file": "azure/idle_03/legs_boots.png",
+      "sha256": "4fc6e10492ebf7d2dfb037abf50623dbd694dbf1a770da77c4c30db216a5a353",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 577636,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        262,
+        518,
+        437,
+        639
+      ]
+    },
+    {
+      "file": "azure/idle_03/arm_rear.png",
+      "sha256": "282d04996a30348d6506a794dcac58e1ec5c1635fe13b1e5a10a870babe6c4d4",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 586869,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        401,
+        412,
+        464,
+        527
+      ]
+    },
+    {
+      "file": "azure/idle_03/helmet.png",
+      "sha256": "d0dfdbbb2a38350c825bf0aa7ce885dd398bd4bb1640581e778ff67c1af4dcfd",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 578885,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        253,
+        246,
+        447,
+        373
+      ]
+    },
+    {
+      "file": "azure/idle_03/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 589824,
+      "edge_alpha_pixels": 0,
+      "bbox": null
+    },
+    {
+      "file": "azure/idle_03/arm_front.png",
+      "sha256": "166961b876987e0956a161bb7b38509844bd29796bdf3f275fa788ae1e0974c0",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 581065,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        237,
+        370,
+        326,
+        530
+      ]
+    },
+    {
+      "file": "azure/attack_01/coverage_underlay.png",
+      "sha256": "7da34d8662ad29b54797b6f384d03aa4e6440303c6875aeaf52eb81dde39747a",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 551104,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        224,
+        278,
+        512,
+        670
+      ]
+    },
+    {
+      "file": "azure/attack_01/torso_armor.png",
+      "sha256": "5739697871758ab0a70190afc70c71747857c3a0aec00588892d5e746859434d",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 575879,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        238,
+        415,
+        426,
+        554
+      ]
+    },
+    {
+      "file": "azure/attack_01/legs_boots.png",
+      "sha256": "391b099f5852d0dad0e2395e971778f3379a350a69019762f4862ba79e445b83",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 577499,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        218,
+        554,
+        426,
+        667
+      ]
+    },
+    {
+      "file": "azure/attack_01/arm_rear.png",
+      "sha256": "a5b2a5383e5a8dfb2be94314be19aea9b9752001929ea1eb8da5846cf12a1f47",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 583406,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        382,
+        432,
+        505,
+        520
+      ]
+    },
+    {
+      "file": "azure/attack_01/helmet.png",
+      "sha256": "fb776fa9ff45a26f760cb111bcdc9cbe21d3c12670d3b364fc67b1a99e113398",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 583146,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        286,
+        286,
+        446,
+        396
+      ]
+    },
+    {
+      "file": "azure/attack_01/sword.png",
+      "sha256": "7c95d83382af553e49dcf78b9251b3476c045da86248ed8e6aac9aba9bbf5c2c",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 573482,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        38,
+        122,
+        376,
+        355
+      ]
+    },
+    {
+      "file": "azure/attack_01/arm_front.png",
+      "sha256": "ba5898774b7f8ead9751e54292f5b4a153ba8cfd1e870e2c70da872bcd2229f0",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 576105,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        233,
+        275,
+        341,
+        464
+      ]
+    },
+    {
+      "file": "azure/attack_02/coverage_underlay.png",
+      "sha256": "514bd1e6f3d6701da4f4c013bc094f7bfb5e553ae5f503af1765e352be9c39f5",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 554425,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        188,
+        401,
+        512,
+        672
+      ]
+    },
+    {
+      "file": "azure/attack_02/torso_armor.png",
+      "sha256": "3dfcffb32fae6ed95246c80df470a77a6541b535706ce7771e0f289302c5bc1f",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 577924,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        210,
+        410,
+        391,
+        546
+      ]
+    },
+    {
+      "file": "azure/attack_02/legs_boots.png",
+      "sha256": "334fcdc9c4203e5dd9ef2e99d96d38320436dcccfe0bec5c79eaabe340b1e4c5",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 576201,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        183,
+        546,
+        396,
+        673
+      ]
+    },
+    {
+      "file": "azure/attack_02/arm_rear.png",
+      "sha256": "bdbfd58d7b0b7714eb67edc4cf0b1295c1a0eb834b959a9fcf25d651d77531c1",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 585297,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        185,
+        397,
+        288,
+        476
+      ]
+    },
+    {
+      "file": "azure/attack_02/helmet.png",
+      "sha256": "dfff9c1645e2432b00977ad8ae44b0fb190c429595e1f5ba7db3ee7e9549474c",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 578722,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        232,
+        297,
+        437,
+        405
+      ]
+    },
+    {
+      "file": "azure/attack_02/sword.png",
+      "sha256": "6dd077c22529f1b3d391b3f4793c73d22c78dd1bbb9135ba4f965539ad2f9d4c",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 569592,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        436,
+        151,
+        704,
+        521
+      ]
+    },
+    {
+      "file": "azure/attack_02/arm_front.png",
+      "sha256": "2dbb0594cc510d42e64b33c1c13ca119de742bc64e5e64db212fbe9a3605ed3d",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 578052,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        322,
+        411,
+        524,
+        489
+      ]
+    },
+    {
+      "file": "azure/attack_03/coverage_underlay.png",
+      "sha256": "64c09ce405dfe296d622dbc47efed5d9a32c1fdc82ccafc1fd21a1a386631a0d",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 558776,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        204,
+        413,
+        436,
+        669
+      ]
+    },
+    {
+      "file": "azure/attack_03/torso_armor.png",
+      "sha256": "2ebe36ce3aca7a4f48ae6a7031b6339f1f5c8f340b8c15acd407034ea9ffeeae",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 578908,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        223,
+        414,
+        386,
+        555
+      ]
+    },
+    {
+      "file": "azure/attack_03/legs_boots.png",
+      "sha256": "9fc1423641de99683c81bcbbee51cdf6f485383d15529bcb6f2285a188ee27ab",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 574607,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        197,
+        555,
+        406,
+        677
+      ]
+    },
+    {
+      "file": "azure/attack_03/arm_rear.png",
+      "sha256": "0477e6da2ccb676d717e6e48f7e11a97db93b80bd4159260487db4f42de7ebd0",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 584336,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        197,
+        398,
+        296,
+        510
+      ]
+    },
+    {
+      "file": "azure/attack_03/helmet.png",
+      "sha256": "f48d8b5ead3c88a2bf6fe92d4cd07d079ed590e3711516da4e0362e26c4dffdd",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 579428,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        227,
+        297,
+        426,
+        408
+      ]
+    },
+    {
+      "file": "azure/attack_03/sword.png",
+      "sha256": "ea807c1bb75d8bf155e912c59acdbf3d163a1b5b42d28ef86827b4cadd8cb985",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 569255,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        331,
+        506,
+        752,
+        700
+      ]
+    },
+    {
+      "file": "azure/attack_03/arm_front.png",
+      "sha256": "f184d9ca649650ed10d6f8de0d673e994ec0ab3e17d4b5bfc44126cf4fbb1d6f",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 582208,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        329,
+        429,
+        439,
+        583
+      ]
+    },
+    {
+      "file": "azure/death_01/coverage_underlay.png",
+      "sha256": "5c2ec80e7d520c01d20cd58193ddc487a85c540f04db4f780a493b3a846a903c",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 557116,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        132,
+        365,
+        554,
+        704
+      ]
+    },
+    {
+      "file": "azure/death_01/torso_armor.png",
+      "sha256": "4bf800fb5d99815dd45506d0dccb3313164f01a62b511863407621b200f6e02b",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 579394,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        308,
+        375,
+        551,
+        494
+      ]
+    },
+    {
+      "file": "azure/death_01/legs_boots.png",
+      "sha256": "21ba7b7a1d72156bbae40d476f5c4d785bd933a944bd1422d89a257f04b7a91c",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 575878,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        343,
+        494,
+        531,
+        621
+      ]
+    },
+    {
+      "file": "azure/death_01/arm_rear.png",
+      "sha256": "3d86f1e52bc2b1a5be6e9bd8b5647b30b4ebcc53877c94d98b9e5b5d5cdfaf8c",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 585342,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        440,
+        384,
+        557,
+        467
+      ]
+    },
+    {
+      "file": "azure/death_01/helmet.png",
+      "sha256": "d3728580f0b3fef7f48e036c1f63045ec64ec86f6dbe1442edf811cbbe4687a8",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 580293,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        262,
+        235,
+        431,
+        375
+      ]
+    },
+    {
+      "file": "azure/death_01/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 589824,
+      "edge_alpha_pixels": 0,
+      "bbox": null
+    },
+    {
+      "file": "azure/death_01/arm_front.png",
+      "sha256": "7a7a11dbf532098d37af6b9b182d003584e58cc6877ade4cc913a30eee3ef818",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 582026,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        132,
+        377,
+        379,
+        704
+      ]
+    },
+    {
+      "file": "azure/death_02/coverage_underlay.png",
+      "sha256": "48ddaa6af157db951ec98a6c81c3e72e8955c1520b311be17e64f87722f98b37",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 567259,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        183,
+        504,
+        692,
+        705
+      ]
+    },
+    {
+      "file": "azure/death_02/torso_armor.png",
+      "sha256": "d33f8cf60a1abc51701ae8bf32c5a25572bc11596c92b9b6d43a876da5f12d7c",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 580878,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        192,
+        515,
+        371,
+        638
+      ]
+    },
+    {
+      "file": "azure/death_02/legs_boots.png",
+      "sha256": "5520fd69eea0e7a4c64807154ff4bbc667f874c0469b077b62808268ee6eb917",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 584753,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        186,
+        638,
+        382,
+        678
+      ]
+    },
+    {
+      "file": "azure/death_02/arm_rear.png",
+      "sha256": "e83662471b5130915fde898166330ad084215d73b718651cb3df20a70eb34637",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 588151,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        345,
+        559,
+        409,
+        669
+      ]
+    },
+    {
+      "file": "azure/death_02/helmet.png",
+      "sha256": "64038f6b8a511aa06543fbafebd3e6a76533171f274aec04ebe4e392991d4c9e",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 579719,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        274,
+        370,
+        450,
+        485
+      ]
+    },
+    {
+      "file": "azure/death_02/sword.png",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 589824,
+      "edge_alpha_pixels": 0,
+      "bbox": null
+    },
+    {
+      "file": "azure/death_02/arm_front.png",
+      "sha256": "cdd39360bacd0b02201a25e502734b1765b92d8dd9ece938c1704cee42755448",
+      "mode": "RGBA",
+      "size": [
+        768,
+        768
+      ],
+      "transparent_pixels": 582845,
+      "edge_alpha_pixels": 0,
+      "bbox": [
+        258,
+        512,
+        350,
+        679
+      ]
+    }
+  ],
+  "gifs": {
+    "AZURE_SEQUENCE": {
+      "order": [
+        "idle_01",
+        "idle_02",
+        "idle_03",
+        "attack_01",
+        "attack_02",
+        "attack_03",
+        "death_01",
+        "death_02"
+      ],
+      "frame_count_expected": 8,
+      "frame_count_actual": 8,
+      "durations_ms": [
+        450,
+        450,
+        450,
+        550,
+        550,
+        550,
+        750,
+        750
+      ],
+      "no_interpolation": true,
+      "source": "review/composites/*.png; uniform 512x512 downsample, dark matte, GIF palette quantization"
+    },
+    "IDLE_STAGE": {
+      "order": [
+        "idle_01",
+        "idle_02",
+        "idle_03"
+      ],
+      "frame_count_expected": 3,
+      "frame_count_actual": 3,
+      "durations_ms": [
+        450,
+        450,
+        450
+      ],
+      "no_interpolation": true,
+      "source": "review/composites/*.png; uniform 512x512 downsample, dark matte, GIF palette quantization"
+    },
+    "ATTACK_STAGE": {
+      "order": [
+        "idle_01",
+        "attack_01",
+        "attack_02",
+        "attack_03"
+      ],
+      "frame_count_expected": 4,
+      "frame_count_actual": 4,
+      "durations_ms": [
+        450,
+        550,
+        550,
+        550
+      ],
+      "no_interpolation": true,
+      "source": "review/composites/*.png; uniform 512x512 downsample, dark matte, GIF palette quantization"
+    },
+    "DEATH_STAGE": {
+      "order": [
+        "idle_01",
+        "death_01",
+        "death_02"
+      ],
+      "frame_count_expected": 3,
+      "frame_count_actual": 3,
+      "durations_ms": [
+        450,
+        750,
+        750
+      ],
+      "no_interpolation": true,
+      "source": "review/composites/*.png; uniform 512x512 downsample, dark matte, GIF palette quantization"
+    }
+  },
+  "visual_review_notes": [
+    "Technical coverage measures opaque shirt/pants/boot core coverage, not artistic approval.",
+    "Inspect Attack01 sword pommel clearance near the helmet and brow at battle scale.",
+    "Inspect Death02 navy undersuit/plate transitions around shoulder and forward arm.",
+    "Armor was extracted and fitted from one shared generation atlas; shoulder, tabard and glove shaping across Attack/Death requires Project Lead review.",
+    "Base pixels, approved hair anchors, and R5 wing placements were not altered."
+  ],
+  "next_action": "Project Lead reviews requested sheets/GIF and the single upright sword master. Do not publish, integrate or mass-produce variants before approval."
+}

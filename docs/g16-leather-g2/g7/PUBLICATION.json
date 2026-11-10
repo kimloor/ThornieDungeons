@@ -1,0 +1,254 @@
+{
+  "status": "G16 G7 ICONS PUBLISHED AND MANIFEST BOUND — OWNER PRODUCTION UI CHECK PENDING",
+  "baseline": "5c9809f0b2919fa00e7d3567a0d398199deb0459",
+  "approval": {
+    "coreFive": "Owner: ที่เหลือ ผ่าน",
+    "accessoryAndPublication": "Owner: โอเค ผ่าน จัดการผูก manifest ให้เรียบร้อย แล้วทำ prompt handoff ส่งกลับ project lead",
+    "accessoryAppearance": "Owner-selected brown leather/brass ring with shield/leaf emblem; replaces pouch concept only. Catalog identity remains Adventurer Charm; no stats/name changes.",
+    "sourceReview": {
+      "libraryFileId": "libfile_9b879681c3888191a095fe650cf19f33",
+      "version": 1
+    }
+  },
+  "commits": {
+    "png": "43841c66e669c4744fe16a87e1094ff1d73ffc3b",
+    "activation": "2561a098b69dc6db4d4a943905c7aa57e0c20110"
+  },
+  "workflow": {
+    "png": {
+      "runId": 40704377428,
+      "attempt": 2,
+      "status": "success",
+      "firstAttempt": "Failed on Cloudflare HTTP 500 internal error before first object was created; confirmed empty prefix before retry."
+    },
+    "manifest": {
+      "runId": 40705016528,
+      "attempt": 2,
+      "status": "success",
+      "firstAttempt": "Cloudflare HTTP 500; live manifest still matched baseline hash before retry."
+    },
+    "frontend": {
+      "runId": 40705016032,
+      "status": "success"
+    }
+  },
+  "files": [
+    {
+      "slot": "weapon",
+      "path": "r2-upload/ui/equipment-icons/leather/leather_sword.png",
+      "key": "ui/equipment-icons/leather/leather_sword.png",
+      "sha256": "998cf664525d736bb95c6bdbdb2acff01afb1e1563c7fe6698f42e15358034a6",
+      "bytes": 23115,
+      "dimensions": [
+        256,
+        256
+      ],
+      "mode": "RGBA",
+      "readback": {
+        "key": "ui/equipment-icons/leather/leather_sword.png",
+        "status": 200,
+        "sha256": "998cf664525d736bb95c6bdbdb2acff01afb1e1563c7fe6698f42e15358034a6",
+        "bytes": 23115,
+        "width": 256,
+        "height": 256,
+        "colorType": 6
+      },
+      "publicBrowserDecode": true
+    },
+    {
+      "slot": "helmet",
+      "path": "r2-upload/ui/equipment-icons/leather/leather_helmet.png",
+      "key": "ui/equipment-icons/leather/leather_helmet.png",
+      "sha256": "fb13d0e914dd8c719acfa645215f64b0abc398ba559488fcaaf1c331d017f777",
+      "bytes": 53005,
+      "dimensions": [
+        256,
+        256
+      ],
+      "mode": "RGBA",
+      "readback": {
+        "key": "ui/equipment-icons/leather/leather_helmet.png",
+        "status": 200,
+        "sha256": "fb13d0e914dd8c719acfa645215f64b0abc398ba559488fcaaf1c331d017f777",
+        "bytes": 53005,
+        "width": 256,
+        "height": 256,
+        "colorType": 6
+      },
+      "publicBrowserDecode": true
+    },
+    {
+      "slot": "chest",
+      "path": "r2-upload/ui/equipment-icons/leather/leather_armor.png",
+      "key": "ui/equipment-icons/leather/leather_armor.png",
+      "sha256": "c271d809d2df1c8da19f13cad6fd72750ef8918f86e5625cc4a93a971ee611ae",
+      "bytes": 63143,
+      "dimensions": [
+        256,
+        256
+      ],
+      "mode": "RGBA",
+      "readback": {
+        "key": "ui/equipment-icons/leather/leather_armor.png",
+        "status": 200,
+        "sha256": "c271d809d2df1c8da19f13cad6fd72750ef8918f86e5625cc4a93a971ee611ae",
+        "bytes": 63143,
+        "width": 256,
+        "height": 256,
+        "colorType": 6
+      },
+      "publicBrowserDecode": true
+    },
+    {
+      "slot": "gloves",
+      "path": "r2-upload/ui/equipment-icons/leather/leather_gloves.png",
+      "key": "ui/equipment-icons/leather/leather_gloves.png",
+      "sha256": "daa29840f64b11444cb51591d8433b8180ddd08caaf664a331f1221db3103d01",
+      "bytes": 62547,
+      "dimensions": [
+        256,
+        256
+      ],
+      "mode": "RGBA",
+      "readback": {
+        "key": "ui/equipment-icons/leather/leather_gloves.png",
+        "status": 200,
+        "sha256": "daa29840f64b11444cb51591d8433b8180ddd08caaf664a331f1221db3103d01",
+        "bytes": 62547,
+        "width": 256,
+        "height": 256,
+        "colorType": 6
+      },
+      "publicBrowserDecode": true
+    },
+    {
+      "slot": "boots",
+      "path": "r2-upload/ui/equipment-icons/leather/leather_boots.png",
+      "key": "ui/equipment-icons/leather/leather_boots.png",
+      "sha256": "3f27c5877f964ba194269f5c4ac4ef61f9aefc82f85080652dd1284041aa2616",
+      "bytes": 58822,
+      "dimensions": [
+        256,
+        256
+      ],
+      "mode": "RGBA",
+      "readback": {
+        "key": "ui/equipment-icons/leather/leather_boots.png",
+        "status": 200,
+        "sha256": "3f27c5877f964ba194269f5c4ac4ef61f9aefc82f85080652dd1284041aa2616",
+        "bytes": 58822,
+        "width": 256,
+        "height": 256,
+        "colorType": 6
+      },
+      "publicBrowserDecode": true
+    },
+    {
+      "slot": "accessory",
+      "path": "r2-upload/ui/equipment-icons/leather/adventurer_charm.png",
+      "key": "ui/equipment-icons/leather/adventurer_charm.png",
+      "sha256": "cded10e8af88c7f230fa2b4b080e616c300902eb9f29ed64376c25ad7b4ba026",
+      "bytes": 74108,
+      "dimensions": [
+        256,
+        256
+      ],
+      "mode": "RGBA",
+      "readback": {
+        "key": "ui/equipment-icons/leather/adventurer_charm.png",
+        "status": 200,
+        "sha256": "cded10e8af88c7f230fa2b4b080e616c300902eb9f29ed64376c25ad7b4ba026",
+        "bytes": 74108,
+        "width": 256,
+        "height": 256,
+        "colorType": 6
+      },
+      "publicBrowserDecode": true
+    }
+  ],
+  "r2": {
+    "bucket": "assets",
+    "readbackShaPass": 6,
+    "mimeAllPng": true,
+    "publicBrowserDecodePass": 6,
+    "collisionCheckBeforeUpload": "empty prefix; no pre-existing icon overwritten"
+  },
+  "manifest": {
+    "status": 200,
+    "sha256": "276d60fbd61538d4249a107f6e0c648990c8c9a7521dda2871861de99375539d",
+    "withoutLeatherIconsSha256": "5081ee187af29eec124aaa1e71eeb99cb70a90decd615e6da5ff539010d59b91",
+    "block": {
+      "weapon": "ui/equipment-icons/leather/leather_sword.png?v=g16_g7_r1",
+      "helmet": "ui/equipment-icons/leather/leather_helmet.png?v=g16_g7_r1",
+      "chest": "ui/equipment-icons/leather/leather_armor.png?v=g16_g7_r1",
+      "gloves": "ui/equipment-icons/leather/leather_gloves.png?v=g16_g7_r1",
+      "boots": "ui/equipment-icons/leather/leather_boots.png?v=g16_g7_r1",
+      "accessory": "ui/equipment-icons/leather/adventurer_charm.png?v=g16_g7_r1"
+    }
+  },
+  "resolver": {
+    "path": "src/assets/manifest.js",
+    "binding": "Only gearTier 1, no explicit setId, six equipment types; maps via assets.itemIcons.leather",
+    "preserved": "Boss weapons, explicit Azure/Robot/Skeleton sets, unknown-set rejection, other tiers and non-equipment retain previous behavior; missing image/map uses existing GameIcon fallback.",
+    "inventoryStatsChanged": false
+  },
+  "tests": {
+    "targeted": {
+      "pass": 22,
+      "fail": 0
+    },
+    "full": {
+      "pass": 916,
+      "fail": 0,
+      "environment": "Ordinary local git clone; initial worktree run had 915/916 because asset-private-path test treats .git worktree file differently. No production/config change made to hide this environment issue."
+    },
+    "build": "node build.js PASS; regenerated index.html; second build byte-identical",
+    "diffCheck": "PASS",
+    "protectedWearable56Sha": "PASS"
+  },
+  "production": {
+    "url": "https://thorniedungeons.ekqtjl.workers.dev/",
+    "deploymentId": "873330ee-07df-4e28-b835-83894dddbf9e",
+    "versionId": "b990850a-ea5d-40a8-9004-82c6fb0ebaf9",
+    "trafficPercentage": 100,
+    "publicManifestMappingVerified": true,
+    "deployedGenericT1RuleObservedInDomScript": true,
+    "publicLoginSmoke": "PASS",
+    "desktopViewport": [
+      1363,
+      936
+    ],
+    "horizontalOverflow": false,
+    "applicationErrorsObserved": 0,
+    "browserExtensionMetadataWarningExcluded": true,
+    "authenticatedSessionTested": false,
+    "authenticatedInventoryEquipmentCompareQA": "NOT RUN — login wall",
+    "mobileProductionVisualQA": "NOT RUN; Owner-approved 24/32/40px light/dark review retained as artwork evidence, not live mobile QA.",
+    "productionVerified": false
+  },
+  "rollback": {
+    "ready": true,
+    "manifestBeforeSha256": "5081ee187af29eec124aaa1e71eeb99cb70a90decd615e6da5ff539010d59b91",
+    "manifestBeforeSource": "43841c66e669c4744fe16a87e1094ff1d73ffc3b:r2-upload/manifest.json",
+    "instructions": "Reconcile latest manifest; remove only assets.itemIcons.leather and read-back verify. Missing mappings safely fall back. Keep six R2 PNGs unreferenced. If resolver rollback is required, revert only its seven-line addition and rebuild index.html against current main; never overwrite unrelated later changes.",
+    "invoked": false
+  },
+  "restrictionsPreserved": [
+    "Wearable 56 PNGs unchanged",
+    "Hero Base/poses unchanged",
+    "No gameplay/economy/item stats change",
+    "No API/Worker logic/D1 change",
+    "No historical source/evidence deletion"
+  ],
+  "nextAction": "Project Lead review exact commit/evidence; Owner login to check Inventory/Equipment/Details/Compare for T1 items and ring, missing-icon fallback, mobile and existing sets. Record final Production UI acceptance.",
+  "evidence": [
+    {
+      "path": "docs/g16-leather-g2/g7/CONTACT_SHEET.png",
+      "sha256": "dc2968959349ff8d5b5d90805392c5eef95529c028fea38f949b25bc32c7368f"
+    },
+    {
+      "path": "docs/g16-leather-g2/g7/INVENTORY_SCALE.png",
+      "sha256": "c649f40f96fa4f57234b4845bafd4e87b10f1d9eabcba060101f8d18fd75d315"
+    }
+  ]
+}

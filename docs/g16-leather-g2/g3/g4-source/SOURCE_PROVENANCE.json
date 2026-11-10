@@ -1,0 +1,155 @@
+{
+  "seamRepairs": [
+    {
+      "frame": "attack_01",
+      "layer": "torso_armor",
+      "region": [
+        275,
+        422,
+        432,
+        530
+      ],
+      "newMaterialPixels": 293,
+      "mask": "masks/attack_01_chest_coverage.png"
+    },
+    {
+      "frame": "attack_02",
+      "layer": "torso_armor",
+      "region": [
+        262,
+        415,
+        390,
+        528
+      ],
+      "newMaterialPixels": 334,
+      "mask": "masks/attack_02_chest_coverage.png"
+    },
+    {
+      "frame": "attack_03",
+      "layer": "torso_armor",
+      "region": [
+        262,
+        415,
+        390,
+        530
+      ],
+      "newMaterialPixels": 123,
+      "mask": "masks/attack_03_chest_coverage.png"
+    },
+    {
+      "frame": "death_01",
+      "layer": "torso_armor",
+      "region": [
+        345,
+        370,
+        480,
+        490
+      ],
+      "newMaterialPixels": 88,
+      "mask": "masks/death_01_chest_coverage.png"
+    },
+    {
+      "frame": "death_02",
+      "layer": "torso_armor",
+      "region": [
+        238,
+        514,
+        365,
+        625
+      ],
+      "newMaterialPixels": 43,
+      "mask": "masks/death_02_chest_coverage.png"
+    }
+  ],
+  "idleSkinSeamFilledPixels": 136,
+  "rgbRepairs": [
+    {
+      "frame": "death_01",
+      "layer": "arm_rear",
+      "donor": "masters/death_01_arm_rear_donor.png",
+      "donorSha256": "5cb32c436decdfaf6ac974d03479c04e56a436edb7a1b03a719e5ff8040693a1",
+      "sourceCrop": [
+        260,
+        370,
+        410,
+        520
+      ],
+      "allowedRegion": [
+        278,
+        433,
+        340,
+        512
+      ],
+      "edgeBandPixels": 8,
+      "changedRgbPixels": 1919,
+      "alphaPixelIdentical": true
+    },
+    {
+      "frame": "death_01",
+      "layer": "legs_boots",
+      "donor": "masters/death_01_legs_boots_donor.png",
+      "donorSha256": "4a4296fc1e1b892e48692c66712e27585f9045d32da6992f3960530c4156b679",
+      "sourceCrop": [
+        350,
+        430,
+        550,
+        630
+      ],
+      "allowedRegion": [
+        360,
+        540,
+        535,
+        620
+      ],
+      "edgeBandPixels": 9,
+      "changedRgbPixels": 3408,
+      "alphaPixelIdentical": true
+    },
+    {
+      "frame": "death_02",
+      "layer": "legs_boots",
+      "donor": "masters/death_02_legs_boots_donor.png",
+      "donorSha256": "889aaf45d85e1bde3e0e729a7fa6175a75ff3f0761fe1c365d29f386a426505f",
+      "sourceCrop": [
+        180,
+        580,
+        390,
+        790
+      ],
+      "allowedRegion": [
+        182,
+        610,
+        242,
+        675
+      ],
+      "edgeBandPixels": 11,
+      "changedRgbPixels": 1398,
+      "alphaPixelIdentical": true
+    }
+  ],
+  "remainingWhiteExposure": [
+    {
+      "frame": "attack_01",
+      "uncoveredBaseWhitePixels": 0
+    },
+    {
+      "frame": "attack_02",
+      "uncoveredBaseWhitePixels": 0
+    },
+    {
+      "frame": "attack_03",
+      "uncoveredBaseWhitePixels": 0
+    },
+    {
+      "frame": "death_01",
+      "uncoveredBaseWhitePixels": 0
+    },
+    {
+      "frame": "death_02",
+      "uncoveredBaseWhitePixels": 0
+    }
+  ],
+  "technicalChecks": "PASS: 56 RGBA/canvas/edge-alpha/SHA, exact 8-frame silhouette support, fixed helmets/weapons/underlays, exact Idle bob; Owner final visual approval pending",
+  "acceptedSourceCommit": "7c9d72d938a60cd1d363234bdb8a0905fb2d1f4c",
+  "note": "Final bounded admission masks and donors; only RGB/material inside these regions admitted. No generated anatomy/alpha admitted. Idle_02/03 mask follows exact -12/-4 bob. Original package remains in ChatGPT Library."
+}

@@ -1,0 +1,497 @@
+# Inventory UI V2 — Redesign Specification
+
+Status: DESIGN LOCK / IMPLEMENTATION REFERENCE
+
+This document defines the approved Inventory / Equipment redesign direction for ThornieDungeons.
+
+The goal is to simplify the current Inventory screen, improve mobile readability, prepare for Safe Area + responsive breakpoints, and make equipment comparison/reward overflow behavior explicit without changing unrelated gameplay systems.
+
+## 1. High-level direction
+
+- Use the same default authenticated-game background style as Main Hub.
+- Use the normal game header/currency presentation. Do not duplicate a separate currency row inside Inventory.
+- Remove Quick Slots from Inventory. Quick Slots belong to Combat only.
+- Remove the persistent item-detail panel from the bottom of the Inventory page.
+- Remove duplicate bottom close controls if the page already has the standard close/back control.
+- Item/equipment details open in a popup/modal when the player taps an Equipment slot or Inventory item.
+- The layout must be compatible with the global Safe Area + responsive breakpoint work planned for the same implementation batch.
+
+## 2. Equipment Area
+
+Approved slot layout:
+
+```text
+Helm                 Gloves
+Armor                Weapon
+Boots                Accessory
+Wings
+
+      Hero sprite behind slots
+```
+
+Rules:
+
+- Hero is the visual background layer of the Equipment Area.
+- Equipment frames/cards render above Hero.
+- Hero may overlap/extend behind Equipment slots; this is allowed and preferred over shrinking the character excessively.
+- Hero visual layer must not block interaction with Equipment slots (`pointer-events:none` or equivalent presentation behavior).
+- Equipment slots must remain the interactive foreground layer.
+- Equipment slot tap opens the Item Detail popup immediately.
+- No repeated helper text such as “tap for details” is needed inside every slot.
+- Empty slots use a neutral/simple frame.
+- Equipped items use rarity styling appropriate to that item.
+- Equipped items appear only in Equipment slots and MUST NOT be duplicated in the Inventory grid.
+
+## 3. Inventory Area
+
+Initial capacity: **30 real slots**.
+
+Default compact presentation on mobile:
+
+```text
+Inventory 18/30                 [Filter] [Sort]
+
+[ ][ ][ ][ ][ ]
+[ ][ ][ ][ ][ ]
+
+          [ View All ▼ ]
+```
+
+Rules:
+
+- Default collapsed Inventory shows 2 rows.
+- Mobile baseline: 5 columns, therefore 10 visible slots while collapsed.
+- `View All` expands the Inventory downward to show the remaining slots/items.
+- Expanded state provides a collapse control.
+- Tablet/desktop column count may increase as part of responsive implementation, but the same information hierarchy remains.
+- Inventory count represents actual carried Inventory items/slots, not equipped items.
+- Items currently equipped are excluded from Inventory-grid counting/presentation.
+
+### Inventory cell presentation
+
+Keep cells visually compact. A cell may show:
+
+- item icon;
+- rarity frame/accent;
+- `+Enhance` indicator at the top-right when enhance level > 0;
+- stack quantity `xN` at the bottom-left for stackable items.
+
+Do NOT add:
+
+- Equipped marker (equipped items are not present in this grid);
+- Favorite/Lock star in the grid;
+- verbose item name/type text inside every cell.
+
+## 4. Filter
+
+Current item count is small, but Filter is retained for future growth.
+
+Filter owns detailed classification controls rather than cluttering the Inventory header.
+
+Filter should support, as applicable:
+
+- Category: All / Equipment / Consumable / Material-Junk;
+- Equipment Type / slot;
+- Rarity;
+- Enhanced / Not Enhanced;
+- Empowered / Not Empowered.
+
+Future filters such as Level, Set, Element, etc. may be added inside the same Filter popup without changing the main Inventory layout.
+
+## 5. Sort
+
+The visible `Sort` control is NOT a dropdown for viewing by rarity/type/value.
+
+Tapping `Sort` performs a real deterministic Inventory reorder.
+
+Recommended ordering:
+
+1. Equipment
+2. Consumable
+3. Material / Junk
+
+Within a category:
+
+1. higher rarity first;
+2. higher Enhance first;
+3. stable deterministic fallback order.
+
+The exact stable fallback key may follow existing item identity/order data, but repeated sorting must not randomly reshuffle equal items.
+
+## 6. Item Detail Popup
+
+Use one Item Detail popup system for both Inventory items and equipped items.
+
+Popup contents may include:
+
+- item icon/art;
+- item name;
+- `+Enhance` level;
+- rarity;
+- type/slot;
+- item level / requirement if available;
+- stat/effect details;
+- context-appropriate actions.
+
+The popup must be mobile-safe. If content is taller than the viewport, scroll the popup content while keeping important actions accessible.
+
+## 7. Favorite / Lock
+
+Favorite/Lock uses a small star in the Item Detail popup.
+
+Recommended interaction:
+
+- `☆` = unlocked/not favorite;
+- `★` = locked/favorite.
+
+A locked/favorited item cannot be sold or salvaged until unlocked.
+
+Do not show the star in the Inventory grid.
+
+## 8. Equipment Comparison
+
+When the player taps an unequipped Equipment item in Inventory and there is a compatible Equipment slot, the popup displays a horizontal current-vs-new comparison.
+
+Approved comparison header direction:
+
+```text
+[ICON] Azure Blade +7   >   [ICON] Dragon Fang +8
+       Lv.40 • Empowered     Lv.45 • No Empower
+```
+
+Header requirements:
+
+- current equipped item on the left;
+- item currently being inspected on the right;
+- mini item icon on both sides;
+- item name;
+- `+Enhance` level;
+- item level if available;
+- enchant state only as a simple boolean presentation: `Empowered` / `No Empower`.
+
+Do NOT duplicate individual enchant-option details in the comparison header. Those effects belong in the calculated stat comparison below.
+
+If the target slot is empty, the left side becomes an Empty Slot presentation.
+
+If the player is inspecting the item that is already equipped, no current-vs-new comparison is required; show normal item details.
+
+## 9. Stat Comparison
+
+Comparison must use the **final calculated result**, including base item stats, Enhance, Empower options, primary stats (STR/VIT/AGI/DEX/LUK), HP%/MP%, and other item-derived values that affect the displayed character stats.
+
+Example:
+
+```text
+ATK      520  >  548    +28
+DEF      310  >  298    -12
+CRIT      12% >   15%   +3%
+CP       2840 >  2912   +72
+```
+
+Rules:
+
+- Prefer showing stats that actually change.
+- If an old item has an Empower option and the new item does not, losing that option must appear as a negative delta.
+- If the new item has an Empower option and the old item does not, gaining that option must appear as a positive delta.
+- If both items have different Empower options, compare the final resulting values rather than comparing only base item data.
+- In the Inventory V2 comparison implementation, Base, Refine, and Enchant are presented as separate groups; do not silently merge an Enchant value into Base/Refine.
+- Enchant rows match by stat name rather than slot index. If a stat name occurs more than once, preserve each occurrence as a separate numbered row; do not overwrite or silently collapse duplicate options.
+- Show the union of current and new Enchant stats, matching by normalized stat name and occurrence number. Keep exactly three columns: Stat, Current, and New. The New column shows the candidate value followed by the signed delta in parentheses, e.g. `9 (+9)` or `0 (-3)`; there is no separate Difference column.
+- The comparison header identifies CURRENT ITEM and NEW ITEM separately and keeps the stat table readable on narrow and short mobile viewports. The selected item icon remains in the header area; Current and New labels align with their respective numeric columns.
+- CP delta may be shown if it can be calculated consistently from the real character-stat pipeline.
+
+### Delta colors
+
+Use the same visual language as the current Character Status allocation preview:
+
+- positive / increase = **cyan**;
+- negative / decrease = **red**;
+- neutral/default information = white/gray;
+- do not rely on color alone: always show explicit `+` / `-` signs.
+
+## 10. Popup actions
+
+For an unequipped Equipment item:
+
+- primary action: Equip;
+- secondary actions as applicable: Sell / Salvage.
+
+For an equipped item:
+
+- primary action: Unequip;
+- selling/salvaging should require the item to be unequipped first.
+
+For Material/Junk/other non-equipment items:
+
+- no Equipment comparison;
+- show only relevant actions/details.
+
+Protected/locked items must disable Sell/Salvage.
+
+High-rarity and/or enhanced items should require confirmation before destructive actions such as Sell/Salvage unless separately protected by an existing stronger rule.
+
+## 11. Rarity Visual System
+
+Use one rarity language across Inventory cells and Item Detail popup, with a stronger effect in the popup.
+
+Suggested hierarchy:
+
+- Common / normal Junk: white/gray;
+- Rare: blue;
+- Unique: purple;
+- Elite: orange;
+- Legendary/Mythic: gold.
+
+Inventory grid:
+
+- primarily rarity border/accent;
+- only subtle glow where useful;
+- avoid distracting continuous animation.
+
+Popup:
+
+- rarity border;
+- rarity-colored item name/header accent;
+- restrained outer glow;
+- stronger visual emphasis at higher rarity.
+
+Animation guidance:
+
+- Common: no glow animation;
+- Rare/Unique: preferably static/subtle;
+- Elite/Mythic: optional very restrained pulse/glow only if readability is preserved.
+
+Rarity styling must not conflict with stat-delta colors:
+
+- rarity = frame/name/accent;
+- positive stat delta = cyan;
+- negative stat delta = red;
+- normal information = white/gray.
+
+## 12. Inventory Capacity
+
+The previous Inventory UI displayed a maximum of 25 visible slots but did not consistently enforce that as a true item-capacity rule.
+
+Inventory V2 changes this to a real starting capacity of **30 slots**.
+
+Do not add Diamond-based slot purchasing in this redesign.
+
+Future direction is a separate Storage/Warehouse system rather than monetized Inventory-slot expansion.
+
+### Stackable items
+
+- If a stackable Material/Junk item can merge into an existing stack, it may do so without consuming a new Inventory slot.
+- If a new stack/new item would require another slot and Inventory is full, it must use Overflow handling below.
+
+## 13. Overflow / Pending Loot
+
+Items must never silently disappear because Inventory is full.
+
+If a reward requires a new Inventory slot and Inventory is full:
+
+- store the item/reward in persistent Overflow/Pending Loot;
+- show an Inventory notification/badge when Overflow contains items;
+- expose Overflow from the Inventory screen;
+- allow `Claim` per item;
+- allow `Claim All That Fits`;
+- items that still cannot fit remain in Overflow.
+
+Overflow must persist through save/cloud state and must not be session-only.
+
+Example compact player-facing presentation when pending items exist:
+
+```text
+[icon] ไอเทมที่ล้น 3
+Inventory 30/30                    [Filter] [Sort]
+```
+
+The internal persistence/engineering term may remain `Overflow`, but player-facing Inventory UI should use Thai wording such as `ไอเทมที่ล้น` instead of the English term. When Overflow is empty, hide this row.
+
+Suggested future safety ceiling: a finite Overflow cap may be added, but implementation must never silently delete rare/high-value rewards. If such a cap is introduced, a clear player-facing resolution flow is required.
+
+### 13.1 Server-authoritative reward settlement
+
+Reward settlement must derive capacity from the authenticated character's persisted item rows. The server must:
+
+1. exclude equipped and existing Overflow rows from carried-slot occupancy;
+2. merge compatible junk/material and potion stacks before consuming a new slot;
+3. create carried items only while fewer than 30 logical carried slots are occupied; and
+4. place only the genuine remainder in persistent Overflow.
+
+The Worker uses one shared capacity/allocation planner for Mail, Daily Login, Shop resources/equipment, Salvage, Dungeon rewards, and Mythic Craft. Each participating settlement reads only the authenticated account/character rows, applies stack merge and any same-transaction item consumption before allocating, then persists the resulting Inventory/Overflow state atomically. Mail Claim returns the resulting authoritative snapshot after the same atomic claim transaction. Existing Overflow rows may be reconciled back into carried Inventory when space is available, preserving their item identity and metadata. A client-provided free-slot count is never authoritative.
+
+## 14. Future Storage/Warehouse
+
+Future direction:
+
+- Inventory = carried/active items;
+- Storage/Warehouse = long-term reserve/collection items.
+
+Because Storage is planned, Inventory V2 should NOT add a Diamond-based capacity-upgrade economy.
+
+Storage is outside the current Inventory V2 implementation scope but the Inventory data/UI architecture should avoid blocking it.
+
+## 15. Safe Area + Responsive Integration
+
+Inventory V2 is intended to ship together with the global Safe Area + responsive breakpoint foundation.
+
+Related responsive direction from Hero V5:
+
+- Mobile: current ~430px-class layout;
+- Tablet: ~600–700px-class layout;
+- Desktop: ~700–800px-class layout or dedicated desktop composition.
+
+Inventory-specific expectations:
+
+- safe-area aware top/bottom interaction zones;
+- no overlap with device notch/status/home indicators;
+- use dynamic viewport sizing rather than assuming static `100vh` only;
+- do not scale the entire mobile UI blindly on larger screens;
+- Equipment Hero/slots, Inventory columns, popup width, and spacing may adapt by breakpoint while preserving the same interaction model.
+
+A dedicated global responsive/safe-area spec may be created separately for reuse by all screens.
+
+## 16. Related implementation-batch notes
+
+The same upcoming UI implementation batch is also expected to address known Battle presentation issues:
+
+- Combat speed button (x1/x2) not displaying;
+- Pet sprite still clipping/falling outside the Battle presentation area.
+
+These Battle issues are not part of the Inventory interaction contract itself, but they should use the same Safe Area/responsive foundation where relevant.
+
+## 17. Scope boundary
+
+Inventory UI V2 does NOT authorize:
+
+- unrelated combat/balance changes;
+- changing item stat values;
+- changing Enhance/Enchant balance;
+- adding the future Storage/Warehouse UI now;
+- adding Diamond-based Inventory expansion;
+- redesigning unrelated pages beyond what is necessary for shared Safe Area/responsive foundations.
+
+Implementation should preserve existing gameplay/data behavior unless this document explicitly replaces it (notably Inventory capacity/Overflow handling and Inventory presentation behavior).
+
+## 18. Optional Graphics manifest contract
+
+Inventory V2 follows the existing camelCase `battleUi` / `petUi` convention. Every entry is
+optional; CSS remains the runtime fallback until Graphics publishes it.
+
+```json
+{
+  "inventoryUi": {
+    "equipmentSlotFrame": "ui/inventory/equipment_slot_frame.png",
+    "popupFrame": "ui/inventory/popup_frame.png",
+    "mythicFrame": "ui/inventory/mythic_frame.png",
+    "icons": {
+      "filter": "ui/inventory/icon_filter.png",
+      "sort": "ui/inventory/icon_sort.png",
+      "expand": "ui/inventory/icon_expand.png",
+      "favorite": "ui/inventory/icon_favorite.png",
+      "overflow": "ui/inventory/icon_overflow.png"
+    },
+    "sectionOrnament": "ui/inventory/section_ornament.png"
+  }
+}
+```
+
+## 19. Shared Phaser Hero preview boundary (W8)
+
+Inventory remains React/DOM. W8 may replace only the central Hero visual preview with the shared Phaser `HeroRenderer`.
+
+Approved flow:
+
+~~~text
+authoritativeEquipped
+        ↓
+optional previewLoadout
+        ↓
+EquipmentVisualResolver
+        ↓
+HeroRenderer
+        ↓
+HeroPreviewScene
+~~~
+
+### DOM / Phaser boundary
+
+DOM retains:
+- Equipment slots and Inventory grid;
+- Item Detail and Item Comparison;
+- calculated stat comparison / CP delta;
+- filter / sort / favorite / lock;
+- Equip / Unequip mutation authority;
+- save/persistence/error handling.
+
+Phaser owns only the Hero visual preview:
+- Hero V5 layered composition;
+- Idle animation;
+- approved equipment/wings visual layers;
+- candidate visual swap;
+- optional presentation-only equip glow/transition.
+
+Inventory presentation rules:
+- the Phaser Hero host may fill the complete equipment stage so the Hero can render substantially larger than the old DOM preview;
+- weapon and wings may visually extend into the equipment-slot lanes;
+- equipment slots remain DOM foreground controls above the Hero;
+- equipped V2 Wings resolve their authoritative `wingFamily` through the shared EquipmentVisualResolver: Azure -> Azure wings, Robot -> Robot wings, Skeleton -> Skeleton wings. Legacy Angel-wing identity remains a compatibility path for older items.
+
+Equipment slots remain DOM foreground controls even when placed around the Phaser preview.
+
+### Compare-driven preview
+
+When the player inspects compatible unequipped Equipment:
+1. open the existing DOM comparison;
+2. derive `previewLoadout` from authoritative equipment plus the candidate slot;
+3. send preview state through `EquipmentVisualResolver`;
+4. update the Hero preview without saving/equipping;
+5. cancel/close -> restore authoritative visuals;
+6. Equip success -> refresh from confirmed authoritative equipment;
+7. Equip failure -> restore authoritative visuals.
+
+Selecting another candidate must rebuild from authoritative state rather than chaining from the previous preview.
+
+The existing calculated-stat pipeline remains authoritative for all comparison numbers. Phaser never calculates comparison stats.
+
+The Item Detail/Compare surface must not fully cover the Hero stage. On mobile it should behave as a scrollable bottom sheet with enough upper-stage visibility to observe candidate equipment swaps; closing it restores the authoritative Hero visual.
+
+### Enhancement Aura preview
+
+The central Inventory Hero Preview uses the shared EnhancementAuraRenderer alongside HeroRenderer. Aura stages are derived from the same previewEquipped loadout that drives the visible equipment layers:
+- inspecting a compatible candidate item previews the candidate Weapon/Character Aura immediately;
+- closing or cancelling Compare restores Aura from the authoritative equipped loadout;
+- successful Equip refreshes from confirmed authoritative equipment;
+- missing equipment slots and the four-slot minimum rule follow the Enhancement Aura contract in PHASER-COMBAT-ARENA-V1.md §17;
+- Aura remains cosmetic and optional; its initialization or runtime failure must not block Inventory, equipment controls, or the Hero preview itself.
+
+### Visual fallback contract
+
+Missing item artwork must fall back per slot while keeping Hero V5 active:
+- helmet -> base head/hair;
+- armor -> base body/clothing;
+- gloves -> base arms/hands;
+- boots -> base legs/feet;
+- weapon -> no weapon;
+- wings -> no wings;
+- accessory -> no accessory overlay.
+
+Use the whole-actor legacy fallback only when the required Hero V5 core itself cannot render safely.
+
+Additional rules:
+- do not mix V3/V4 equipment art onto a V5 Hero;
+- do not guess visual asset paths;
+- use only approved manifest/config mappings;
+- incomplete declared equipment bundles count as unsupported and use slot-level fallback;
+- do not allow an item to appear for only some synchronized frames;
+- a visual/load failure never changes item ownership, stats or persistence.
+
+The Hero preview must reuse the same shared `HeroRenderer`, `EquipmentVisualResolver`, `AssetResolver` and `TextureRegistry` used by the Phaser presentation architecture rather than creating Inventory-specific equivalents.
+
+
+### Inventory comparison visual alignment (1.0.54)
+
+- The comparison surface uses a rounded gold outer frame and a deep navy/purple panel background, separate from the surrounding item detail shell.
+- The selected candidate item artwork is shown in a large gold-framed square at the upper left; its name, rarity, type/level, Refine/Enchant summary and compared equipped item label sit to the right.
+- Stat, Current and New headings remain aligned to the three data columns. The selected-item artwork is not repeated as two tiny icons in separate Current/New cards.
+- On narrow mobile widths the framed artwork scales down while remaining a prominent header element; comparison values and the bottom action buttons retain their existing behavior.

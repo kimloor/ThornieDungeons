@@ -1,0 +1,224 @@
+name: Cleanup merged branches
+
+# Automatic cleanup requires only the release gates applicable to the files changed by the current main SHA.
+# A push to main evaluates applicability immediately; workflow_run events re-evaluate after deploy/parity completion.
+# Non-applicable gates are skipped, and applicable-but-pending gates defer cleanup without failing the workflow.
+# Manual workflow_dispatch is retained for dry-run / maintenance.
+# Safe by default: dry_run=true only reports what WOULD be deleted.
+#
+# A branch is deleted only if ALL of these are true:
+#   - it is not the default branch, not the permanent `ops/branch-cleanup` branch,
+#     not a protected branch, and not in `keep`
+#   - it has no open pull request
+#   - its tip is older than `min_age_days`
+#   - it is fully merged: either 0 commits ahead of the default branch,
+#     or a merged PR exists whose head SHA equals the branch tip (covers squash/rebase merges)
+#
+# Restore a deleted branch (SHA is printed in the run summary):
+#   git push origin <sha>:refs/heads/<branch-name>
+
+on:
+  push:
+    branches:
+      - main
+  workflow_run:
+    workflows:
+      - "Deploy ThornieDungeons API"
+      - "Deploy ThornieDungeons Frontend"
+      - "Battle Core parity"
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only report, do not delete (set false to actually delete)"
+        type: boolean
+        default: true
+      min_age_days:
+        description: "Skip branches whose last commit is newer than this many days"
+        type: number
+        default: 3
+      keep:
+        description: "Comma-separated branch names to never delete (e.g. feat/foo,fix/bar)"
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: read
+  actions: read
+
+concurrency:
+  group: cleanup-branches
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+      MIN_AGE_DAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.min_age_days || 0 }}
+      KEEP: ${{ github.event_name == 'workflow_dispatch' && inputs.keep || '' }}
+    steps:
+      - name: Resolve applicable release gates
+        id: gates
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            sha="${{ github.event.workflow_run.head_sha }}"
+          else
+            sha="${GITHUB_SHA}"
+          fi
+
+          current_main="$(gh api "repos/$REPO/branches/main" --jq .commit.sha)"
+          if [ "$sha" != "$current_main" ]; then
+            echo "Triggered SHA is no longer current main; skip cleanup."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "current=true" >> "$GITHUB_OUTPUT"
+
+          changed_files="$(gh api "repos/$REPO/commits/$sha" --jq '.files[].filename')"
+          printf 'Changed files for %s:\n%s\n' "$sha" "$changed_files"
+
+          require_api=false
+          require_frontend=false
+          require_battle=false
+
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+
+            case "$file" in
+              index.html|admin.html|admin-app.js|worker.js|wrangler.jsonc|.github/workflows/deploy-frontend-production.yml)
+                require_frontend=true ;;
+            esac
+
+            case "$file" in
+              workers/thornie-dungeons-api.js|workers/thornie-dungeons-api-entry.js|wrangler.api.template.jsonc|.github/workflows/deploy-api.yml|migrations/auto/*.sql)
+                require_api=true ;;
+            esac
+
+            case "$file" in
+              src/systems/battleCore.js|workers/thornie-dungeons-api.js|scripts/battle-core-port.js|tests/battle-core-parity.test.js|tests/arena-v2-w9-foundation.test.js|tests/arena-v2-w9-match-lifecycle.test.js|tests/arena-v2-w9-combat.test.js|tests/arena-v2-w9-settlement.test.js|tests/arena-v2-w9-cleanup.test.js|tests/raid-arena-auth-contract.test.js|tests/auth-gameplay-callers.test.js|migrations/auto/0025_arena_v1_cleanup.sql|tests/arena-v2-w98-w99.test.js|tests/fixtures/arena-v2-w9.js|tests/battle-core.test.js|tests/combat-core-teams.test.js|docs/ARENA-V2-W9-IMPLEMENTATION-ROADMAP.md|.github/workflows/battle-core-parity.yml)
+                require_battle=true ;;
+            esac
+          done <<< "$changed_files"
+
+          echo "Applicable gates: api=$require_api frontend=$require_frontend battle=$require_battle"
+          pending=0
+
+          require_success() {
+            local required="$1"
+            local workflow="$2"
+            if [ "$required" != "true" ]; then
+              echo "Gate not applicable: $workflow"
+              return
+            fi
+            local ok
+            ok="$(gh run list --repo "$REPO" --commit "$sha" --workflow "$workflow" --limit 20 --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')"
+            if [ "$ok" -gt 0 ]; then
+              echo "Gate passed: $workflow"
+            else
+              echo "Gate pending/not successful yet: $workflow"
+              pending=1
+            fi
+          }
+
+          require_success "$require_api" "Deploy ThornieDungeons API"
+          require_success "$require_frontend" "Deploy ThornieDungeons Frontend"
+          require_success "$require_battle" "Battle Core parity"
+
+          if [ "$pending" -eq 0 ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "All applicable release gates passed for $sha."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Applicable release gates are still pending; cleanup will retry after workflow completion."
+          fi
+
+      - name: Find and delete merged branches
+        if: ${{ github.event_name == 'workflow_dispatch' || (steps.gates.outputs.current == 'true' && steps.gates.outputs.ready == 'true') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          owner="${REPO%%/*}"
+          default_branch="$(gh api "repos/$REPO" --jq .default_branch)"
+          cutoff_epoch=$(( $(date +%s) - ${MIN_AGE_DAYS:-3} * 86400 ))
+
+          # Normalised keep list, one name per line
+          keep_list="$(printf '%s' "${KEEP:-}" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed '/^$/d')"
+
+          uri() { jq -rn --arg v "$1" '$v|@uri'; }
+
+          deleted=0; skipped=0; would=0
+          {
+            echo "## Cleanup merged branches"
+            echo "Default branch: \`$default_branch\` · dry_run: \`$DRY_RUN\` · min_age_days: \`${MIN_AGE_DAYS:-3}\`"
+            echo
+            echo "| Branch | Tip SHA | Result |"
+            echo "| --- | --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          row() { echo "| \`$1\` | \`${2:0:12}\` | $3 |" >> "$GITHUB_STEP_SUMMARY"; }
+
+          while IFS=$'\t' read -r name sha protected; do
+            [ -n "$name" ] || continue
+
+            if [ "$name" = "$default_branch" ]; then continue; fi
+            if [ "$name" = "ops/branch-cleanup" ]; then row "$name" "$sha" "skip: permanent cleanup ops branch"; skipped=$((skipped+1)); continue; fi
+            if [ "$protected" = "true" ]; then row "$name" "$sha" "skip: protected"; skipped=$((skipped+1)); continue; fi
+            if printf '%s\n' "$keep_list" | grep -Fxq -- "$name"; then row "$name" "$sha" "skip: in keep list"; skipped=$((skipped+1)); continue; fi
+
+            enc="$(uri "$name")"
+
+            # Open PR from this branch?
+            open_prs="$(gh api "repos/$REPO/pulls?state=open&head=$owner:$enc" --jq 'length')"
+            if [ "$open_prs" != "0" ]; then row "$name" "$sha" "skip: open PR"; skipped=$((skipped+1)); continue; fi
+
+            # Age check (tip commit date)
+            tip_date="$(gh api "repos/$REPO/commits/$sha" --jq .commit.committer.date)"
+            tip_epoch="$(date -d "$tip_date" +%s)"
+            if [ "$tip_epoch" -gt "$cutoff_epoch" ]; then row "$name" "$sha" "skip: newer than ${MIN_AGE_DAYS:-3} days"; skipped=$((skipped+1)); continue; fi
+
+            # Fully merged? (a) nothing ahead of default branch
+            ahead="$(gh api "repos/$REPO/compare/$default_branch...$sha" --jq .ahead_by)"
+            merged_how=""
+            if [ "$ahead" = "0" ]; then
+              merged_how="merged (0 commits ahead)"
+            else
+              # (b) squash/rebase merge: a merged PR whose head SHA is exactly this tip
+              pr_hit="$(gh api "repos/$REPO/pulls?state=closed&head=$owner:$enc" \
+                --jq "[.[] | select(.merged_at != null and .head.sha == \"$sha\")] | length")"
+              if [ "$pr_hit" != "0" ]; then merged_how="merged via PR (squash/rebase)"; fi
+            fi
+
+            if [ -z "$merged_how" ]; then
+              row "$name" "$sha" "skip: not merged ($ahead commits ahead)"
+              skipped=$((skipped+1)); continue
+            fi
+
+            if [ "$DRY_RUN" = "true" ]; then
+              row "$name" "$sha" "would delete — $merged_how"; would=$((would+1))
+            else
+              gh api -X DELETE "repos/$REPO/git/refs/heads/$name" >/dev/null
+              row "$name" "$sha" "deleted — $merged_how"; deleted=$((deleted+1))
+            fi
+          done < <(gh api --paginate "repos/$REPO/branches" --jq '.[] | [.name, .commit.sha, (.protected|tostring)] | @tsv')
+
+          {
+            echo
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "**Dry run:** would delete $would, skipped $skipped. Re-run with dry_run=false to delete."
+            else
+              echo "**Deleted $deleted, skipped $skipped.** Restore with \`git push origin <sha>:refs/heads/<name>\`."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "dry_run=$DRY_RUN deleted=$deleted would_delete=$would skipped=$skipped"

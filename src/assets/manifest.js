@@ -1,0 +1,913 @@
+// ---------- R2 Asset Manifest ----------
+let ASSETS = {};
+
+async function loadAssetManifest() {
+  // R2 serves assets with a long max-age. A unique query plus no-store prevents
+  // Safari and Cloudflare edge caches from keeping an older manifest after the
+  // object is replaced under the same key.
+  const manifest = await loadAssetJSON(`manifest.json?v=${Date.now()}`, { cache: "no-store" });
+  ASSETS = manifest.assets || {};
+  console.log("Asset Manifest loaded:", manifest);
+  return ASSETS;
+}
+
+function asset(key) {
+  const path = key.split(".").reduce((obj, part) => obj?.[part], ASSETS);
+  if (!path || typeof path !== "string") {
+    console.warn(`Asset not found in manifest: ${key}`);
+    return "";
+  }
+  return assetUrl(path);
+}
+
+function optionalAsset(key) {
+  const path = key.split(".").reduce((obj, part) => obj?.[part], ASSETS);
+  return typeof path === "string" && path ? assetUrl(path) : "";
+}
+
+// G14 loading artwork is presentation-only. Callers must keep the CSS loading
+// emblem as the functional fallback when a key is absent or an image fails.
+function loadingUiUrl(key) {
+  return optionalAsset(`loadingUi.${key}`);
+}
+
+// G15 section art is optional presentation. Information Center keeps its
+// existing emoji when a key is absent or the decoded image fails.
+function infoCenterUiUrl(key) {
+  return optionalAsset(`infoCenterUi.${key}`);
+}
+
+// Portraits use catalog IDs; the sprout001 alias belongs only to battle sprites.
+function petAvatarUrl(defId) {
+  if (typeof defId !== "string" || !/^[a-z][a-z0-9_]*$/.test(defId)) return "";
+  return optionalAsset(`petAvatars.${defId}`);
+}
+
+function PetAvatar({ defId, size = 40, className = "", alt }) {
+  const [failedSrc, setFailedSrc] = React.useState("");
+  const definition = PET_POOL.find(pet => pet.id === defId);
+  const src = definition ? petAvatarUrl(defId) : "";
+  const label = alt === undefined ? definition?.name || "Pet" : alt;
+  const props = {
+    className: `md-pet-avatar ${className}`.trim(),
+    style: { "--pet-avatar-size": `${size}px` },
+    title: label || undefined
+  };
+  if (!src || failedSrc === src) {
+    return React.createElement("span", {
+      ...props, role: label ? "img" : undefined,
+      "aria-label": label || undefined, "aria-hidden": label ? undefined : "true"
+    }, definition?.icon || "🐾");
+  }
+  return React.createElement("img", {
+    ...props, src, alt: label, width: 256, height: 256,
+    "aria-hidden": label ? undefined : "true", draggable: false,
+    decoding: "async", onError: () => setFailedSrc(src)
+  });
+}
+
+function battleUiStyle(key) {
+  const src = optionalAsset(`battleUi.${key}`);
+  return src ? { "--battle-ui-image": `url("${src}")` } : undefined;
+}
+
+// Shared by Dungeon Battle and Arena turn-order presentation.
+function battleActorIconUrl(kind) {
+  const normalized = kind === "player" || kind === "hero" ? "hero"
+    : kind === "pet" ? "pet"
+    : kind === "boss" ? "boss"
+    : "monster";
+  return optionalAsset(`battleUi.actorIcons.${normalized}`);
+}
+
+function battleVfxFrames(key) {
+  const frames = String(key || "").split(".").reduce((obj, part) => obj?.[part], ASSETS?.battleVfx);
+  return Array.isArray(frames) ? frames.filter(path => typeof path === "string" && path).map(assetUrl) : [];
+}
+
+function battleVfxAssetUrls(group = ASSETS?.battleVfx) {
+  if (Array.isArray(group)) return group.filter(path => typeof path === "string" && path).map(assetUrl);
+  if (!group || typeof group !== "object") return [];
+  return Object.values(group).flatMap(battleVfxAssetUrls);
+}
+
+function petUiUrl(key) {
+  return optionalAsset(`petUi.${key}`);
+}
+
+function petUiStyle(key) {
+  const src = petUiUrl(key);
+  return src ? { "--pet-ui-image": `url("${src}")` } : undefined;
+}
+
+// Inventory art is optional until Graphics publishes the inventoryUi manifest group.
+// Structural CSS remains the fallback; no screen depends on an asset request succeeding.
+function inventoryUiUrl(key) {
+  return optionalAsset(`inventoryUi.${key}`);
+}
+
+function inventoryUiStyle(key) {
+  const src = inventoryUiUrl(key);
+  return src ? { "--inventory-ui-image": `url("${src}")` } : undefined;
+}
+
+const IMAGE_PRELOAD_CACHE = new Map();
+function preloadAssetImage(src) {
+  if (!src || typeof Image === "undefined") return Promise.resolve();
+  if (!IMAGE_PRELOAD_CACHE.has(src)) {
+    IMAGE_PRELOAD_CACHE.set(src, new Promise(resolve => {
+      const image = new Image();
+      image.decoding = "async";
+      image.onload = image.onerror = () => resolve();
+      image.src = src;
+    }));
+  }
+  return IMAGE_PRELOAD_CACHE.get(src);
+}
+
+function preloadAssetImages(sources, timeoutMs = 0, onProgress = null) {
+  const unique = [...new Set((sources || []).filter(Boolean))];
+  let done = 0;
+  const loading = Promise.all(unique.map(src => preloadAssetImage(src).then(() => {
+    done += 1;
+    if (typeof onProgress === "function") { try { onProgress(done, unique.length); } catch (_) { /* progress is cosmetic */ } }
+  })));
+  return timeoutMs ? Promise.race([loading, new Promise(resolve => setTimeout(resolve, timeoutMs))]) : loading;
+}
+
+function spriteAnimationSources(config, names) {
+  return (names || []).flatMap(name => getSpriteAnimationFrames(config, name, name === "death"));
+}
+
+function battleUiAssetUrls() {
+  return [
+    "background", "topBar", "turnOrderSlot", "quickSlotFrame", "hpStatusFrame",
+    "targetSelectedMarker", "buttons.auto", "buttons.flee", "buttons.settings",
+    "buttons.attack", "buttons.skip", "buttons.speedX1", "buttons.speedX2",
+    "actorIcons.hero", "actorIcons.pet", "actorIcons.monster", "actorIcons.boss"
+  ]
+    .map(key => optionalAsset(`battleUi.${key}`)).filter(Boolean);
+}
+
+function battleEncounterSources({ equipped = {}, pet = null, monsters = [] } = {}, deferred = false) {
+  const sources = deferred ? [] : battleUiAssetUrls();
+  if (deferred) sources.push(...battleVfxAssetUrls());
+  const selection = heroVisualSelectionFromEquipment(equipped);
+  const heroConfig = getHeroV3Config("hero001");
+  if (deferred) {
+    const count = Array.isArray(heroConfig?.base?.attack) ? heroConfig.base.attack.length : 0;
+    for (let i = 0; i < count; i += 1) {
+      (resolveHeroV3Layers("hero001", selection, "attack", i) || []).forEach(layer => sources.push(layer.url));
+    }
+  } else {
+    (resolveHeroV3Layers("hero001", selection, "idle", 0) || []).forEach(layer => sources.push(layer.url));
+  }
+  if (pet) sources.push(...spriteAnimationSources(getPetSpriteConfig(pet.defId), deferred ? ["attack", "death"] : ["idle"]));
+  (monsters || []).forEach(enemy => {
+    sources.push(...spriteAnimationSources(getMonsterSpriteConfig(enemy), deferred ? ["attack", "death"] : ["idle"]));
+  });
+  return sources;
+}
+
+function preloadBattleCriticalAssets(encounter, onProgress = null) {
+  const settled = preloadAssetImages(battleEncounterSources(encounter, false), 0, onProgress);
+  const ready = Promise.race([
+    settled,
+    new Promise(resolve => setTimeout(resolve, 1200))
+  ]);
+  // `ready` keeps Battle entry bounded on a slow connection. `settled` remains
+  // available so deferred frames cannot compete with critical UI/idle images
+  // after the entry timeout wins the race.
+  return { ready, settled };
+}
+
+function warmBattleDeferredAssets(encounter) {
+  const warm = () => preloadAssetImages(battleEncounterSources(encounter, true));
+  if (typeof requestIdleCallback === "function") requestIdleCallback(warm, { timeout: 1600 });
+  else setTimeout(warm, 0);
+}
+
+
+function resolveItemIconPath(item) {
+  const icons = ASSETS?.itemIcons || {};
+  if (!item || typeof item !== "object") return "";
+
+  if (item.type === "potion" && item.potionId) {
+    return icons.potions?.[item.potionId] || "";
+  }
+  if (item.type === "junk" && item.junkId) {
+    const recipeFamily = String(item.junkId).match(/^recipe_(azure|robot|skeleton)(?:_|$)/)?.[1];
+    if (recipeFamily) return icons.recipes?.[recipeFamily] || "";
+    return icons.materials?.[item.junkId] || "";
+  }
+
+  const explicitWingFamily = [item.wingId, item.wingsId, item.setId, item.family, item.wingFamily]
+    .map(value => String(value || "").trim().toLowerCase())
+    .find(value => ["angel", "azure", "robot", "skeleton"].includes(value));
+  if (item.type === "wings" || item.type === "wing") {
+    if (explicitWingFamily) return icons.wings?.[explicitWingFamily] || "";
+    // Legacy records may carry only a non-family wing id/star. Keep their
+    // existing resolver behavior without guessing a production family.
+    const legacyWingKey = item.wingId || item.wingsId || item.star;
+    return legacyWingKey ? icons.wings?.[legacyWingKey] || "" : "";
+  }
+  if (explicitWingFamily === "angel") {
+    return icons.wings?.angel || "";
+  }
+  const bossWeaponId = String(item.bossWeaponId || item.specialSource || item.sourceIdentity || "").toLowerCase().replace(/^boss_weapon:/, "");
+  const bossWeaponIcons = { spirit_greatsword: "spiritGreatsword", lavalon_sword: "lavalonSword", icicle_longsword: "icicleLongsword", excaliburnt: "excaliburnt" };
+  if (bossWeaponIcons[bossWeaponId]) return icons.bossWeapons?.[bossWeaponIcons[bossWeaponId]] || "";
+  // G11 set families share one slot contract; never infer a path outside the manifest.
+  const setFamily = String(item.setId || "").trim().toLowerCase();
+  if (["azure", "robot", "skeleton"].includes(setFamily) && item.type) {
+    return icons[setFamily]?.[item.type] || "";
+  }
+
+  // Generic Tier 1 icons share the existing Leather presentation identity.
+  // An explicit setId (including an unsupported one) must never fall through.
+  if (!setFamily && Number(item.gearTier) === 1
+      && ["weapon", "helmet", "chest", "gloves", "boots", "accessory"].includes(item.type)) {
+    return icons.leather?.[item.type] || "";
+  }
+
+  return "";
+}
+
+function resolveUiIconPath(category, key) {
+  if (!category || !key) return "";
+  const group = ASSETS?.itemIcons?.[category];
+  return group && typeof group[key] === "string" ? group[key] : "";
+}
+
+function resolveItemIconUrl(item) {
+  const path = resolveItemIconPath(item);
+  return path ? assetUrl(path) : "";
+}
+
+function resolveUiIconUrl(category, key) {
+  const path = resolveUiIconPath(category, key);
+  return path ? assetUrl(path) : "";
+}
+
+function GameIcon({
+  item = null,
+  category = "",
+  iconKey = "",
+  fallback = "",
+  className = "md-game-icon",
+  alt = "",
+  title = ""
+}) {
+  const [failed, setFailed] = React.useState(false);
+  const src = item ? resolveItemIconUrl(item) : resolveUiIconUrl(category, iconKey);
+  if (!src || failed) {
+    return /*#__PURE__*/React.createElement("span", {
+      className: `${className} fallback`,
+      title,
+      "aria-hidden": alt ? undefined : "true"
+    }, fallback);
+  }
+  return /*#__PURE__*/React.createElement("img", {
+    className,
+    src,
+    alt,
+    title,
+    draggable: false,
+    loading: "lazy",
+    onError: () => setFailed(true)
+  });
+}
+
+function heroSkillDisplayName(skillId) {
+  return String(skillId || "")
+    .split("_")
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+// G12: all Hero Skill surfaces resolve through this manifest-backed contract.
+// Missing optional artwork stays presentation-only and cannot affect actions.
+function resolveHeroSkillIconPath(skillId) {
+  const path = ASSETS?.heroSkillIcons?.[String(skillId || "")];
+  return typeof path === "string" && path ? path : "";
+}
+
+function resolveHeroSkillIconUrl(skillId) {
+  const path = resolveHeroSkillIconPath(skillId);
+  return path ? assetUrl(path) : "";
+}
+
+function HeroSkillIcon({
+  skillId,
+  className = "md-hero-skill-icon",
+  alt = "",
+  title = "",
+  loading = "lazy"
+}) {
+  const [failedSrc, setFailedSrc] = React.useState("");
+  const src = resolveHeroSkillIconUrl(skillId);
+  if (!src || failedSrc === src) {
+    return /*#__PURE__*/React.createElement("span", {
+      className: `${className} fallback`,
+      title,
+      role: alt ? "img" : undefined,
+      "aria-label": alt || undefined,
+      "aria-hidden": alt ? undefined : "true"
+    }, "✦");
+  }
+  return /*#__PURE__*/React.createElement("img", {
+    className,
+    src,
+    alt,
+    title,
+    draggable: false,
+    loading,
+    decoding: "async",
+    onError: () => setFailedSrc(src)
+  });
+}
+
+function listAssets(obj = ASSETS, prefix = "") {
+  const result = {};
+  for (const [key, value] of Object.entries(obj || {})) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    if (typeof value === "string") result[fullKey] = value;
+    else if (value && typeof value === "object") Object.assign(result, listAssets(value, fullKey));
+  }
+  return result;
+}
+
+
+// ---------- Pet / Monster frame-sequence sprites ----------
+// The R2 manifest is the source of truth. Pet/monster art is optional:
+// entities without a matching manifest entry keep the legacy fallback renderer.
+const PET_ASSET_ALIASES = {
+  sprout: "sprout001",
+  sprout001: "sprout001"
+};
+
+const MONSTER_ASSET_ALIASES = {
+  poring: "poring001",
+  poring001: "poring001",
+  jelly_slime: "poring001",
+  orc: "orc001",
+  orc001: "orc001",
+  tusky_boar: "orc001"
+};
+
+function normalizeAssetLookupKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s*\((?:(?:elite\s+)?boss|elite)\)\s*/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function getPetSpriteConfig(defId) {
+  const raw = normalizeAssetLookupKey(defId);
+  const assetId = PET_ASSET_ALIASES[raw] || raw;
+  return ASSETS?.pets?.[assetId] || null;
+}
+
+function getMonsterSpriteConfig(enemy) {
+  if (!enemy) return null;
+  const idKey = normalizeAssetLookupKey(enemy.id);
+  const nameKey = normalizeAssetLookupKey(enemy.name);
+
+  const defIdKey = normalizeAssetLookupKey(enemy.defId || enemy.monsterDefId || enemy.dungeonV2ProfileId);
+
+  const candidates = [
+    MONSTER_ASSET_ALIASES[defIdKey],
+    defIdKey,
+    MONSTER_ASSET_ALIASES[idKey],
+    idKey,
+    MONSTER_ASSET_ALIASES[nameKey],
+    nameKey
+  ].filter(Boolean);
+
+  for (const assetId of candidates) {
+    const config = ASSETS?.monsters?.[assetId];
+    if (config) return config;
+  }
+  return null;
+}
+
+function getRaidBossSpriteConfig(defId) {
+  const assetId = normalizeAssetLookupKey(defId);
+  return assetId ? ASSETS?.raidBosses?.[assetId] || null : null;
+}
+
+function getRaidBossAnimationFrames(config, anim) {
+  const animName = anim === "hurt" ? "hurt" : "idle";
+  const frames = config?.animations?.[animName];
+  if (!Array.isArray(frames) || !frames.length) return [];
+  return frames.filter(Boolean).map(assetUrl);
+}
+
+function RaidBossFrameSprite({
+  config,
+  hurtToken = 0,
+  className = "",
+  alt = "Raid Boss",
+  idleFrameMs = 220,
+  hurtFrameMs = 110,
+  onHurtComplete
+}) {
+  const [anim, setAnim] = React.useState("idle");
+  const [frameIndex, setFrameIndex] = React.useState(0);
+  const [imageFailed, setImageFailed] = React.useState(false);
+  const completionRef = React.useRef(onHurtComplete);
+  completionRef.current = onHurtComplete;
+
+  const frames = getRaidBossAnimationFrames(config, anim);
+  const frameKey = frames.join("|");
+  const preloadSources = [
+    ...getRaidBossAnimationFrames(config, "idle"),
+    ...getRaidBossAnimationFrames(config, "hurt")
+  ];
+  const preloadKey = preloadSources.join("|");
+
+  React.useEffect(() => {
+    setImageFailed(false);
+    preloadSources.forEach(src => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = src;
+    });
+  }, [preloadKey]);
+
+  React.useEffect(() => {
+    if (hurtToken > 0) setAnim("hurt");
+  }, [hurtToken]);
+
+  React.useEffect(() => {
+    setFrameIndex(0);
+    if (anim === "hurt") {
+      const stepTimer = frames.length > 1 ? setInterval(() => {
+        setFrameIndex(i => Math.min(i + 1, frames.length - 1));
+      }, hurtFrameMs) : null;
+      // Keep the final hurt frame visible for one complete frame interval, then
+      // return to idle. Missing hurt art follows the same short timing so the
+      // parent can safely refresh without leaving its controls locked.
+      const completionTimer = setTimeout(() => {
+        if (stepTimer) clearInterval(stepTimer);
+        setAnim("idle");
+        if (completionRef.current) completionRef.current();
+      }, Math.max(1, frames.length || 3) * hurtFrameMs);
+      return () => {
+        if (stepTimer) clearInterval(stepTimer);
+        clearTimeout(completionTimer);
+      };
+    }
+
+    if (frames.length <= 1) return undefined;
+    const idleTimer = setInterval(() => {
+      setFrameIndex(i => (i + 1) % frames.length);
+    }, idleFrameMs);
+    return () => clearInterval(idleTimer);
+  }, [anim, frameKey, idleFrameMs, hurtFrameMs]);
+
+  if (!frames.length || imageFailed) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: `${className} md-raid-boss-fallback`,
+      role: "img",
+      "aria-label": alt
+    }, "RAID");
+  }
+
+  return /*#__PURE__*/React.createElement("img", {
+    className,
+    src: frames[Math.min(frameIndex, frames.length - 1)],
+    alt,
+    draggable: false,
+    onError: () => setImageFailed(true)
+  });
+}
+
+function getSpriteAnimationFrames(config, requestedAnim, dead = false) {
+  if (!config?.animations) return [];
+  const animName = dead ? "death" : requestedAnim === "attack" ? "attack" : "idle";
+  const frames = config.animations[animName];
+  if (!Array.isArray(frames) || !frames.length) return [];
+  return frames.filter(Boolean).map(assetUrl);
+}
+
+// Transparent sprite sheets share a canvas size, but the painted character can
+// occupy a very different percentage of that canvas. Measure the union of the
+// visible pixels within the current animation once, then reuse it so changing
+// frames never changes scale or makes the character jump. Keeping animations
+// separate also prevents a long attack pose from shrinking the idle character.
+const SPRITE_OPAQUE_BOUNDS_CACHE = new Map();
+function measureOpaqueFrame(src) {
+  return new Promise(resolve => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        context.drawImage(image, 0, 0);
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        let minX = canvas.width;
+        let minY = canvas.height;
+        let maxX = -1;
+        let maxY = -1;
+        // Ignore near-invisible antialiasing/glow pixels that would otherwise
+        // make the empty canvas count as part of the monster.
+        for (let y = 0; y < canvas.height; y++) {
+          for (let x = 0; x < canvas.width; x++) {
+            if (pixels[(y * canvas.width + x) * 4 + 3] < 16) continue;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+        if (maxX < minX || maxY < minY) return resolve(null);
+        resolve({
+          left: minX / canvas.width,
+          top: minY / canvas.height,
+          right: (maxX + 1) / canvas.width,
+          bottom: (maxY + 1) / canvas.height,
+          canvasAspect: canvas.width / canvas.height
+        });
+      } catch (error) {
+        resolve(null);
+      }
+    };
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+}
+function getStableSpriteOpaqueBounds(config, anim) {
+  const raw = config?.presentation?.bounds?.[anim];
+  if (!raw || typeof raw !== "object") return null;
+  const canvasWidth = Number(raw.canvasWidth || config?.canvas?.width || 1);
+  const canvasHeight = Number(raw.canvasHeight || config?.canvas?.height || 1);
+  if (!(Number.isFinite(canvasWidth) && canvasWidth > 0 && Number.isFinite(canvasHeight) && canvasHeight > 0)) return null;
+  const normalized = Math.max(Number(raw.left || 0), Number(raw.top || 0), Number(raw.width || 0), Number(raw.height || 0)) <= 1;
+  const left = Number(raw.left || 0) / (normalized ? 1 : canvasWidth);
+  const top = Number(raw.top || 0) / (normalized ? 1 : canvasHeight);
+  const width = Number(raw.width || (Number(raw.right || 0) - Number(raw.left || 0))) / (normalized ? 1 : canvasWidth);
+  const height = Number(raw.height || (Number(raw.bottom || 0) - Number(raw.top || 0))) / (normalized ? 1 : canvasHeight);
+  if (![left, top, width, height].every(Number.isFinite)
+      || left < 0 || top < 0 || width <= 0 || height <= 0
+      || left + width > 1.001 || top + height > 1.001) return null;
+  const canvasAspect = canvasWidth / Math.max(1, canvasHeight);
+  return { left, top, width, height, canvasAspect, contentAspect: canvasAspect * width / height };
+}
+
+function getStableSpriteOpaqueBoundsUnion(config, animations) {
+  const bounds = animations.map(anim => getStableSpriteOpaqueBounds(config, anim)).filter(Boolean);
+  if (bounds.length !== animations.length || !bounds.length) return null;
+  const left = Math.min(...bounds.map(bound => bound.left));
+  const top = Math.min(...bounds.map(bound => bound.top));
+  const right = Math.max(...bounds.map(bound => bound.left + bound.width));
+  const bottom = Math.max(...bounds.map(bound => bound.top + bound.height));
+  const canvasAspect = bounds[0].canvasAspect;
+  return {
+    left,
+    top,
+    width: Math.max(0.001, right - left),
+    height: Math.max(0.001, bottom - top),
+    canvasAspect,
+    contentAspect: canvasAspect * (right - left) / Math.max(0.001, bottom - top)
+  };
+}
+
+function measureSpriteOpaqueBounds(sources) {
+  const key = sources.join("|");
+  if (!SPRITE_OPAQUE_BOUNDS_CACHE.has(key)) {
+    SPRITE_OPAQUE_BOUNDS_CACHE.set(key, Promise.all(sources.map(measureOpaqueFrame)).then(results => {
+      const valid = results.filter(Boolean);
+      if (!valid.length) return null;
+      const left = Math.min(...valid.map(r => r.left));
+      const top = Math.min(...valid.map(r => r.top));
+      const right = Math.max(...valid.map(r => r.right));
+      const bottom = Math.max(...valid.map(r => r.bottom));
+      const canvasAspect = valid[0].canvasAspect;
+      return {
+        left,
+        top,
+        width: Math.max(0.001, right - left),
+        height: Math.max(0.001, bottom - top),
+        canvasAspect,
+        contentAspect: canvasAspect * (right - left) / Math.max(0.001, bottom - top)
+      };
+    }));
+  }
+  return SPRITE_OPAQUE_BOUNDS_CACHE.get(key);
+}
+
+function AnimatedFrameSprite({
+  config,
+  anim = "",
+  dead = false,
+  className = "",
+  alt = "",
+  idleFrameMs = 220,
+  attackFrameMs = 80,
+  cropTransparent = false,
+  cropPadding = 0,
+  stableBoundsAnimations = null,
+  visualHeight = 64,
+  maxVisualWidth = 104,
+  fallback = null
+}) {
+  const effectiveAnim = dead ? "death" : anim === "attack" ? "attack" : "idle";
+  const frames = getSpriteAnimationFrames(config, effectiveAnim, dead);
+  const [failedSources, setFailedSources] = React.useState([]);
+  const playableFrames = frames.filter(src => !failedSources.includes(src));
+  const [frameIndex, setFrameIndex] = React.useState(0);
+  const frameKey = frames.join("|");
+  const playableFrameKey = playableFrames.join("|");
+  const boundsAnimations = Array.isArray(stableBoundsAnimations) && stableBoundsAnimations.length
+    ? stableBoundsAnimations
+    : [effectiveAnim];
+  const stableBoundsKey = JSON.stringify(boundsAnimations.map(name => config?.presentation?.bounds?.[name] || null));
+  const stableBounds = getStableSpriteOpaqueBoundsUnion(config, boundsAnimations);
+  const [opaqueBounds, setOpaqueBounds] = React.useState(() => stableBounds);
+
+  React.useEffect(() => {
+    setFailedSources([]);
+  }, [frameKey]);
+
+  React.useEffect(() => {
+    if (!cropTransparent || !playableFrames.length) {
+      setOpaqueBounds(null);
+      return undefined;
+    }
+    const stable = getStableSpriteOpaqueBoundsUnion(config, boundsAnimations);
+    if (stable) {
+      setOpaqueBounds(stable);
+      return undefined;
+    }
+    let cancelled = false;
+    measureSpriteOpaqueBounds(playableFrames).then(bounds => {
+      if (!cancelled) setOpaqueBounds(bounds);
+    });
+    return () => { cancelled = true; };
+  }, [cropTransparent, playableFrameKey, stableBoundsKey, effectiveAnim]);
+
+  React.useEffect(() => {
+    setFrameIndex(0);
+    if (playableFrames.length <= 1) return undefined;
+
+    const loop = effectiveAnim === "idle";
+    const delay = effectiveAnim === "attack" ? attackFrameMs : idleFrameMs;
+    const timer = setInterval(() => {
+      setFrameIndex(i => loop ? (i + 1) % playableFrames.length : Math.min(i + 1, playableFrames.length - 1));
+    }, delay);
+
+    return () => clearInterval(timer);
+  }, [effectiveAnim, playableFrameKey, idleFrameMs, attackFrameMs]);
+
+  if (!playableFrames.length) return fallback == null ? null : /*#__PURE__*/React.createElement("span", {
+    className: `${className} md-frame-sprite-fallback`,
+    role: "img",
+    "aria-label": alt
+  }, fallback);
+
+  const currentSrc = playableFrames[Math.min(frameIndex, playableFrames.length - 1)];
+  const handleFrameError = () => setFailedSources(current => current.includes(currentSrc) ? current : [...current, currentSrc]);
+  if (cropTransparent && opaqueBounds) {
+    const padding = typeof cropPadding === "object" && cropPadding
+      ? cropPadding
+      : { top: cropPadding, right: cropPadding, bottom: cropPadding, left: cropPadding };
+    const padTop = Math.max(0, Number(padding.top) || 0) * opaqueBounds.height;
+    const padRight = Math.max(0, Number(padding.right) || 0) * opaqueBounds.width;
+    const padBottom = Math.max(0, Number(padding.bottom) || 0) * opaqueBounds.height;
+    const padLeft = Math.max(0, Number(padding.left) || 0) * opaqueBounds.width;
+    const left = Math.max(0, opaqueBounds.left - padLeft);
+    const top = Math.max(0, opaqueBounds.top - padTop);
+    const right = Math.min(1, opaqueBounds.left + opaqueBounds.width + padRight);
+    const bottom = Math.min(1, opaqueBounds.top + opaqueBounds.height + padBottom);
+    const displayBounds = {
+      left,
+      top,
+      width: Math.max(0.001, right - left),
+      height: Math.max(0.001, bottom - top),
+      canvasAspect: opaqueBounds.canvasAspect,
+      contentAspect: opaqueBounds.canvasAspect * (right - left) / Math.max(0.001, bottom - top)
+    };
+    let contentHeight = visualHeight;
+    let contentWidth = contentHeight * displayBounds.contentAspect;
+    if (contentWidth > maxVisualWidth) {
+      contentHeight *= maxVisualWidth / contentWidth;
+      contentWidth = maxVisualWidth;
+    }
+    const imageHeight = contentHeight / displayBounds.height;
+    const imageWidth = imageHeight * displayBounds.canvasAspect;
+    return /*#__PURE__*/React.createElement("span", {
+      className: `${className} md-cropped-sprite-stage`,
+      style: { width: contentWidth, height: contentHeight }
+    }, /*#__PURE__*/React.createElement("img", {
+      className: "md-cropped-sprite-image",
+      src: currentSrc,
+      alt,
+      draggable: false,
+      onError: handleFrameError,
+      style: {
+        width: imageWidth,
+        height: imageHeight,
+        left: -displayBounds.left * imageWidth,
+        top: -displayBounds.top * imageHeight
+      }
+    }));
+  }
+
+  return /*#__PURE__*/React.createElement("img", {
+    className,
+    src: currentSrc,
+    alt,
+    draggable: false,
+    onError: handleFrameError
+  });
+}
+
+// ---------- Hero V3: flat base + overlay layers ----------
+// The old skeletal/rig composer was intentionally removed.
+// Hero V3 uses one approved full-body base image and optional transparent overlays.
+// All placement data belongs in runtime manifest.json so art can be tuned without code changes.
+
+const HERO_V3_LAYER_ORDER = [
+  "wings",
+  "weapon",
+  "base",
+  "hair",
+  "outfit",
+  "shoes",
+  "arms",
+  "hat"
+];
+
+function heroVisualSelectionFromEquipment(equipped = {}) {
+  const isAzure = slot => {
+    const item = equipped?.[slot];
+    return !!item && (item.setId === "azure" || String(item.name || "").toLowerCase().includes("azure"));
+  };
+
+  return {
+    hair: "topknot",
+    hat: isAzure("helmet") ? "azure_helmet" : null,
+    outfit: isAzure("chest") ? "azure" : null,
+    arms: isAzure("gloves") ? "azure" : null,
+    shoes: isAzure("boots") ? "azure" : null,
+    weapon: isAzure("weapon") ? "azureSword" : null,
+    wings: equipped?.wings ? "angel" : null
+  };
+}
+
+function getHeroV3Config(characterId = "hero001") {
+  return ASSETS?.[characterId]?.v3 || null;
+}
+
+function normalizeHeroV3Layer(def, fallback = {}) {
+  if (!def) return null;
+  if (typeof def === "string") {
+    return {
+      path: def,
+      x: fallback.x || 0,
+      y: fallback.y || 0,
+      scale: fallback.scale ?? 1,
+      rotation: fallback.rotation || 0
+    };
+  }
+  if (typeof def !== "object" || !def.path) return null;
+  return {
+    path: def.path,
+    x: Number(def.x ?? fallback.x ?? 0),
+    y: Number(def.y ?? fallback.y ?? 0),
+    scale: Number(def.scale ?? fallback.scale ?? 1),
+    rotation: Number(def.rotation ?? fallback.rotation ?? 0)
+  };
+}
+
+function resolveHeroV3Selection(config, selection = {}) {
+  return {
+    ...(config?.defaults || {}),
+    ...(selection || {})
+  };
+}
+
+function resolveHeroV3AnimatedLayer(def, anim = "", frameIndex = 0) {
+  const idleLayer = normalizeHeroV3Layer(def);
+  if (!idleLayer) return null;
+
+  if (anim !== "attack" || !Array.isArray(def?.attack) || !def.attack.length) {
+    return { ...idleLayer, fallbackPath: idleLayer.path };
+  }
+
+  const frameDef = def.attack[Math.min(frameIndex, def.attack.length - 1)];
+  const attackLayer = normalizeHeroV3Layer(frameDef, idleLayer);
+  return attackLayer
+    ? { ...attackLayer, fallbackPath: idleLayer.path }
+    : { ...idleLayer, fallbackPath: idleLayer.path };
+}
+
+function resolveHeroV3Layers(characterId = "hero001", selection = {}, anim = "", frameIndex = 0) {
+  const config = getHeroV3Config(characterId);
+  if (!config) return null;
+
+  const selected = resolveHeroV3Selection(config, selection);
+  const baseIdleDef = config.base?.idle || config.base;
+  const baseDef = anim === "attack" && Array.isArray(config.base?.attack)
+    ? resolveHeroV3AnimatedLayer({ ...baseIdleDef, attack: config.base.attack }, anim, frameIndex)
+    : resolveHeroV3AnimatedLayer(baseIdleDef);
+
+  const lookup = {
+    wings: resolveHeroV3AnimatedLayer(config.wings?.[selected.wings], anim, frameIndex),
+    base: baseDef,
+    hair: resolveHeroV3AnimatedLayer(config.hair?.[selected.hair], anim, frameIndex),
+    outfit: resolveHeroV3AnimatedLayer(config.equipment?.outfit?.[selected.outfit], anim, frameIndex),
+    shoes: resolveHeroV3AnimatedLayer(config.equipment?.shoes?.[selected.shoes], anim, frameIndex),
+    arms: resolveHeroV3AnimatedLayer(config.equipment?.arms?.[selected.arms], anim, frameIndex),
+    hat: resolveHeroV3AnimatedLayer(config.equipment?.hat?.[selected.hat], anim, frameIndex),
+    weapon: resolveHeroV3AnimatedLayer(config.weapon?.[selected.weapon], anim, frameIndex)
+  };
+
+  return HERO_V3_LAYER_ORDER
+    .map(name => {
+      const layer = lookup[name];
+      return layer ? {
+        name,
+        ...layer,
+        url: assetUrl(layer.path),
+        fallbackUrl: assetUrl(layer.fallbackPath)
+      } : null;
+    })
+    .filter(Boolean);
+}
+
+function HeroOverlayComposer({
+  characterId = "hero001",
+  selection = {},
+  canvasWidth = 96,
+  canvasHeight = 96,
+  anim = "",
+  playbackRate = 1
+}) {
+  const config = getHeroV3Config(characterId);
+  const [attackFrameIndex, setAttackFrameIndex] = React.useState(0);
+  const attackFrameCount = Array.isArray(config?.base?.attack) ? config.base.attack.length : 0;
+
+  React.useEffect(() => {
+    setAttackFrameIndex(0);
+    if (anim !== "attack" || attackFrameCount < 2) return undefined;
+
+    let nextFrame = 0;
+    const timer = setInterval(() => {
+      nextFrame += 1;
+      setAttackFrameIndex(Math.min(nextFrame, attackFrameCount - 1));
+      if (nextFrame >= attackFrameCount - 1) clearInterval(timer);
+    }, Math.max(40, Number(config?.attackFrameMs || 105) * 1.15 / Math.max(1, playbackRate)));
+
+    return () => clearInterval(timer);
+  }, [anim, attackFrameCount, config?.attackFrameMs, playbackRate]);
+
+  const layers = resolveHeroV3Layers(characterId, selection, anim, attackFrameIndex);
+  if (!config || !layers?.some(layer => layer.name === "base")) return null;
+
+  const masterWidth = Number(config.canvas?.width || 1254);
+  const masterHeight = Number(config.canvas?.height || 1254);
+  const scale = Math.min(canvasWidth / masterWidth, canvasHeight / masterHeight);
+
+  return /*#__PURE__*/React.createElement(
+    "div",
+    {
+      className: `md-hero-v3-canvas ${anim || ""}`,
+      style: { width: canvasWidth, height: canvasHeight }
+    },
+    /*#__PURE__*/React.createElement(
+      "div",
+      {
+        className: "md-hero-v3-master",
+        style: {
+          width: masterWidth,
+          height: masterHeight,
+          transform: `scale(${scale})`
+        }
+      },
+      layers.map(layer => /*#__PURE__*/React.createElement("img", {
+        key: layer.name,
+        className: `md-hero-v3-layer layer-${layer.name}`,
+        src: layer.url,
+        alt: "",
+        draggable: false,
+        onError: event => {
+          if (layer.fallbackUrl && event.currentTarget.src !== layer.fallbackUrl) {
+            event.currentTarget.src = layer.fallbackUrl;
+          }
+        },
+        style: {
+          left: layer.x,
+          top: layer.y,
+          transform: `scale(${layer.scale}) rotate(${layer.rotation}deg)`
+        }
+      }))
+    )
+  );
+}

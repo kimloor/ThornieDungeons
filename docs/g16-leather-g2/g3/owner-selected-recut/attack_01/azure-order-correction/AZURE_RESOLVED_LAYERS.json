@@ -1,0 +1,66 @@
+[
+  {
+    "name": "base",
+    "path": "hero/v5/g2/base/attack_01.png",
+    "x": 0,
+    "y": 84,
+    "scale": 1,
+    "rotation": 0
+  },
+  {
+    "name": "coverage_underlay",
+    "path": "hero/v5/g2/equipment/azure/attack_01/coverage_underlay.png",
+    "x": 0,
+    "y": 84,
+    "scale": 1,
+    "rotation": 0
+  },
+  {
+    "name": "torso_armor",
+    "path": "hero/v5/g2/equipment/azure/attack_01/torso_armor.png",
+    "x": 0,
+    "y": 84,
+    "scale": 1,
+    "rotation": 0
+  },
+  {
+    "name": "legs_boots",
+    "path": "hero/v5/g2/equipment/azure/attack_01/legs_boots.png",
+    "x": 0,
+    "y": 84,
+    "scale": 1,
+    "rotation": 0
+  },
+  {
+    "name": "arm_rear",
+    "path": "hero/v5/g2/equipment/azure/attack_01/arm_rear.png",
+    "x": 0,
+    "y": 84,
+    "scale": 1,
+    "rotation": 0
+  },
+  {
+    "name": "helmet",
+    "path": "hero/v5/g2/equipment/azure/attack_01/helmet.png?v=azure_angel_fullface_v1",
+    "x": 0,
+    "y": 84,
+    "scale": 1,
+    "rotation": 0
+  },
+  {
+    "name": "sword",
+    "path": "hero/v5/g2/equipment/azure/attack_01/sword.png?v=azure_royal_bastion_compact_grip",
+    "x": 0,
+    "y": 84,
+    "scale": 1,
+    "rotation": 0
+  },
+  {
+    "name": "arm_front",
+    "path": "hero/v5/g2/equipment/azure/attack_01/arm_front.png",
+    "x": 0,
+    "y": 84,
+    "scale": 1,
+    "rotation": 0
+  }
+]

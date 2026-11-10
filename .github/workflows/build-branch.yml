@@ -1,0 +1,163 @@
+name: Build frontend and sync generated output
+
+on:
+  push:
+    branches:
+      - main
+      - "experiment/**"
+      - "feat/**"
+      - "fix/**"
+      - "ops/p0-rollback-*"
+      - "refactor/**"
+    paths:
+      - "src/**"
+      - "workers/thornie-dungeons-api.js"
+      - "workers/modules/auth.js"
+      - "scripts/staging-bulk-test-account-provisioner.mjs"
+      - "tests/auth-v2.test.js"
+      - "tests/staging-bulk-test-account-provisioner.test.js"
+      - "docs/STAGING-BULK-TEST-ACCOUNT-PROVISIONER.md"
+      - "tests/battle-persistence.test.js"
+      - "head.html"
+      - "tail.html"
+      - "build.js"
+      - "wrangler.jsonc"
+      - "tests/dungeon-v2-event-floor.test.js"
+      - "tests/h01-halloween-event.test.js"
+      - "tests/inventory-order.test.js"
+      - "scripts/staging-battle-load-test.mjs"
+      - "tests/staging-battle-load-test.test.js"
+      - "docs/STAGING-BATTLE-LOAD-TEST-HARNESS.md"
+      - "tests/raid-wings-v2.test.js"
+      - "tests/p0-rollback-staging-workflow.test.js"
+      - ".github/workflows/p0-rollback-fault-staging-deploy.yml"
+      - ".github/workflows/build-branch.yml"
+      - "scripts/p0-rollback-actual-d1-qa.mjs"
+      - "tests/p0-rollback-actual-d1-qa-contract.test.js"
+      - ".github/workflows/p0-rollback-actual-d1-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: frontend-branch-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  p0-rollback-contract:
+    if: startsWith(github.ref, 'refs/heads/ops/p0-rollback-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout rollback tooling branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run P0 rollback deployment safety contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/p0-rollback-actual-d1-qa.mjs
+          node --test tests/p0-rollback-staging-workflow.test.js tests/p0-rollback-actual-d1-qa-contract.test.js
+          git diff --check
+
+  build:
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/experiment/') || startsWith(github.ref, 'refs/heads/feat/') || startsWith(github.ref, 'refs/heads/fix/') || startsWith(github.ref, 'refs/heads/refactor/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run focused regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/enhancement-aura-guide.test.js tests/enhancement-aura.test.js tests/phaser-shared-architecture.test.js tests/battle-ui-contract.test.js tests/dungeon-v2-foundation.test.js tests/dungeon-v2-event-floor.test.js tests/raid-wings-v2.test.js tests/h01-halloween-event.test.js tests/inventory-order.test.js tests/staging-battle-load-test.test.js tests/auth-v2.test.js tests/staging-bulk-test-account-provisioner.test.js
+          node --check scripts/staging-battle-load-test.mjs
+          node --check scripts/staging-bulk-test-account-provisioner.mjs
+          node --check workers/modules/auth.js
+          node --check workers/thornie-dungeons-api.js
+
+      - name: Verify formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+
+      - name: Build generated frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          node build.js
+
+      - name: Verify generated output scope
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -s index.html || {
+            echo "index.html was not generated or is empty"
+            exit 1
+          }
+
+          changed="$(git status --short)"
+          echo "$changed"
+
+          unexpected="$(
+            git status --porcelain |
+              awk '{print $2}' |
+              grep -v '^index.html$' || true
+          )"
+
+          if [ -n "$unexpected" ]; then
+            echo "Build changed unexpected file(s):"
+            echo "$unexpected"
+            exit 1
+          fi
+
+      - name: Commit generated index when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- index.html; then
+            echo "Generated index.html already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "build: regenerate index.html [branch-build]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Build summary
+        shell: bash
+        run: |
+          {
+            echo "## Frontend branch build"
+            echo ""
+            echo "- Branch: \`${GITHUB_REF_NAME}\`"
+            echo "- Source commit: \`${GITHUB_SHA}\`"
+            echo "- Command: \`node build.js\`"
+            echo "- Generated file: \`index.html\`"
+            echo "- Production main: **not targeted**"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,48 @@
+{
+  "issue": 169,
+  "capturedAt": "2026-10-28",
+  "baseCommit": "ca84ae56ab8015b1e2902596a23c9e50a57ac1eb",
+  "productionBaseline": {
+    "url": "https://thorniedungeons.ekqtjl.workers.dev/",
+    "version": "1.1.24",
+    "screen": "login",
+    "innerWidth": 1363,
+    "innerHeight": 936,
+    "visualViewportWidth": 1348,
+    "visualViewportHeight": 936,
+    "documentClientWidth": 1348,
+    "documentScrollWidth": 1348,
+    "documentClientHeight": 936,
+    "documentScrollHeight": 968,
+    "bodyClientHeight": 968,
+    "bodyScrollHeight": 968,
+    "root": {
+      "top": 16,
+      "bottom": 952,
+      "width": 820,
+      "height": 936,
+      "computedMinHeight": "936px",
+      "computedOverflow": "hidden"
+    },
+    "outerOverflowX": 0,
+    "outerOverflowY": 32
+  },
+  "candidateContract": {
+    "authority": "visualViewport.height with 100dvh fallback",
+    "expectedOuterOverflowX": 0,
+    "expectedOuterOverflowY": 0,
+    "viewports": [
+      { "width": 320, "height": 568 },
+      { "width": 360, "height": 640 },
+      { "width": 375, "height": 667 },
+      { "width": 390, "height": 844 },
+      { "width": 393, "height": 852 },
+      { "width": 430, "height": 932 },
+      { "width": 667, "height": 375, "orientation": "landscape" },
+      { "width": 844, "height": 390, "orientation": "landscape" },
+      { "width": 1280, "height": 720, "mode": "desktop" }
+    ],
+    "verification": "tests/mobile-viewport-fit.test.js",
+    "runtimeCandidateScreenshot": "blocked_pending_review_preview_url"
+  }
+}

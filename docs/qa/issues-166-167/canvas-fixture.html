@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Issue 166 Phaser Canvas Fixture</title>
+  <style>
+    html, body, #stage { margin: 0; width: 768px; height: 768px; overflow: hidden; background: #1c1c20; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+  <script>
+    (async () => {
+      const root = new URL("../../../", location.href);
+      const manifest = await (await fetch(new URL("r2-upload/manifest.json", root))).json();
+      window.ASSETS = manifest.assets;
+      for (const path of [
+        "src/phaser/presentation/HeroV5RuntimeContract.js",
+        "src/phaser/renderers/HeroRenderer.js"
+      ]) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = new URL(path, root);
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+
+      const params = new URLSearchParams(location.search);
+      const before = params.get("mode") === "before";
+      const state = ["idle", "attack", "death"].includes(params.get("state")) ? params.get("state") : "idle";
+      const frameIndex = Math.max(0, Number(params.get("frame")) || 0);
+      const contract = resolveHeroV5BaseWingContract({
+        equipmentSelection: { equipment: { weapon: "leather" } }
+      });
+      const normalize = layers => layers
+        .filter(layer => !before || layer.name !== "right_hand_occlusion")
+        .map(layer => ({ ...layer, url: new URL(`r2-upload/${layer.path}`, root).href }));
+      const layerFrames = {
+        canvas: contract.canvas,
+        idle: contract.idle.map(normalize),
+        attack: contract.attack.map(normalize),
+        death: contract.death.map(normalize)
+      };
+      const urls = [...new Set([
+        ...layerFrames.idle,
+        ...layerFrames.attack,
+        ...layerFrames.death
+      ].flat().map(layer => layer.url))];
+      const keys = new Map(urls.map((url, index) => [url, `asset-${index}`]));
+
+      class FixtureScene extends Phaser.Scene {
+        preload() { urls.forEach(url => this.load.image(keys.get(url), url)); }
+        create() {
+          const renderer = new HeroRenderer(this, {
+            root: this.add.container(384, 700),
+            data: { layers: layerFrames.idle[0], layerFrames },
+            displaySize: 620,
+            textureKey: url => keys.get(url)
+          });
+          renderer.applyVisualFrame(state, frameIndex);
+          window.__THORNIE_QA__ = {
+            ready: true,
+            mode: before ? "before" : "after",
+            state,
+            frameIndex,
+            layers: renderer.layerImages.map(entry => entry.name)
+          };
+        }
+      }
+
+      new Phaser.Game({
+        type: Phaser.CANVAS,
+        width: 768,
+        height: 768,
+        parent: "stage",
+        backgroundColor: "#1c1c20",
+        scene: FixtureScene,
+        banner: false
+      });
+    })().catch(error => {
+      window.__THORNIE_QA__ = { ready: false, error: String(error?.stack || error) };
+    });
+  </script>
+</body>
+</html>

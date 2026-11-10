@@ -1,0 +1,19 @@
+{
+  "batch": "G10_SHARED_ATB_ACTOR_ICON_PACK",
+  "status": "approved-production",
+  "presentationOnly": true,
+  "canvas": { "width": 256, "height": 256 },
+  "displayCssPx": [24, 28],
+  "assets": {
+    "hero": "ui/battle/atb/hero.png",
+    "pet": "ui/battle/atb/pet.png",
+    "monster": "ui/battle/atb/monster.png",
+    "boss": "ui/battle/atb/boss.png"
+  },
+  "rules": {
+    "monsterNumbering": "runtime spawn-slot marker 1/2/3; never baked into art",
+    "elite": "shared Monster base plus runtime accent/glow",
+    "boss": "dedicated icon; no normal Monster numbering",
+    "authority": "presentation only; actor ID, turn order and target legality remain runtime-authoritative"
+  }
+}

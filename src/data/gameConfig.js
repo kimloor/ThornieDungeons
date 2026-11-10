@@ -1,0 +1,87 @@
+// Applies a fetched game-balance config on top of the hardcoded defaults below.
+// Every field is validated defensively — a partial or malformed sheet should never crash the game;
+// missing/invalid pieces just keep their current (default) values.
+function applyGameConfig(cfg) {
+  if (!cfg || cfg.error) return;
+  try {
+    if (Array.isArray(cfg.monsters) && cfg.monsters.length) {
+      const configured = cfg.monsters.map(monsterFromConfig);
+      // Dungeon V2 owns encounter role and combat identity. Legacy admin rows
+      // may still provide presentation/config fields, but an old `isBoss` flag
+      // must not silently move a canonical V2 monster into the wrong pool.
+      const v2Role = monster => {
+        const v2Id = monster.dungeonV2Id || monster.id;
+        if (typeof DUNGEON_V2 !== "undefined" && DUNGEON_V2.getDungeonV2BossProfile(v2Id)) return "boss";
+        if (typeof DUNGEON_V2 !== "undefined" && DUNGEON_V2.getDungeonV2MonsterProfile(v2Id)) return "normal";
+        return monster.isBoss ? "boss" : "normal";
+      };
+      const normal = configured.filter(m => v2Role(m) !== "boss");
+      const bosses = configured.filter(m => v2Role(m) === "boss");
+      if (normal.length) ENEMY_POOL = normal;
+      if (bosses.length) BOSS_POOL = bosses;
+    }
+  } catch (e) {}
+  try {
+    const n = cfg.equipmentNames;
+    if (n && Array.isArray(n.weapon) && n.weapon.length) WEAPON_NAMES = n.weapon;
+    if (n && Array.isArray(n.helmet) && n.helmet.length) HELMET_NAMES = n.helmet;
+    if (n && Array.isArray(n.chest) && n.chest.length) CHEST_NAMES = n.chest;
+    if (n && Array.isArray(n.gloves) && n.gloves.length) GLOVES_NAMES = n.gloves;
+    if (n && Array.isArray(n.boots) && n.boots.length) BOOTS_NAMES = n.boots;
+    if (n && Array.isArray(n.accessory) && n.accessory.length) ACCESSORY_NAMES = n.accessory;
+  } catch (e) {}
+  // Legacy remote rows are still allowed to tune legacy item behavior. Dungeon Reward
+  // V2 generation never reads RARITY_MULT, so this cannot override the V2 contract.
+  try {
+    if (cfg.rarityMult && typeof cfg.rarityMult === "object") {
+      Object.keys(RARITY_MULT).forEach(k => {
+        if (Number.isFinite(Number(cfg.rarityMult[k])) && Number(cfg.rarityMult[k]) > 0) RARITY_MULT[k] = Number(cfg.rarityMult[k]);
+      });
+    }
+    // Pre-V2 remote rows contain the retired 5-star/Thunder Cub balance. Do not
+    // let that legacy config silently replace the Battle V1 Pet contract.
+    if (Number(cfg.petSystemVersion) >= 2 && Array.isArray(cfg.pets) && cfg.pets.length) {
+      const roleById = Object.fromEntries((PET_POOL || []).map(p => [p.id, p.role]));
+      const valid = cfg.pets
+        .filter(p => p && p.id && p.rarity && p.active && p.active.type)
+        .map(p => ({ ...p, role: p.role || roleById[p.id] || "attack" }));
+      if (valid.length) PET_POOL = valid;
+    }
+  } catch (e) {}
+  try {
+    if (Array.isArray(cfg.skills) && cfg.skills.length) {
+      const valid = cfg.skills.filter(s => s && s.key && s.type);
+      if (valid.length) SKILLS = valid.sort((a, b) => a.unlockLevel - b.unlockLevel);
+    }
+  } catch (e) {}
+}
+// Slugify fallback for a monster that's genuinely new (added via remote config with no
+// matching static entry and no explicit id supplied) — should rarely trigger in practice
+// since real monster ids should always be assigned explicitly going forward.
+function slugifyMonsterName(name) {
+  return String(name || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "unknown_monster";
+}
+// BUG FIX (prerequisite for per-monster loot tables): this used to drop `id` entirely, so
+// ANY monster overridden via remote config silently lost its stable identity — harmless
+// while nothing read monster.id besides makeEnemy's display/uid, but fatal once loot
+// tables need to join on it. Preference order: explicit `m.id` from config > matching
+// static ENEMY_POOL/BOSS_POOL entry by name (covers today's config, which only overrides
+// name/color/mults) > slugified name as a last resort so id is never undefined.
+function monsterFromConfig(m) {
+  const staticMatch = (ENEMY_POOL || []).find(s => s.name === m.name) || (BOSS_POOL || []).find(s => s.name === m.name);
+  return {
+    id: m.id || (staticMatch && staticMatch.id) || slugifyMonsterName(m.name),
+    // Keep the stable runtime id for loot/config joins, but retain the
+    // canonical V2 identity when an old row supplied a renamed/legacy id.
+    dungeonV2Id: (staticMatch && staticMatch.id) || m.id || slugifyMonsterName(m.name),
+    name: m.name,
+    color: m.color || "#7ED9A8",
+    sizeClass: ["small", "medium", "large"].includes(m.sizeClass) ? m.sizeClass : staticMatch?.sizeClass || "medium",
+    anchorType: m.anchorType === "flying" ? "flying" : staticMatch?.anchorType || "ground",
+    hpMult: typeof m.hpMult === "number" ? m.hpMult : 1,
+    atkMult: typeof m.atkMult === "number" ? m.atkMult : 1,
+    defBonus: typeof m.defBonus === "number" ? m.defBonus : 0,
+    goldMult: typeof m.goldMult === "number" ? m.goldMult : 1,
+    xpMult: typeof m.xpMult === "number" ? m.xpMult : 1
+  };
+}

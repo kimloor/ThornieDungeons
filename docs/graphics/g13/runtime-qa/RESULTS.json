@@ -1,0 +1,101 @@
+[
+  {
+    "width": 360,
+    "view": "PetScreen",
+    "avatars": 9,
+    "select": "PASS",
+    "overflow": false
+  },
+  {
+    "width": 360,
+    "view": "ArenaSetup",
+    "selection": "owned-5",
+    "level": 12,
+    "overflow": false
+  },
+  {
+    "width": 360,
+    "view": "ArenaCard",
+    "portrait": "PASS"
+  },
+  {
+    "width": 360,
+    "view": "Gallery",
+    "sizes": [
+      32,
+      40,
+      48,
+      64,
+      96
+    ],
+    "decode": 40
+  },
+  {
+    "width": 390,
+    "view": "PetScreen",
+    "avatars": 9,
+    "select": "PASS",
+    "overflow": false
+  },
+  {
+    "width": 390,
+    "view": "ArenaSetup",
+    "selection": "owned-5",
+    "level": 12,
+    "overflow": false
+  },
+  {
+    "width": 390,
+    "view": "ArenaCard",
+    "portrait": "PASS"
+  },
+  {
+    "width": 390,
+    "view": "Gallery",
+    "sizes": [
+      32,
+      40,
+      48,
+      64,
+      96
+    ],
+    "decode": 40
+  },
+  {
+    "width": 1280,
+    "view": "PetScreen",
+    "avatars": 9,
+    "select": "PASS",
+    "overflow": false
+  },
+  {
+    "width": 1280,
+    "view": "ArenaSetup",
+    "selection": "owned-5",
+    "level": 12,
+    "overflow": false
+  },
+  {
+    "width": 1280,
+    "view": "ArenaCard",
+    "portrait": "PASS"
+  },
+  {
+    "width": 1280,
+    "view": "Gallery",
+    "sizes": [
+      32,
+      40,
+      48,
+      64,
+      96
+    ],
+    "decode": 40
+  },
+  {
+    "view": "failure-injection",
+    "brokenRequests": 1,
+    "missingKey": "catalog emoji",
+    "infiniteRetry": false
+  }
+]

@@ -1,0 +1,179 @@
+name: ElevenLabs AI Audio Request
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - audio-requests/elevenlabs-request.json
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      ELEVENLABS_BASE: https://api.elevenlabs.io
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ELEVENLABS_API_KEY" || {
+            echo "::error::ELEVENLABS_API_KEY is missing or unavailable."
+            exit 1
+          }
+
+          request="audio-requests/elevenlabs-request.json"
+          test -f "$request" || {
+            echo "::error::Missing request file."
+            exit 1
+          }
+
+          mode=$(jq -r '.mode // ""' "$request")
+          output_name=$(jq -r '.output_name // ""' "$request")
+          prompt=$(jq -r '.prompt // ""' "$request")
+
+          case "$mode" in
+            music|sfx|tts) ;;
+            *)
+              echo "::error::Unsupported mode: $mode"
+              exit 1
+              ;;
+          esac
+
+          test -n "$output_name" || {
+            echo "::error::output_name is required."
+            exit 1
+          }
+          [[ "$output_name" =~ ^[A-Za-z0-9._-]+$ ]] || {
+            echo "::error::output_name may only contain letters, numbers, dot, underscore, and hyphen."
+            exit 1
+          }
+
+          test -n "$prompt" || {
+            echo "::error::prompt is required."
+            exit 1
+          }
+
+          if [ "$mode" = "music" ]; then
+            length_ms=$(jq -r '.music_length_ms // 75000' "$request")
+            model_id=$(jq -r '.model_id // "music_v2_5"' "$request")
+            python3 - "$length_ms" <<'PY'
+          import sys
+          value = int(sys.argv[1])
+          if not 3000 <= value <= 600000:
+              raise SystemExit("music_length_ms must be between 3000 and 600000.")
+          PY
+            jq -n               --arg prompt "$prompt"               --arg model_id "$model_id"               --argjson music_length_ms "$length_ms"               '{prompt:$prompt, model_id:$model_id, music_length_ms:$music_length_ms}'               > /tmp/payload.json
+          fi
+
+          if [ "$mode" = "sfx" ]; then
+            model_id=$(jq -r '.model_id // "eleven_text_to_sound_v2"' "$request")
+            loop=$(jq -r '.loop // false' "$request")
+            duration=$(jq -r '.duration_seconds // empty' "$request")
+            if [ -n "$duration" ]; then
+              python3 - "$duration" <<'PY'
+          import sys
+          value = float(sys.argv[1])
+          if not 0.5 <= value <= 30:
+              raise SystemExit("duration_seconds must be between 0.5 and 30.")
+          PY
+              jq -n                 --arg text "$prompt"                 --arg model_id "$model_id"                 --argjson loop "$loop"                 --argjson duration_seconds "$duration"                 '{text:$text, model_id:$model_id, loop:$loop, duration_seconds:$duration_seconds}'                 > /tmp/payload.json
+            else
+              jq -n                 --arg text "$prompt"                 --arg model_id "$model_id"                 --argjson loop "$loop"                 '{text:$text, model_id:$model_id, loop:$loop}'                 > /tmp/payload.json
+            fi
+          fi
+
+          if [ "$mode" = "tts" ]; then
+            voice_id=$(jq -r '.voice_id // ""' "$request")
+            model_id=$(jq -r '.model_id // "eleven_v3"' "$request")
+            test -n "$voice_id" || {
+              echo "::error::voice_id is required for tts."
+              exit 1
+            }
+            jq -n               --arg text "$prompt"               --arg model_id "$model_id"               '{text:$text, model_id:$model_id}'               > /tmp/payload.json
+          fi
+
+          echo "MODE=$mode" >> "$GITHUB_ENV"
+          echo "OUTPUT_NAME=$output_name" >> "$GITHUB_ENV"
+
+      - name: Generate music
+        if: ${{ env.MODE == 'music' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUTPUT_NAME"
+          output_format=$(jq -r '.output_format // "auto"' audio-requests/elevenlabs-request.json)
+
+          code=$(curl -sS -o "$OUTPUT_NAME/audio.mp3" -w "%{http_code}"             -X POST "$ELEVENLABS_BASE/v1/music?output_format=$output_format"             -H "xi-api-key: $ELEVENLABS_API_KEY"             -H "Content-Type: application/json"             --data-binary @/tmp/payload.json)
+
+          test "$code" = "200" || {
+            echo "::error::ElevenLabs music generation failed: HTTP $code"
+            cat "$OUTPUT_NAME/audio.mp3" || true
+            exit 1
+          }
+
+      - name: Generate sound effect
+        if: ${{ env.MODE == 'sfx' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUTPUT_NAME"
+          output_format=$(jq -r '.output_format // "mp3_44100_128"' audio-requests/elevenlabs-request.json)
+
+          code=$(curl -sS -o "$OUTPUT_NAME/audio.mp3" -w "%{http_code}"             -X POST "$ELEVENLABS_BASE/v1/sound-generation?output_format=$output_format"             -H "xi-api-key: $ELEVENLABS_API_KEY"             -H "Content-Type: application/json"             --data-binary @/tmp/payload.json)
+
+          test "$code" = "200" || {
+            echo "::error::ElevenLabs SFX generation failed: HTTP $code"
+            cat "$OUTPUT_NAME/audio.mp3" || true
+            exit 1
+          }
+
+      - name: Generate TTS
+        if: ${{ env.MODE == 'tts' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUTPUT_NAME"
+          voice_id=$(jq -r '.voice_id' audio-requests/elevenlabs-request.json)
+          output_format=$(jq -r '.output_format // "mp3_44100_128"' audio-requests/elevenlabs-request.json)
+
+          code=$(curl -sS -o "$OUTPUT_NAME/audio.mp3" -w "%{http_code}"             -X POST "$ELEVENLABS_BASE/v1/text-to-speech/$voice_id?output_format=$output_format"             -H "xi-api-key: $ELEVENLABS_API_KEY"             -H "Content-Type: application/json"             --data-binary @/tmp/payload.json)
+
+          test "$code" = "200" || {
+            echo "::error::ElevenLabs TTS generation failed: HTTP $code"
+            cat "$OUTPUT_NAME/audio.mp3" || true
+            exit 1
+          }
+
+      - name: Write manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$OUTPUT_NAME/audio.mp3" || {
+            echo "::error::Generated audio is empty."
+            exit 1
+          }
+
+          jq '. + {
+            provider:"ElevenLabs",
+            generated_by:"elevenlabs-ai-request",
+            source_request:"audio-requests/elevenlabs-request.json"
+          }' audio-requests/elevenlabs-request.json > "$OUTPUT_NAME/manifest.json"
+
+          cp audio-requests/elevenlabs-request.json "$OUTPUT_NAME/request.json"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUTPUT_NAME }}
+          path: ${{ env.OUTPUT_NAME }}/
+          if-no-files-found: error
+          retention-days: 7

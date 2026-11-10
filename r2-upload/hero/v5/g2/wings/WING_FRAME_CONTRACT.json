@@ -1,0 +1,459 @@
+{
+  "status": "READY_FOR_PROJECT_LEAD_REVIEW",
+  "canvas": [
+    768,
+    768
+  ],
+  "placement": [
+    0,
+    0
+  ],
+  "source_G2_package": "HERO_V5_G2_PROJECT_LEAD_HANDOFF.zip",
+  "source_G2_sha256": "aab841df163a08dc75c4d3783975b2e3ef49838c325cb93904c53af23e1a1079",
+  "architecture": "wing_far -> unchanged approved Hero composite -> wing_near",
+  "wing_far_semantics": "Attack02/03: full far-side wing only; other poses background depth bucket may include near-side wing",
+  "wing_near_semantics": "Attack02/03: complete anatomical near wing, outermost; other frames use pose-dependent depth allocation",
+  "identity": "N camera-near, F camera-far; maintained through Attack01/02/03",
+  "frames": [
+    {
+      "frame_id": "idle_01",
+      "hero_reference_frame": "production/layers/*/idle_01.png in source G2",
+      "hero_composite_sha256": "6dd04e350d903a210306b53fbff2bf76eb1013da1bd02476f18e24e5f3dc9423",
+      "far_wing_asset": "wings_g2_template/idle_01/wing_far.png",
+      "near_wing_asset": "wings_g2_template/idle_01/wing_near.png",
+      "near_overlap_required": false,
+      "near_wing_foreground": false,
+      "full_near_wing_foreground": false,
+      "root_attachment_notes": "Original Idle root coordinates retained; both wings behind Hero.",
+      "special_occlusion_notes": "Pose-dependent background occlusion",
+      "perspective": "side",
+      "near_root_px": [
+        312,
+        410
+      ],
+      "far_root_px": [
+        337,
+        405
+      ],
+      "art_source": "source_art/IDLE_SELECTED_REFERENCE.png",
+      "near_art_size_px": [
+        250,
+        218
+      ],
+      "far_art_size_px": [
+        187,
+        245
+      ],
+      "near_art_root_uv": [
+        0.93,
+        0.89
+      ],
+      "far_art_root_uv": [
+        0.2,
+        0.9
+      ],
+      "near_top_left": [
+        80,
+        216
+      ],
+      "far_top_left": [
+        300,
+        184
+      ],
+      "notes": "User-selected original pair restored for Idle only; same art and scale across Idle3, roots track locked Hero."
+    },
+    {
+      "frame_id": "idle_02",
+      "hero_reference_frame": "production/layers/*/idle_02.png in source G2",
+      "hero_composite_sha256": "7718a612924efa07c9f2e56e0626b2a666ad8f6c1a97ad35e5e2756580ecbdab",
+      "far_wing_asset": "wings_g2_template/idle_02/wing_far.png",
+      "near_wing_asset": "wings_g2_template/idle_02/wing_near.png",
+      "near_overlap_required": false,
+      "near_wing_foreground": false,
+      "full_near_wing_foreground": false,
+      "root_attachment_notes": "Original Idle root coordinates retained; both wings behind Hero.",
+      "special_occlusion_notes": "Pose-dependent background occlusion",
+      "perspective": "side",
+      "near_root_px": [
+        312,
+        398
+      ],
+      "far_root_px": [
+        337,
+        393
+      ],
+      "art_source": "source_art/IDLE_SELECTED_REFERENCE.png",
+      "near_art_size_px": [
+        250,
+        218
+      ],
+      "far_art_size_px": [
+        187,
+        245
+      ],
+      "near_art_root_uv": [
+        0.93,
+        0.89
+      ],
+      "far_art_root_uv": [
+        0.2,
+        0.9
+      ],
+      "near_top_left": [
+        80,
+        204
+      ],
+      "far_top_left": [
+        300,
+        172
+      ],
+      "notes": "User-selected original pair restored for Idle only; same art and scale across Idle3, roots track locked Hero."
+    },
+    {
+      "frame_id": "idle_03",
+      "hero_reference_frame": "production/layers/*/idle_03.png in source G2",
+      "hero_composite_sha256": "f772b5df02425bb35ac63671a1c864aabbe6aa1951b9b1c835c145bde2a9a109",
+      "far_wing_asset": "wings_g2_template/idle_03/wing_far.png",
+      "near_wing_asset": "wings_g2_template/idle_03/wing_near.png",
+      "near_overlap_required": false,
+      "near_wing_foreground": false,
+      "full_near_wing_foreground": false,
+      "root_attachment_notes": "Original Idle root coordinates retained; both wings behind Hero.",
+      "special_occlusion_notes": "Pose-dependent background occlusion",
+      "perspective": "side",
+      "near_root_px": [
+        312,
+        406
+      ],
+      "far_root_px": [
+        337,
+        401
+      ],
+      "art_source": "source_art/IDLE_SELECTED_REFERENCE.png",
+      "near_art_size_px": [
+        250,
+        218
+      ],
+      "far_art_size_px": [
+        187,
+        245
+      ],
+      "near_art_root_uv": [
+        0.93,
+        0.89
+      ],
+      "far_art_root_uv": [
+        0.2,
+        0.9
+      ],
+      "near_top_left": [
+        80,
+        212
+      ],
+      "far_top_left": [
+        300,
+        180
+      ],
+      "notes": "User-selected original pair restored for Idle only; same art and scale across Idle3, roots track locked Hero."
+    },
+    {
+      "frame_id": "attack_01",
+      "hero_reference_frame": "production/layers/*/attack_01.png in source G2",
+      "hero_composite_sha256": "e5c043efde5a644882362a421328acc3d9beb5c120d3b9452cd8be15b0a2b2af",
+      "far_wing_asset": "wings_g2_template/attack_01/wing_far.png",
+      "near_wing_asset": "wings_g2_template/attack_01/wing_near.png",
+      "near_overlap_required": false,
+      "near_wing_foreground": false,
+      "full_near_wing_foreground": false,
+      "root_attachment_notes": "Wing-only root registered to upper-middle back/scapular region; Hero unchanged",
+      "special_occlusion_notes": "Pose-dependent background occlusion",
+      "perspective": "three_quarter",
+      "near_root_px": [
+        333,
+        449
+      ],
+      "far_root_px": [
+        357,
+        439
+      ],
+      "art_source": "attack_01; Idle/Attack01 far geometry from R2 atlas row 2; far geometry from R2 atlas row 2",
+      "near_art_size_px": [
+        250,
+        218
+      ],
+      "far_art_size_px": [
+        275,
+        112
+      ],
+      "near_art_root_uv": [
+        0.93,
+        0.89
+      ],
+      "far_art_root_uv": [
+        0.95,
+        0.8
+      ],
+      "near_top_left": [
+        100,
+        255
+      ],
+      "far_top_left": [
+        96,
+        349
+      ],
+      "notes": "Side/three-quarter placement; Hero naturally occludes roots."
+    },
+    {
+      "frame_id": "attack_02",
+      "hero_reference_frame": "production/layers/*/attack_02.png in source G2",
+      "hero_composite_sha256": "cc3b0ed05ea5a97ff32b1cb473160d345f5be6224da2f1f82c372065edc9a615",
+      "far_wing_asset": "wings_g2_template/attack_02/wing_far.png",
+      "near_wing_asset": "wings_g2_template/attack_02/wing_near.png",
+      "near_overlap_required": true,
+      "near_wing_foreground": true,
+      "full_near_wing_foreground": true,
+      "root_attachment_notes": "Wing-only root registered to upper-middle back/scapular region; Hero unchanged",
+      "special_occlusion_notes": "Entire near wing above body and arms, no arm-protection mask",
+      "perspective": "back_three_quarter",
+      "near_root_px": [
+        306,
+        448
+      ],
+      "far_root_px": [
+        328,
+        419
+      ],
+      "art_source": "source_art/R2_WING_ATLAS.png, near row 1 and far row 2",
+      "near_art_size_px": [
+        270,
+        137
+      ],
+      "far_art_size_px": [
+        290,
+        145
+      ],
+      "near_art_root_uv": [
+        0.95,
+        0.78
+      ],
+      "far_art_root_uv": [
+        0.95,
+        0.85
+      ],
+      "near_top_left": [
+        50,
+        341
+      ],
+      "far_top_left": [
+        52,
+        296
+      ],
+      "notes": "Full foreground near wing; far sweep lifted around fixed root for controlled edge separation, with overlapping silhouettes and no artificial gap.",
+      "r3_far_transform": {
+        "angle_degrees_Pillow_CCW": -4,
+        "pivot_px": [
+          328,
+          419
+        ],
+        "translation_px": [
+          0,
+          0
+        ],
+        "baked_into_canvas": true
+      },
+      "r3_near_transform": {
+        "translation_px": [
+          0,
+          0
+        ],
+        "angle_degrees": 0,
+        "byte_identical_to_R2": true
+      }
+    },
+    {
+      "frame_id": "attack_03",
+      "hero_reference_frame": "production/layers/*/attack_03.png in source G2",
+      "hero_composite_sha256": "d5a4961dadc7cde672591c9b0930222bb0f83dd771e20abef985a6ac1c6e7669",
+      "far_wing_asset": "wings_g2_template/attack_03/wing_far.png",
+      "near_wing_asset": "wings_g2_template/attack_03/wing_near.png",
+      "near_overlap_required": true,
+      "near_wing_foreground": true,
+      "full_near_wing_foreground": true,
+      "root_attachment_notes": "Near root moved 8px screen-left/back and 22px down from R2, to upper back behind shoulder; full wing preserved, no arm cutouts.",
+      "special_occlusion_notes": "Entire near wing above body and arms, no arm-protection mask",
+      "perspective": "back_three_quarter",
+      "near_root_px": [
+        308,
+        464
+      ],
+      "far_root_px": [
+        337,
+        414
+      ],
+      "art_source": "source_art/R2_WING_ATLAS.png, near row 1 and far row 2",
+      "near_art_size_px": [
+        270,
+        116
+      ],
+      "far_art_size_px": [
+        290,
+        137
+      ],
+      "near_art_root_uv": [
+        0.95,
+        0.77
+      ],
+      "far_art_root_uv": [
+        0.95,
+        0.85
+      ],
+      "near_top_left": [
+        52,
+        375
+      ],
+      "far_top_left": [
+        62,
+        298
+      ],
+      "notes": "Full foreground near wing; far sweep lifted around fixed root for controlled edge separation, with overlapping silhouettes and no artificial gap.",
+      "r3_far_transform": {
+        "angle_degrees_Pillow_CCW": -5,
+        "pivot_px": [
+          337,
+          414
+        ],
+        "translation_px": [
+          0,
+          0
+        ],
+        "baked_into_canvas": true
+      },
+      "r3_near_transform": {
+        "translation_px": [
+          -8,
+          22
+        ],
+        "angle_degrees": 0,
+        "baked_into_canvas": true
+      }
+    },
+    {
+      "frame_id": "death_01",
+      "hero_reference_frame": "production/layers/*/death_01.png in source G2",
+      "hero_composite_sha256": "b02463c41d480a28551a0f405d0ef0a344dca371a6968f2d3f31d3e778c3803a",
+      "far_wing_asset": "wings_g2_template/death_01/wing_far.png",
+      "near_wing_asset": "wings_g2_template/death_01/wing_near.png",
+      "near_overlap_required": false,
+      "near_wing_foreground": false,
+      "full_near_wing_foreground": false,
+      "root_attachment_notes": "Wing-only root registered to upper-middle back/scapular region; Hero unchanged",
+      "special_occlusion_notes": "No foreground overlap in Death01; wing_near transparent empty.",
+      "perspective": "three_quarter",
+      "near_root_px": [
+        376,
+        414
+      ],
+      "far_root_px": [
+        402,
+        409
+      ],
+      "art_source": "death_01; Idle/Attack01 far geometry from R2 atlas row 2",
+      "near_art_size_px": [
+        217,
+        205
+      ],
+      "far_art_size_px": [
+        104,
+        204
+      ],
+      "near_art_root_uv": [
+        0.8,
+        0.075
+      ],
+      "far_art_root_uv": [
+        0.14,
+        0.075
+      ],
+      "near_top_left": [
+        202,
+        399
+      ],
+      "far_top_left": [
+        387,
+        394
+      ],
+      "notes": "User-requested removal of foreground feather patch over shirt; background wing unchanged."
+    },
+    {
+      "frame_id": "death_02",
+      "hero_reference_frame": "production/layers/*/death_02.png in source G2",
+      "hero_composite_sha256": "db84466a74f7f73656abc3281bb89879698c6a0a50ac261d8286a925f58e50bc",
+      "far_wing_asset": "wings_g2_template/death_02/wing_far.png",
+      "near_wing_asset": "wings_g2_template/death_02/wing_near.png",
+      "near_overlap_required": false,
+      "near_wing_foreground": false,
+      "full_near_wing_foreground": false,
+      "root_attachment_notes": "Wing-only root registered to upper-middle back/scapular region; Hero unchanged",
+      "special_occlusion_notes": "Pose-dependent background occlusion",
+      "perspective": "side",
+      "near_root_px": [
+        293,
+        522
+      ],
+      "far_root_px": [
+        310,
+        519
+      ],
+      "art_source": "source_art/R2_WING_ATLAS.png row 3",
+      "near_art_size_px": [
+        275,
+        110
+      ],
+      "far_art_size_px": [
+        250,
+        90
+      ],
+      "near_art_root_uv": [
+        0.95,
+        0.25
+      ],
+      "far_art_root_uv": [
+        0.95,
+        0.25
+      ],
+      "near_top_left": [
+        32,
+        494
+      ],
+      "far_top_left": [
+        72,
+        496
+      ],
+      "notes": "Long primaries folded left/down, not miniaturized upright wing; within Hero vertical bounds."
+    }
+  ],
+  "revision": "05",
+  "source_wing_package": "HERO_V5_G2_WING_TEMPLATE_REVIEW_R2.zip",
+  "source_wing_sha256": "f446c6a6eeeb40a3239a82192c908dc7937c265da92a8b7b85a389d5c56f2638",
+  "runtime_offsets": [
+    0,
+    0
+  ],
+  "delivery_mode": "FULL 8-frame wing package; only Death01 foreground feather patch removed from R4",
+  "included_frame_ids": [
+    "idle_01",
+    "idle_02",
+    "idle_03",
+    "attack_01",
+    "attack_02",
+    "attack_03",
+    "death_01",
+    "death_02"
+  ],
+  "transform_note": "R3 transforms are relative to R2 exported PNGs and already baked into full canvas. Earlier art size/UV/placement fields describe original construction. Apply no runtime offsets or extra rotations.",
+  "source_packages": {
+    "HERO_V5_G2_WING_TEMPLATE_REVIEW_R4_FULL.zip": "4ea82ed01027f8138c4e0e41863e1483ab7c21ba854abdcc12fc27d2fd408a60",
+    "HERO_V5_G2_WING_TEMPLATE_REVIEW_R3_DELTA.zip": "a9b0756f832d9c700c6d89de937095c2b47021b597bf0f083442c152a66f8da1",
+    "HERO_V5_G2_PROJECT_LEAD_HANDOFF.zip": "aab841df163a08dc75c4d3783975b2e3ef49838c325cb93904c53af23e1a1079"
+  }
+}

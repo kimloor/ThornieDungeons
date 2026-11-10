@@ -1,0 +1,11 @@
+{
+  "infoCenterUi": {
+    "announcements": "ui/info-center/announcements.png",
+    "guide": "ui/info-center/guide.png",
+    "terms": "ui/info-center/terms.png",
+    "privacy": "ui/info-center/privacy.png",
+    "fairplay": "ui/info-center/fairplay.png",
+    "purchase": "ui/info-center/purchase.png"
+  },
+  "status": "proposal-only-owner-approval-required"
+}

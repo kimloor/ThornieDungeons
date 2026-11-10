@@ -1,0 +1,3 @@
+# Built-in isolated chest cleanup
+
+Inputs: committed prior isolated chest (chest_before.png) + Owner-selected dressed Hero. Remove chopped horizontal armhole fragment, stray sleeve/neck/glove fragments, rectangular patch strip, double contours and ragged ends. Preserve asymmetric raised-left/lower-right shoulders, brown leather, brass edging/rivets, three clasps, belt/buckle/skirt/studs. Complete continuous collar/back-neck rim, shoulder undersides and rounded armhole openings. Only armor, transparent background, no body/arms/head or redesign. Raw extraction is preserved and registered offline; this is not a pixel-identical source cut or approved fit.

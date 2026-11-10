@@ -1,0 +1,115 @@
+// ---------- W7 Shared Hero Renderer ----------
+// Renders normalized layered Hero presentation models from both the production
+// V3 fallback contract and the production-default V5 G2 contract. Asset/equipment resolution remains
+// outside this renderer so Combat, Arena and future previews share one renderer.
+class HeroRenderer {
+  constructor(scene, {
+    root = null,
+    data = {},
+    displaySize = 150,
+    textureKey = null
+  } = {}) {
+    this.scene = scene;
+    this.root = root || scene.add.container(0, 0);
+    this.ownsRoot = !root;
+    this.data = data || {};
+    this.displaySizeSource = displaySize;
+    this.textureKeySource = textureKey;
+    this.layerImages = [];
+    this.currentLayers = [];
+    this.destroyed = false;
+  }
+
+  setData(data) {
+    this.data = data || {};
+    return this;
+  }
+
+  displaySize() {
+    const value = typeof this.displaySizeSource === "function"
+      ? this.displaySizeSource()
+      : this.displaySizeSource;
+    return Math.max(1, Number(value) || 1);
+  }
+
+  textureKey(reference) {
+    if (typeof this.textureKeySource === "function") return this.textureKeySource(reference);
+    if (typeof this.scene?.assetKey === "function") return this.scene.assetKey(reference);
+    if (typeof this.scene?.textureRegistry?.keyFor === "function") return this.scene.textureRegistry.keyFor(reference);
+    return "";
+  }
+
+  layerSetForState(state) {
+    const sets = this.data.layerFrames || {};
+    if (state === "attack" && Array.isArray(sets.attack) && sets.attack.length) return sets.attack;
+    if (state === "death" && Array.isArray(sets.death) && sets.death.length) return sets.death;
+    return Array.isArray(sets.idle) && sets.idle.length ? sets.idle : [this.data.layers || []];
+  }
+
+  visualFrameCount(state) {
+    return Math.max(1, this.layerSetForState(state).length || 1);
+  }
+
+  ensureLayerImages(layers) {
+    const size = this.displaySize();
+    (layers || []).forEach((layer, index) => {
+      let entry = this.layerImages.find(item => item.name === layer.name);
+      if (!entry) {
+        const key = this.textureKey(layer.url);
+        if (!key || !this.scene?.textures?.exists(key)) return;
+        const image = this.scene.add.image(0, 0, key).setOrigin(0.5, 1);
+        // Presentation models already arrive in authored bottom-to-top order.
+        this.root.addAt(image, Math.min(index, this.root.list?.length || 0));
+        entry = { name: layer.name, image };
+        this.layerImages.push(entry);
+      }
+      entry.image.setDisplaySize(size, size);
+      if (typeof this.root?.moveTo === "function") this.root.moveTo(entry.image, index);
+    });
+  }
+
+  applyVisualFrame(state, index = 0) {
+    const frames = this.layerSetForState(state);
+    const layers = frames[Math.min(Math.max(0, index), Math.max(0, frames.length - 1))] || this.data.layers || [];
+    this.currentLayers = layers;
+    this.ensureLayerImages(layers);
+    const size = this.displaySize();
+    const canvasWidth = Math.max(1, Number(this.data.layerFrames?.canvas?.width) || 1254);
+    const canvasHeight = Math.max(1, Number(this.data.layerFrames?.canvas?.height) || 1254);
+
+    this.layerImages.forEach(entry => {
+      const layer = layers.find(candidate => candidate.name === entry.name);
+      if (!layer) {
+        entry.image.setVisible(false);
+        return;
+      }
+      const key = this.textureKey(layer.url);
+      if (key && this.scene?.textures?.exists(key) && entry.image.texture.key !== key) entry.image.setTexture(key);
+      const scale = Number(layer.scale ?? 1);
+      const crop = Array.isArray(layer.crop) && layer.crop.length === 4 ? layer.crop.map(Number) : null;
+      if (typeof entry.image.setCrop === "function") {
+        if (crop && crop.every(Number.isFinite) && crop[2] > 0 && crop[3] > 0) entry.image.setCrop(...crop);
+        else entry.image.setCrop();
+      }
+      entry.image
+        .setVisible(true)
+        .setDisplaySize(size * scale, size * scale)
+        .setPosition(
+          (Number(layer.x) || 0) * size / canvasWidth,
+          (Number(layer.y) || 0) * size / canvasHeight
+        )
+        .setAngle(Number(layer.rotation) || 0);
+    });
+  }
+
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.layerImages.forEach(entry => entry.image?.destroy());
+    this.layerImages = [];
+    this.currentLayers = [];
+    if (this.ownsRoot) this.root?.destroy(true);
+    this.root = null;
+    this.scene = null;
+  }
+}

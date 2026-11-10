@@ -1,0 +1,531 @@
+// ---------- floating-point-safe math helpers ----------
+// JS floats can't exactly represent most decimal fractions (5.1 + 2.3 === 7.3999999999999995,
+// 12.7 * 1.18 === 14.985999999999999), so any value built from repeated multiplication/addition
+// of decimals — % stats, enhancement growth, empower rolls — needs to be rounded back to a
+// sane precision at the point it's stored/displayed, not left to drift. roundTo() does that
+// safely (the Number.EPSILON nudge avoids the classic Math.round(1.005*100)/100 === 1 gotcha
+// where the *input* itself is already slightly off before rounding).
+function roundTo(value, decimals = 1) {
+  if (!Number.isFinite(value)) return 0;
+  const factor = 10 ** decimals;
+  return Math.round((value + Number.EPSILON) * factor) / factor;
+}
+// HP/MP/gold/damage etc are always whole numbers — same idea as roundTo(x, 0) but reads clearer
+// at call sites and guarantees an actual integer type (not just "no decimals when printed").
+function roundInt(value) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value);
+}
+// Formats large numbers for UI display so gold/XP/combat-power text never overflows its box at
+// high floors: 950 -> "950", 1234 -> "1.2K", 3500000 -> "3.5M", 10200000000 -> "10.2B".
+// Always trims a trailing ".0" (e.g. 2000 -> "2K", not "2.0K") and preserves the sign.
+const NUMBER_FORMAT_UNITS = [{
+  value: 1e12,
+  suffix: "T"
+}, {
+  value: 1e9,
+  suffix: "B"
+}, {
+  value: 1e6,
+  suffix: "M"
+}, {
+  value: 1e3,
+  suffix: "K"
+}];
+function formatNumber(n) {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "0";
+  const sign = num < 0 ? "-" : "";
+  const abs = Math.abs(num);
+  if (abs < 1000) return sign + roundInt(abs).toString();
+  let unitIndex = NUMBER_FORMAT_UNITS.findIndex(u => abs >= u.value);
+  let scaled = roundTo(abs / NUMBER_FORMAT_UNITS[unitIndex].value, 1);
+  // Rounding can push a value like 999,999 up to "1000.0" of its unit — bump to the next unit
+  // up instead of ever displaying a leading "1000" (e.g. show "1M", not "1000K").
+  if (scaled >= 1000 && unitIndex > 0) {
+    unitIndex -= 1;
+    scaled = roundTo(abs / NUMBER_FORMAT_UNITS[unitIndex].value, 1);
+  }
+  const text = scaled % 1 === 0 ? scaled.toFixed(0) : scaled.toFixed(1);
+  return sign + text + NUMBER_FORMAT_UNITS[unitIndex].suffix;
+}
+
+// Accessory base stat is flat HP only. Crit / Dodge / Crit Damage come from Enchant options.
+const ACCESSORY_BASE_HP_BY_TIER = [40, 52, 68, 88, 114];
+// Wings are the evasion-themed 7th slot: always roll dodgeChance as a slightly stronger
+// version of the accessory roll (higher flat/perFloor), reusing the same stat key so
+// itemBonus()/getEquipBonus()/getStats() need no changes.
+const WING_STAT_BASE = {
+  flat: 2,
+  perFloor: 0.18
+};
+const ACCESSORY_STAT_BASE = {
+  dodgeChance: {
+    flat: 1,
+    perFloor: 0.12
+  },
+  critChance: {
+    flat: 1.2,
+    perFloor: 0.15
+  },
+  critDamage: {
+    flat: 4,
+    perFloor: 0.35
+  }
+};
+// ---------- 5-stat model: STR / VIT / AGI / DEX / LUK ----------
+// Derived stat formulas (shared reference — also used by pets & monsters where applicable):
+//   Speed        = BaseSpeed + (AGI * 2)
+//   Evasion      = AGI * 0.5%
+//   HitRate      = 80 + (DEX * 0.5)%
+//   CritChance   = LUK * 0.5%
+//   ItemDropBonus= LUK * 0.2%
+function speedFromAgi(agi) {
+  return roundInt(BASE_SPEED + (agi || 0) * 2);
+}
+function evasionFromAgi(agi) {
+  return roundTo((agi || 0) * 0.5, 1);
+}
+function hitRateFromDex(dex) {
+  return Math.min(99, roundTo(80 + (dex || 0) * 0.5, 1));
+}
+function critChanceFromLuk(luk) {
+  return roundTo((luk || 0) * 0.5, 1);
+}
+function dropBonusFromLuk(luk) {
+  return roundTo((luk || 0) * 0.2, 1);
+}
+function characterBaseStats(save) {
+  const lvl = save.character.level;
+  const s = save.character.stats;
+  return {
+    maxHp: roundInt(40 + lvl * 4 + s.vit * 12),
+    maxMp: roundInt(15 + lvl * 2),
+    atk: roundInt(8 + lvl + s.str * 3 + Math.floor(s.dex * 0.5)),
+    def: roundInt(2 + Math.floor(lvl * 0.4) + Math.floor(s.vit * 0.5)),
+    speed: speedFromAgi(s.agi),
+    accuracy: hitRateFromDex(s.dex),
+    critChance: critChanceFromLuk(s.luk),
+    critDamage: 50,
+    dodgeChance: evasionFromAgi(s.agi),
+    dropBonus: dropBonusFromLuk(s.luk)
+  };
+}
+function activePetInstance(save) {
+  if (!save.activePetId) return null;
+  const inst = (save.pets || []).find(p => p.instId === save.activePetId);
+  if (!inst) return null;
+  const def = getPetDef(inst.defId);
+  return def ? {
+    inst,
+    def
+  } : null;
+}
+function freshPlayerFromSave(save, carry = null) {
+  const cb = characterBaseStats(save);
+  const petActive = activePetInstance(save);
+  const petAtkBoostPct = petActive && petActive.def.passive && petActive.def.passive.type === "atkBoost" ? petActive.def.passive.pct : 0;
+  const hp = carry && Number.isFinite(carry.hp) ? roundInt(Math.max(0, Math.min(cb.maxHp, carry.hp))) : cb.maxHp;
+  const mp = carry && Number.isFinite(carry.mp) ? roundInt(Math.max(0, Math.min(cb.maxMp, carry.mp))) : cb.maxMp;
+  return {
+    level: save.character.level,
+    primaryStats: { ...save.character.stats },
+    xp: save.character.xp,
+    baseAtk: cb.atk,
+    baseDef: cb.def,
+    baseMaxHp: cb.maxHp,
+    baseMaxMp: cb.maxMp,
+    baseSpeed: cb.speed,
+    accuracy: cb.accuracy,
+    critChance: cb.critChance,
+    critDamage: cb.critDamage,
+    dodgeChance: cb.dodgeChance,
+    dropBonus: cb.dropBonus,
+    hp,
+    mp,
+    atkBuffPct: 0,
+    atkBuffTurns: 0,
+    defBuffPct: 0,
+    defBuffTurns: 0,
+    petAtkBoostPct,
+    petCooldown: 0,
+    weakenPct: 0,
+    weakenTurns: 0,
+    regenAmount: 0,
+    regenTurns: 0
+  };
+}
+function makeEnemy(floor, options = {}) {
+  const encounterType = options.encounterType || DUNGEON_V2.classifyDungeonEncounter(floor);
+  const isBoss = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.CHAPTER_BOSS;
+  const isElite = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.ELITE;
+  const modifier = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.NORMAL
+    ? (options.modifierId !== undefined
+      ? floorModifierById(options.modifierId)
+      : (options.modifier === undefined ? rollFloorModifier() : options.modifier))
+    : null;
+  const pool = isBoss ? BOSS_POOL : ENEMY_POOL;
+  const canonicalProfile = isBoss
+    ? DUNGEON_V2.getDungeonV2BossProfile(options.statProfileId || options.profileId)
+    : DUNGEON_V2.getDungeonV2MonsterProfile(options.profileId);
+  const t = options.profileId
+    ? pool.find(entry => String(entry.dungeonV2Id || entry.id) === String(options.profileId)) || {
+      id: canonicalProfile?.id || String(options.profileId),
+      name: options.displayName || canonicalProfile?.name || String(options.profileId),
+      color: "#7ED9A8",
+      sizeClass: isBoss ? "large" : "medium",
+      anchorType: options.profileId === "bramble_bat" ? "flying" : "ground"
+    }
+    : pool[Math.floor(Math.random() * pool.length)] || pool[0];
+  const packCount = Math.max(1, Math.min(3, Math.floor(Number(options.packCount) || 1)));
+  const v2ProfileId = options.statProfileId || t.dungeonV2Id || t.id;
+  const v2Stats = isBoss
+    ? DUNGEON_V2.resolveDungeonV2BossStats(floor, v2ProfileId)
+    : DUNGEON_V2.resolveDungeonV2NormalStats(floor, v2ProfileId, { packCount, elite: isElite, modifier });
+  const goldM = (t.goldMult || 1) * (modifier?.goldMult || 1);
+  const xpM = (t.xpMult || 1) * (modifier?.xpMult || 1);
+  const name = isBoss ? `${t.name} (Boss)` : isElite ? `${t.name} (Elite)` : modifier ? `${t.name} ${modifier.icon}` : t.name;
+  const agi = t.agi || (isBoss ? 8 : 4) + Math.floor(floor / 10);
+  const speedAdjustment = Number(v2Stats.speedAdjustment) || 0;
+  const baseAtk = v2Stats.atk;
+  const skillConfig = Array.isArray(options.skillCycle) && options.skillCycle.length
+    ? { skillSetId: options.profileId, cycle: options.skillCycle, phase2Cycle: null, phaseAction: null }
+    : DUNGEON_V2.getDungeonV2SkillConfig(v2ProfileId, encounterType);
+  return {
+    id: t.id,
+    uid: options.instanceId || `${t.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    name,
+    color: t.color,
+    isBoss,
+    isElite,
+    // Kept false for V2 Elite encounters so old reward/UI branches cannot
+    // accidentally treat an Elite midpoint as a Chapter Boss.
+    isEliteBoss: false,
+    encounterType,
+    floor: Math.max(1, Math.floor(Number(floor) || 1)),
+    chapter: DUNGEON_V2.dungeonChapterForFloor(floor),
+    chapterFloor: DUNGEON_V2.dungeonChapterFloor(floor),
+    sourceIdentity: isBoss ? `chapter_boss:${t.id}` : `${encounterType}:${t.id}`,
+    dungeonV2ProfileId: options.profileId || v2Stats.profileId,
+    dungeonV2StatProfileId: v2Stats.profileId,
+    dungeonV2SkillSetId: skillConfig?.skillSetId || null,
+    dungeonV2SkillCycle: skillConfig?.cycle || null,
+    dungeonV2SkillPhase2Cycle: skillConfig?.phase2Cycle || null,
+    dungeonV2PhaseAction: skillConfig?.phaseAction || null,
+    dungeonV2CycleIndex: 0,
+    dungeonV2Phase: "base",
+    dungeonV2PendingAction: null,
+    dungeonV2OvergrowthQueued: false,
+    dungeonV2OvergrowthUsed: false,
+    dungeonV2BaseAtk: baseAtk,
+    flags: { dungeonV2BaseAtk: baseAtk },
+    sizeClass: isBoss ? (t.sizeClass || "large") : isElite ? "elite" : t.sizeClass || "medium",
+    anchorType: t.anchorType === "flying" ? "flying" : "ground",
+    modifier,
+    agi,
+    speed: floorModifierSpeed(speedFromAgi(agi) + speedAdjustment, modifier),
+    evasion: isBoss ? evasionFromAgi(agi) : Number(v2Stats.dodge) || 0,
+    dodge: isBoss ? evasionFromAgi(agi) : Number(v2Stats.dodge) || 0,
+    hitRate: hitRateFromDex(t.dex || (isBoss ? 6 : 2)),
+    statusResist: Number(v2Stats.statusResist) || 0,
+    hp: v2Stats.hp,
+    maxHp: v2Stats.hp,
+    atk: v2Stats.atk,
+    def: v2Stats.def,
+    xp: roundInt((6 + floor * 3) * (isBoss ? 2.2 : isElite ? 1.5 : 1) * xpM),
+    gold: roundInt((4 + floor * 2.5) * (isBoss ? 2.2 : isElite ? 1.5 : 1) * goldM)
+  };
+}
+// Builds a full encounter from the locked V2 structure. F1-F4 remain single
+// normal encounters for the onboarding flow; later normal floors use the
+// existing 1-3 pack distribution. Midpoint Elite and Chapter Boss floors are
+// always single-monster encounters.
+function makeEncounter(floor, options = {}) {
+  const encounterType = DUNGEON_V2.classifyDungeonEncounter(floor);
+  const serverContext = options.serverContext;
+  if (serverContext && Number(serverContext.floor) === Number(floor) && Array.isArray(serverContext.enemies)) {
+    return serverContext.enemies.map(enemy => makeEnemy(floor, {
+      encounterType,
+      packCount: serverContext.packCount,
+      profileId: enemy.id,
+      displayName: enemy.id === "haloween_nightmare" ? "Haloween nightmare" : undefined,
+      statProfileId: enemy.statProfileId,
+      skillCycle: enemy.skillCycle,
+      instanceId: enemy.instanceId,
+      modifierId: enemy.modifierId
+    }));
+  }
+  const event = encounterType === DUNGEON_V2.ENCOUNTER_TYPES.NORMAL
+    ? rollFloorModifier(options.rng || Math.random)
+    : null;
+  const modifierId = event?.id || null;
+  if (encounterType !== DUNGEON_V2.ENCOUNTER_TYPES.NORMAL || Number(floor) < 5) {
+    return [makeEnemy(floor, { encounterType, packCount: 1, modifierId })];
+  }
+  const roll = Math.random();
+  const count = roll < 0.45 ? 1 : roll < 0.8 ? 2 : 3;
+  const monsters = [];
+  for (let i = 0; i < count; i++) monsters.push(makeEnemy(floor, { encounterType, packCount: count, modifierId }));
+  return monsters;
+}
+function xpToNext(level) {
+  return level * 22 + 18;
+}
+// Capped at "unique" — elite/mythic used to be reachable here too, but Phase 4 crafting
+// retired them from normal floor drops (elite/mythic now only exist via boss/elite-boss
+// chest pity, see rollChestRarity in enhancement.js) so Azure crafted gear has clean air
+// above anything obtainable through plain floor grinding. Existing elite/mythic items
+// already owned by players are untouched — this only affects what future rolls can return.
+function rollRarity(boosted = false) {
+  const r = Math.random();
+  if (boosted) {
+    return r < 0.5 ? "unique" : "rare";
+  }
+  return r < 0.28 ? "unique" : "rare";
+}
+function gearTierForFloor(floor) {
+  return typeof DUNGEON_REWARD_V2 !== "undefined"
+    ? DUNGEON_REWARD_V2.dungeonV2GearTierForFloor(floor)
+    : Math.min(5, Math.max(1, Math.floor((Number(floor) || 0) / 4) + 1));
+}
+function pickName(pool, floor) {
+  return pool[Math.min(pool.length - 1, Math.floor(floor / 4))];
+}
+function generateDrop(floor, options = {}) {
+  if (typeof DUNGEON_REWARD_V2 !== "undefined") {
+    return DUNGEON_REWARD_V2.dungeonV2GenerateEquipment({
+      floor,
+      type: options.forceType,
+      rarity: options.forceRarity,
+      sourceType: options.sourceType || "shop_normal",
+      specialSource: options.specialSource,
+      sourceIdentity: options.sourceIdentity,
+      allowMythic: options.allowMythic === true,
+      rarityBoost: options.rarityBoost === true,
+      rng: options.rng || Math.random
+    });
+  }
+  const it = buildDropItem(floor, options);
+  it.enhanceLevel = 0;
+  it.empowerSlots = Array(RARITY_STARS[it.rarity] || 1).fill(null);
+  return it;
+}
+function buildDropItem(floor, options = {}) {
+  const roll = Math.random();
+  // wings and accessory are raid-exclusive now (see workers/thornie-dungeons-api.js
+  // RAID_WING_DEFS / AZURE_SET_DEFS) — shop stock and floor-boss chests no longer roll them.
+  const type = options.forceType || (roll < 0.20 ? "weapon" : roll < 0.40 ? "helmet" : roll < 0.60 ? "chest" : roll < 0.80 ? "gloves" : "boots");
+  const rarity = options.forceRarity || rollRarity(!!options.rarityBoost);
+  const mult = RARITY_MULT[rarity];
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  if (type === "weapon") {
+    const atk = Math.max(1, roundInt((2 + floor * 0.9) * mult));
+    return {
+      id,
+      type,
+      rarity,
+      name: pickName(WEAPON_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
+      atk
+    };
+  }
+  if (type === "helmet") {
+    const def = Math.max(1, roundInt((1 + floor * 0.35) * mult));
+    return {
+      id,
+      type,
+      rarity,
+      name: pickName(HELMET_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
+      def
+    };
+  }
+  if (type === "chest") {
+    const def = Math.max(1, roundInt((1.5 + floor * 0.5) * mult));
+    return {
+      id,
+      type,
+      rarity,
+      name: pickName(CHEST_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
+      def
+    };
+  }
+  if (type === "gloves") {
+    const atk = Math.max(1, roundInt((1 + floor * 0.35) * mult));
+    return {
+      id,
+      type,
+      rarity,
+      name: pickName(GLOVES_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
+      atk
+    };
+  }
+  if (type === "boots") {
+    const def = Math.max(1, roundInt((1 + floor * 0.3) * mult));
+    return {
+      id,
+      type,
+      rarity,
+      name: pickName(BOOTS_NAMES, floor),
+      gearTier: gearTierForFloor(floor),
+      def
+    };
+  }
+  if (type === "wings") {
+    const val = roundTo((WING_STAT_BASE.flat + floor * WING_STAT_BASE.perFloor) * mult, 1);
+    return {
+      id,
+      type,
+      rarity,
+      name: pickName(WINGS_NAMES, floor),
+      dodgeChance: val
+    };
+  }
+  const tier = gearTierForFloor(floor);
+  const hp = roundInt(ACCESSORY_BASE_HP_BY_TIER[tier - 1] * mult);
+  return {
+    id,
+    type,
+    rarity,
+    name: pickName(ACCESSORY_NAMES, floor),
+    hp
+  };
+}
+
+function itemDisplayName(it) {
+  if (!it) return "";
+  return it.enhanceLevel ? `${it.name} +${it.enhanceLevel}` : it.name;
+}
+function itemBonus(it) {
+  if (!it) return null;
+  const lvl = it.enhanceLevel || 0;
+  const isV2 = typeof ENHANCEMENT_V2 !== "undefined" && ENHANCEMENT_V2.isV2Item(it);
+  const isV2Wing = isV2 && it.type === "wings";
+  const growMult = isV2Wing ? 1 : 1 + lvl * ENHANCE_STAT_PCT;
+  // Kept unrounded here on purpose — this gets summed across every equipped item in
+  // getEquipBonus() first, and rounding *once* after that sum (rather than once per item)
+  // avoids stacking up separate rounding errors. Anything that displays a single item's
+  // bonus directly (itemStatText) rounds its own copy at the display boundary instead.
+  const b = {
+    atk: (it.atk || 0) * growMult,
+    def: (it.def || 0) * growMult,
+    hp: (it.hp || 0) * growMult,
+    mp: (it.mp || 0) * growMult,
+    critChance: (it.critChance || 0) * growMult,
+    critDamage: (it.critDamage || 0) * growMult,
+    accuracy: 0,
+    dodgeChance: (it.dodgeChance || 0) * growMult,
+    dropBonus: 0,
+    hpPct: 0,
+    mpPct: 0,
+    str: 0,
+    vit: 0,
+    agi: 0,
+    dex: 0,
+    luk: 0
+  };
+  if (isV2Wing) {
+    const primary = ENHANCEMENT_V2.WING_PRIMARY_STAT[ENHANCEMENT_V2.wingFamily(it)];
+    if (primary) b[primary] += lvl;
+  }
+  (it.empowerSlots || []).forEach(slot => {
+    if (!slot) return;
+    if (slot.key === "atkPct") b.atk += (it.atk || 0) * slot.value * (isV2 ? 0.01 : 1);
+    else if (slot.key === "defPct") b.def += (it.def || 0) * slot.value * (isV2 ? 0.01 : 1);
+    else b[slot.key] = (b[slot.key] || 0) + slot.value;
+  });
+  return b;
+}
+function itemStatText(it) {
+  const b = itemBonus(it) || {};
+  const parts = [];
+  if (b.atk) parts.push(`+${roundInt(b.atk)} ATK`);
+  if (b.def) parts.push(`+${roundInt(b.def)} DEF`);
+  if (b.hp) parts.push(`+${roundInt(b.hp)} HP`);
+  if (b.mp) parts.push(`+${roundInt(b.mp)} MP`);
+  if (b.critChance) parts.push(`+${roundTo(b.critChance, 1)}% Crit`);
+  if (b.critDamage) parts.push(`+${roundTo(b.critDamage, 1)}% Crit Dmg`);
+  if (b.accuracy) parts.push(`+${roundTo(b.accuracy, 1)}% Acc`);
+  if (b.dodgeChance) parts.push(`+${roundTo(b.dodgeChance, 1)}% Dodge`);
+  if (b.dropBonus) parts.push(`+${roundTo(b.dropBonus, 1)}% Drop`);
+  if (b.hpPct) parts.push(`+${roundTo(b.hpPct, 1)}% HP`);
+  if (b.mpPct) parts.push(`+${roundTo(b.mpPct, 1)}% MP`);
+  ["str", "vit", "agi", "dex", "luk"].forEach(key => {
+    if (b[key]) parts.push(`+${roundInt(b[key])} ${key.toUpperCase()}`);
+  });
+  return parts.join("  ");
+}
+function getEquipBonus(equipped) {
+  const b = {
+    atk: 0,
+    def: 0,
+    hp: 0,
+    mp: 0,
+    critChance: 0,
+    critDamage: 0,
+    accuracy: 0,
+    dodgeChance: 0,
+    dropBonus: 0,
+    hpPct: 0,
+    mpPct: 0,
+    str: 0,
+    vit: 0,
+    agi: 0,
+    dex: 0,
+    luk: 0
+  };
+  Object.values(equipped).forEach(it => {
+    const ib = itemBonus(it);
+    if (!ib) return;
+    Object.keys(ib).forEach(k => b[k] += ib[k]);
+  });
+  b.atk = roundInt(b.atk);
+  b.def = roundInt(b.def);
+  b.hp = roundInt(b.hp);
+  b.mp = roundInt(b.mp);
+  b.critChance = roundTo(b.critChance, 1);
+  b.critDamage = roundTo(b.critDamage, 1);
+  b.accuracy = roundTo(b.accuracy, 1);
+  b.dodgeChance = roundTo(b.dodgeChance, 1);
+  b.dropBonus = roundTo(b.dropBonus, 1);
+  return b;
+}
+function getSetBonusPct(equipped) {
+  if (typeof MYTHIC_V2 === "undefined") return { str: 0, vit: 0, agi: 0, critDamage: 0, ccResist: 0 };
+  return MYTHIC_V2.setEffects(equipped);
+}
+function getStats(player, equipped) {
+  const b = getEquipBonus(equipped);
+  const setBonus = getSetBonusPct(equipped);
+  b.str += setBonus.str || 0;
+  b.vit += setBonus.vit || 0;
+  b.agi += setBonus.agi || 0;
+  const primary = player.primaryStats || { str: 0, vit: 0, agi: 0, dex: 0, luk: 0 };
+  const adjustedBaseAtk = player.baseAtk + b.str * 3 + Math.floor((primary.dex + b.dex) * 0.5) - Math.floor(primary.dex * 0.5);
+  const adjustedBaseDef = player.baseDef + Math.floor((primary.vit + b.vit) * 0.5) - Math.floor(primary.vit * 0.5);
+  const adjustedBaseHp = player.baseMaxHp + b.vit * 12;
+  const adjustedBaseSpeed = (player.baseSpeed || BASE_SPEED) + b.agi * 2;
+  const atkMult = Math.max(0.1, 1 + (player.atkBuffPct || 0) + (player.petAtkBoostPct || 0) - (player.weakenPct || 0));
+  const defBuff = 1 + (player.defBuffPct || 0);
+  return {
+    atk: roundInt((adjustedBaseAtk + b.atk) * atkMult),
+    def: roundInt((adjustedBaseDef + b.def) * defBuff),
+    maxHp: roundInt((adjustedBaseHp + b.hp) * (1 + b.hpPct / 100)),
+    maxMp: roundInt((player.baseMaxMp + b.mp) * (1 + b.mpPct / 100)),
+    speed: roundInt(adjustedBaseSpeed),
+    // These are each the sum of two already-rounded numbers (e.g. 5.1 + 2.3), which floating
+    // point can turn into 7.3999999999999995 even though both inputs were "clean" — re-round
+    // every percentage stat here, since this is the value combat rolls and the UI both read.
+    accuracy: roundTo(Math.min(99, (player.accuracy || 0) + b.accuracy + b.dex * 0.5), 1),
+    critChance: roundTo(Math.min(80, (player.critChance || 0) + b.critChance + b.luk * 0.5), 1),
+    critDamage: roundTo(Math.min(300, (player.critDamage || 0) + b.critDamage + (setBonus.critDamage || 0)), 1),
+    dodgeChance: roundTo(Math.min(60, (player.dodgeChance || 0) + b.dodgeChance + b.agi * 0.5), 1),
+    dropBonus: roundTo((player.dropBonus || 0) + b.dropBonus + b.luk * 0.2, 1),
+    statusResist: roundTo(player.statusResist || 0, 1)
+  };
+}
+function combatPower(stats, level) {
+  return roundInt(stats.atk * 12 + stats.def * 15 + stats.maxHp * 2 + stats.maxMp * 1.5 + (stats.accuracy || 0) * 4 + (stats.critChance || 0) * 8 + (stats.critDamage || 0) * 3 + (stats.dodgeChance || 0) * 6 + level * 50);
+}

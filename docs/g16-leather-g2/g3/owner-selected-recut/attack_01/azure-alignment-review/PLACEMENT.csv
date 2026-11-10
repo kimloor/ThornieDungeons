@@ -1,0 +1,7 @@
+piece,dx,dy,reference_or_target,status
+helmet,0,0,shared canonical head,owner adjustment pending
+arm_rear,0,0,"Azure grip 310,309; raised arm",owner adjustment pending
+arm_front,2,-3,Azure opposite wrist visual guide,owner adjustment pending
+legs_boots,-1,0,Azure boot contact x218 bottom667,owner adjustment pending
+torso_armor,,,"buckle 344,516; scale .26 rotation13 from raw",neck/shoulder still misaligned
+sword,,,"master grip270,515 ->310,309; rotation -172.86425466957812",up-left direction matches Azure

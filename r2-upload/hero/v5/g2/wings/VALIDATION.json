@@ -1,0 +1,146 @@
+{
+  "revision": "05",
+  "frames": {
+    "idle_01": {
+      "source": "user-selected original pair",
+      "rgba_transparent_768": true,
+      "no_border_clipping": true,
+      "far_rotation_deg": -5,
+      "near_translation": [
+        0,
+        0
+      ]
+    },
+    "idle_02": {
+      "source": "user-selected original pair",
+      "rgba_transparent_768": true,
+      "no_border_clipping": true,
+      "far_rotation_deg": -5,
+      "near_translation": [
+        0,
+        0
+      ]
+    },
+    "idle_03": {
+      "source": "user-selected original pair",
+      "rgba_transparent_768": true,
+      "no_border_clipping": true,
+      "far_rotation_deg": -5,
+      "near_translation": [
+        0,
+        0
+      ]
+    },
+    "attack_01": {
+      "source": "HERO_V5_G2_WING_TEMPLATE_REVIEW_R4_FULL",
+      "rgba_transparent_768": true,
+      "no_border_clipping": true,
+      "far_rotation_deg": -5,
+      "near_translation": [
+        0,
+        0
+      ]
+    },
+    "attack_02": {
+      "source": "HERO_V5_G2_WING_TEMPLATE_REVIEW_R4_FULL",
+      "rgba_transparent_768": true,
+      "no_border_clipping": true,
+      "far_rotation_deg": -4,
+      "near_translation": [
+        0,
+        0
+      ]
+    },
+    "attack_03": {
+      "source": "HERO_V5_G2_WING_TEMPLATE_REVIEW_R4_FULL",
+      "rgba_transparent_768": true,
+      "no_border_clipping": true,
+      "far_rotation_deg": -5,
+      "near_translation": [
+        -8,
+        22
+      ]
+    },
+    "death_01": {
+      "source": "HERO_V5_G2_WING_TEMPLATE_REVIEW_R4_FULL",
+      "rgba_transparent_768": true,
+      "no_border_clipping": true,
+      "far_rotation_deg": -5,
+      "near_translation": [
+        0,
+        0
+      ]
+    },
+    "death_02": {
+      "source": "HERO_V5_G2_WING_TEMPLATE_REVIEW_R4_FULL",
+      "rgba_transparent_768": true,
+      "no_border_clipping": true,
+      "far_rotation_deg": -5,
+      "near_translation": [
+        0,
+        0
+      ]
+    }
+  },
+  "checks": {
+    "8_frame_folders": true,
+    "16_PNGs": true,
+    "Hero_and_sources_unchanged": true,
+    "all_other_15_wing_assets_byte_identical_to_R4": true,
+    "other_7_composites_pixel_identical_to_R4": true,
+    "death01_foreground_empty": true,
+    "all_four_GIFs_order_count_pixels_verified": true,
+    "no_interpolation": true
+  },
+  "source_packages": {
+    "HERO_V5_G2_WING_TEMPLATE_REVIEW_R4_FULL.zip": "4ea82ed01027f8138c4e0e41863e1483ab7c21ba854abdcc12fc27d2fd408a60",
+    "HERO_V5_G2_WING_TEMPLATE_REVIEW_R3_DELTA.zip": "a9b0756f832d9c700c6d89de937095c2b47021b597bf0f083442c152a66f8da1",
+    "HERO_V5_G2_PROJECT_LEAD_HANDOFF.zip": "aab841df163a08dc75c4d3783975b2e3ef49838c325cb93904c53af23e1a1079"
+  },
+  "gif_orders": {
+    "IDLE_STAGE": [
+      "idle_01",
+      "idle_02",
+      "idle_03"
+    ],
+    "DEATH_STAGE": [
+      "idle_01",
+      "death_01",
+      "death_02"
+    ],
+    "ATTACK_STAGE": [
+      "idle_01",
+      "attack_01",
+      "attack_02",
+      "attack_03"
+    ],
+    "WING_SEQUENCE": [
+      "idle_01",
+      "idle_02",
+      "idle_03",
+      "attack_01",
+      "attack_02",
+      "attack_03",
+      "death_01",
+      "death_02"
+    ]
+  },
+  "asset_hashes": {
+    "wings_g2_template/idle_01/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "wings_g2_template/idle_01/wing_far.png": "4440416a8540183dfc291a566e9deeb3617cb1c1a47c484f76bef7398060a99a",
+    "wings_g2_template/attack_02/wing_near.png": "fb0e8d2bd90a491e9a05f33e6f6d264570c5de761be7ca2e8f0637a82f1c0904",
+    "wings_g2_template/attack_02/wing_far.png": "73e1298e90c0bda62a337abf03342db18f57b3f633b2e92d1d7b2fff1a1a533e",
+    "wings_g2_template/death_01/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "wings_g2_template/death_01/wing_far.png": "52359b415695a58f356008a5c1211890ae97a00df3d7d7c35deba97624ce368f",
+    "wings_g2_template/idle_03/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "wings_g2_template/idle_03/wing_far.png": "f80741dc32b0d732af3c392b4d318fe65abd6eec8000ae2d29b26207401e90f0",
+    "wings_g2_template/death_02/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "wings_g2_template/death_02/wing_far.png": "c1d2420fd568d1ba0daafd0d626609fda4cf5d11f7a5ad508ffd145721f73967",
+    "wings_g2_template/idle_02/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "wings_g2_template/idle_02/wing_far.png": "88e7f1037c4a3f08cbbbe8474abd7928f04edda2a3d6dc562d63b2659d28c5ab",
+    "wings_g2_template/attack_03/wing_near.png": "f79b83204234f6627b6ebfd987170c9dc6e7d5b6beadffbe1e19a045286b3aac",
+    "wings_g2_template/attack_03/wing_far.png": "3910296579bcf4cd8840c44908fd81fa6ad64d8dda6189312d9d6a75d0c73836",
+    "wings_g2_template/attack_01/wing_near.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "wings_g2_template/attack_01/wing_far.png": "14e034292108ece2e656f32f306fa3e93d41241ee8852e572baf0801014bedd7"
+  }
+}

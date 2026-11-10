@@ -1,0 +1,52 @@
+{
+  "status": "OWNER_VISUAL_APPROVED_ONE_PIECE",
+  "piece": "helmet",
+  "frame": "attack_01",
+  "ownerSelectedSource": "F8646736-0EB7-4371-A1D8-87FCF8B13B71.png",
+  "sourceDimensions": [
+    1254,
+    1254
+  ],
+  "sourceSha256": "69cb47997c2f376e91c1460adb093a28ece6b0d5373d566257401b6578a94bab",
+  "canvas": [
+    768,
+    768
+  ],
+  "origin": [
+    0,
+    0
+  ],
+  "runtimeOffsetBaked": false,
+  "sourceNormalization": "uniform full-canvas resize to 768; no recenter",
+  "generatedDonorTo768Affine": [
+    [
+      0.4436972996050804,
+      -0.0232415412530688,
+      111.56588216458559
+    ],
+    [
+      -0.003202049311559494,
+      0.388488632724944,
+      81.74663784822292
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "sourceFaceAndArmExcluded": true,
+  "hiddenHelmetMaterialCompleted": true,
+  "farCheekDonorExtensionRemoved": true,
+  "alphaBounds": [
+    277,
+    240,
+    486,
+    415
+  ],
+  "exportSha256": "fe7857892db382855107d937b46d87a8fd3d50158e6afbd339f613f653190b0a",
+  "noOtherPiecesStarted": true,
+  "promotedToFinal": false,
+  "method": "ImageGen isolated extraction + hidden completion; whole-helmet offline registration; no pixel-identity claim",
+  "ownerApprovalEvidence": "Owner: โอเค ทำต่อได้เลย; subsequent ทำต่อ (2026-10-27)"
+}

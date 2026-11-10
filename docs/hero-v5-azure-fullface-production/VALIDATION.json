@@ -1,0 +1,177 @@
+{
+  "status": "PASS",
+  "canvas": [
+    768,
+    768
+  ],
+  "fullFaceHelmet": true,
+  "hideHairLayers": [
+    "hair_back",
+    "hair_front"
+  ],
+  "inGameQA": false,
+  "frames": {
+    "idle_01": {
+      "bbox": [
+        192,
+        106,
+        477,
+        417
+      ],
+      "path": "hero/v5/g2/equipment/azure/idle_01/helmet.png",
+      "sha256": "cb8598c9b16190561e2dbb7cac2f68a865f585624daeb4da35c845ab29e5b7fc",
+      "chinAnchor": [
+        400,
+        411
+      ]
+    },
+    "idle_02": {
+      "bbox": [
+        192,
+        94,
+        477,
+        405
+      ],
+      "path": "hero/v5/g2/equipment/azure/idle_02/helmet.png",
+      "sha256": "fdadd1f152020f8b2f3526482c3f2673857c55950fc4fb560cf17555125c9388",
+      "chinAnchor": [
+        400,
+        399
+      ]
+    },
+    "idle_03": {
+      "bbox": [
+        192,
+        102,
+        477,
+        413
+      ],
+      "path": "hero/v5/g2/equipment/azure/idle_03/helmet.png",
+      "sha256": "a416a5900192d67d106104f7288cc380a8ab1622455b4022cc9605bff40a247f",
+      "chinAnchor": [
+        400,
+        407
+      ]
+    },
+    "attack_01": {
+      "bbox": [
+        206,
+        130,
+        491,
+        466
+      ],
+      "path": "hero/v5/g2/equipment/azure/attack_01/helmet.png",
+      "sha256": "175dae552fbe060039f305830996440c3df1d661ddbf927e9619625a91baf63d",
+      "chinAnchor": [
+        414,
+        459
+      ]
+    },
+    "attack_02": {
+      "bbox": [
+        168,
+        164,
+        453,
+        464
+      ],
+      "path": "hero/v5/g2/equipment/azure/attack_02/helmet.png",
+      "sha256": "ce407df5662708ff904953157f75599e6ef14ac1b54e9bd7cae89b365b91041d",
+      "chinAnchor": [
+        376,
+        458
+      ]
+    },
+    "attack_03": {
+      "bbox": [
+        168,
+        136,
+        453,
+        466
+      ],
+      "path": "hero/v5/g2/equipment/azure/attack_03/helmet.png",
+      "sha256": "008bdf66e935695eae8ba9a21a0243c4f23c24a96277c615a812616c543c62eb",
+      "chinAnchor": [
+        376,
+        459
+      ]
+    },
+    "death_01": {
+      "bbox": [
+        200,
+        122,
+        485,
+        414
+      ],
+      "path": "hero/v5/g2/equipment/azure/death_01/helmet.png",
+      "sha256": "57404a99d01e0bfe54682d93bb57df14d66028f44e70567865e8fbae9334bc12",
+      "chinAnchor": [
+        391,
+        408
+      ]
+    },
+    "death_02": {
+      "bbox": [
+        215,
+        242,
+        500,
+        580
+      ],
+      "path": "hero/v5/g2/equipment/azure/death_02/helmet.png",
+      "sha256": "8899e3d44ef103d1fc4306bdb9b1156c38895ba06b75f2903895c8dd726cbcbd",
+      "chinAnchor": [
+        417,
+        573
+      ]
+    }
+  },
+  "preservedHashes": {
+    "hero/v5/g2/equipment/azure/idle_01/coverage_underlay.png": "88e31b85625d1df431bee32764e119609be3d71fb37dc3ebb9824d25fee07ae7",
+    "hero/v5/g2/equipment/azure/idle_01/torso_armor.png": "6817f335678d0b0d1d303601dea7715f62efcf020c4a8206d6aabd74a74b615b",
+    "hero/v5/g2/equipment/azure/idle_01/legs_boots.png": "c40d2789e7572479c11f545819dd5cbdc38a2f166087912ac8d8c575b56ea4a4",
+    "hero/v5/g2/equipment/azure/idle_01/arm_rear.png": "7f9390140fb1b999be848bdf780bb247debd636abf6ece671e8f6c7fad1c80de",
+    "hero/v5/g2/equipment/azure/idle_01/sword_w7_idle_v3.png": "8cf7a65a35e70defcc9420ec1b72e533f76bbdbc45e3675700d851bb3212b410",
+    "hero/v5/g2/equipment/azure/idle_01/arm_front.png": "ed56392fc8bf0ee97088ce2d3bca2bf2eff7766b10b7d5703b7df4889844e0df",
+    "hero/v5/g2/equipment/azure/idle_02/coverage_underlay.png": "bc4ec195b5e953a30b8d68c6e6809e6bf4f03297b645e2d34b3b238c2ce5ee78",
+    "hero/v5/g2/equipment/azure/idle_02/torso_armor.png": "80ef98894cd1be91aab5d895dd1920c1ffd89632ac4d81c537340700efef3c86",
+    "hero/v5/g2/equipment/azure/idle_02/legs_boots.png": "23751dbc847b75bf9a6200072033512444d88a2eb4de93bdc126936b4a70c796",
+    "hero/v5/g2/equipment/azure/idle_02/arm_rear.png": "7d9c170cbffdeabd0af92c089c1f7dadf51010abad6f5b55416f71d7b30fd356",
+    "hero/v5/g2/equipment/azure/idle_02/sword_w7_idle_v3.png": "cca249f877ae6237c12ed9c500b9eff1aaa56be809c3cd843337bd60476d986c",
+    "hero/v5/g2/equipment/azure/idle_02/arm_front.png": "a7012b2d4bed1b786c0077a04f5f5db3418bca94f90af202939fff629daa2f29",
+    "hero/v5/g2/equipment/azure/idle_03/coverage_underlay.png": "a226f4cf3959ef96fc28a3610dc839fa3b7da2f7c691ade83e103185ae4a1419",
+    "hero/v5/g2/equipment/azure/idle_03/torso_armor.png": "c598bb6fa50af554a0bb5fa02ff4a79b9e65cee61fe592b7a6f1cb61e6f7ce81",
+    "hero/v5/g2/equipment/azure/idle_03/legs_boots.png": "4fc6e10492ebf7d2dfb037abf50623dbd694dbf1a770da77c4c30db216a5a353",
+    "hero/v5/g2/equipment/azure/idle_03/arm_rear.png": "282d04996a30348d6506a794dcac58e1ec5c1635fe13b1e5a10a870babe6c4d4",
+    "hero/v5/g2/equipment/azure/idle_03/sword_w7_idle_v3.png": "52f7567dbf078c6903184639cba5c7bd660fbb73d044878543bd991bde7d8e72",
+    "hero/v5/g2/equipment/azure/idle_03/arm_front.png": "166961b876987e0956a161bb7b38509844bd29796bdf3f275fa788ae1e0974c0",
+    "hero/v5/g2/equipment/azure/attack_01/coverage_underlay.png": "7da34d8662ad29b54797b6f384d03aa4e6440303c6875aeaf52eb81dde39747a",
+    "hero/v5/g2/equipment/azure/attack_01/torso_armor.png": "5739697871758ab0a70190afc70c71747857c3a0aec00588892d5e746859434d",
+    "hero/v5/g2/equipment/azure/attack_01/legs_boots.png": "391b099f5852d0dad0e2395e971778f3379a350a69019762f4862ba79e445b83",
+    "hero/v5/g2/equipment/azure/attack_01/arm_rear.png": "a5b2a5383e5a8dfb2be94314be19aea9b9752001929ea1eb8da5846cf12a1f47",
+    "hero/v5/g2/equipment/azure/attack_01/sword.png": "0b96a711d24c2d3c4eaaa911cc512a6659c9388683e2e1a83b24d11f6cf43cc7",
+    "hero/v5/g2/equipment/azure/attack_01/arm_front.png": "ba5898774b7f8ead9751e54292f5b4a153ba8cfd1e870e2c70da872bcd2229f0",
+    "hero/v5/g2/equipment/azure/attack_02/coverage_underlay.png": "514bd1e6f3d6701da4f4c013bc094f7bfb5e553ae5f503af1765e352be9c39f5",
+    "hero/v5/g2/equipment/azure/attack_02/torso_armor.png": "3dfcffb32fae6ed95246c80df470a77a6541b535706ce7771e0f289302c5bc1f",
+    "hero/v5/g2/equipment/azure/attack_02/legs_boots.png": "334fcdc9c4203e5dd9ef2e99d96d38320436dcccfe0bec5c79eaabe340b1e4c5",
+    "hero/v5/g2/equipment/azure/attack_02/arm_rear.png": "bdbfd58d7b0b7714eb67edc4cf0b1295c1a0eb834b959a9fcf25d651d77531c1",
+    "hero/v5/g2/equipment/azure/attack_02/sword.png": "073337dd445e234098177b810764cbf8d3adc5cd2faacbc11bf51545f1fa50b9",
+    "hero/v5/g2/equipment/azure/attack_02/arm_front.png": "2dbb0594cc510d42e64b33c1c13ca119de742bc64e5e64db212fbe9a3605ed3d",
+    "hero/v5/g2/equipment/azure/attack_03/coverage_underlay.png": "64c09ce405dfe296d622dbc47efed5d9a32c1fdc82ccafc1fd21a1a386631a0d",
+    "hero/v5/g2/equipment/azure/attack_03/torso_armor.png": "2ebe36ce3aca7a4f48ae6a7031b6339f1f5c8f340b8c15acd407034ea9ffeeae",
+    "hero/v5/g2/equipment/azure/attack_03/legs_boots.png": "9fc1423641de99683c81bcbbee51cdf6f485383d15529bcb6f2285a188ee27ab",
+    "hero/v5/g2/equipment/azure/attack_03/arm_rear.png": "0477e6da2ccb676d717e6e48f7e11a97db93b80bd4159260487db4f42de7ebd0",
+    "hero/v5/g2/equipment/azure/attack_03/sword.png": "cb0bd129b72cd48de7d7ef37081db173538963bc5c03ea6cdad61bde9016a589",
+    "hero/v5/g2/equipment/azure/attack_03/arm_front.png": "f184d9ca649650ed10d6f8de0d673e994ec0ab3e17d4b5bfc44126cf4fbb1d6f",
+    "hero/v5/g2/equipment/azure/death_01/coverage_underlay.png": "5c2ec80e7d520c01d20cd58193ddc487a85c540f04db4f780a493b3a846a903c",
+    "hero/v5/g2/equipment/azure/death_01/torso_armor.png": "4bf800fb5d99815dd45506d0dccb3313164f01a62b511863407621b200f6e02b",
+    "hero/v5/g2/equipment/azure/death_01/legs_boots.png": "21ba7b7a1d72156bbae40d476f5c4d785bd933a944bd1422d89a257f04b7a91c",
+    "hero/v5/g2/equipment/azure/death_01/arm_rear.png": "3d86f1e52bc2b1a5be6e9bd8b5647b30b4ebcc53877c94d98b9e5b5d5cdfaf8c",
+    "hero/v5/g2/equipment/azure/death_01/sword.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "hero/v5/g2/equipment/azure/death_01/arm_front.png": "7a7a11dbf532098d37af6b9b182d003584e58cc6877ade4cc913a30eee3ef818",
+    "hero/v5/g2/equipment/azure/death_02/coverage_underlay.png": "48ddaa6af157db951ec98a6c81c3e72e8955c1520b311be17e64f87722f98b37",
+    "hero/v5/g2/equipment/azure/death_02/torso_armor.png": "d33f8cf60a1abc51701ae8bf32c5a25572bc11596c92b9b6d43a876da5f12d7c",
+    "hero/v5/g2/equipment/azure/death_02/legs_boots.png": "5520fd69eea0e7a4c64807154ff4bbc667f874c0469b077b62808268ee6eb917",
+    "hero/v5/g2/equipment/azure/death_02/arm_rear.png": "e83662471b5130915fde898166330ad084215d73b718651cb3df20a70eb34637",
+    "hero/v5/g2/equipment/azure/death_02/sword.png": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+    "hero/v5/g2/equipment/azure/death_02/arm_front.png": "cdd39360bacd0b02201a25e502734b1765b92d8dd9ece938c1704cee42755448"
+  }
+}

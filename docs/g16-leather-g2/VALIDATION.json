@@ -1,0 +1,120 @@
+{
+  "status": "G16_G2_OWNER_REVIEW_PENDING",
+  "coverageEmpty": true,
+  "canvas": [
+    768,
+    768
+  ],
+  "origin": [
+    0,
+    0
+  ],
+  "runtimeChanged": false,
+  "currentContractComposite": "qa/current_contract_order.png",
+  "proposedPreviewOrder": [
+    "legs_boots",
+    "arm_rear",
+    "arm_front",
+    "torso_armor",
+    "helmet",
+    "sword",
+    "right_hand_occlusion"
+  ],
+  "runtimeCompatibility": "DEV approval required; proposed arms/waist-before-torso order differs from current contract",
+  "files": [
+    {
+      "name": "coverage_underlay",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "addedAlphaPixels": 0,
+      "removedAlphaPixels": 0,
+      "addedHiddenInProposedComposite": 0,
+      "addedVisibleInProposedComposite": 0
+    },
+    {
+      "name": "torso_armor",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "sha256": "d9e5be85ac66d27f286227ce442dd5b036198468077f838302f8421bed470166",
+      "addedAlphaPixels": 1090,
+      "removedAlphaPixels": 0,
+      "addedHiddenInProposedComposite": 36,
+      "addedVisibleInProposedComposite": 1054
+    },
+    {
+      "name": "legs_boots",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "sha256": "4ec24b9c709e659e90abf32343b2f91848e44cb8402cddbeae59ec3a150463d5",
+      "addedAlphaPixels": 2518,
+      "removedAlphaPixels": 102,
+      "addedHiddenInProposedComposite": 2349,
+      "addedVisibleInProposedComposite": 169,
+      "originalPixelsFromY515Unchanged": true
+    },
+    {
+      "name": "arm_rear",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "sha256": "20db657e38bb1d6581216a6eb234b179873dcd1f0dc203099aa5ca2ab655f88d",
+      "addedAlphaPixels": 2146,
+      "removedAlphaPixels": 1,
+      "addedHiddenInProposedComposite": 2045,
+      "addedVisibleInProposedComposite": 101,
+      "originalLowerArmPixelsUnchanged": true
+    },
+    {
+      "name": "helmet",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "sha256": "ff2051efd61d15dc7db0f47a4c218dc262c73300a4652df9ec3c3911a7674931",
+      "addedAlphaPixels": 0,
+      "removedAlphaPixels": 404,
+      "addedHiddenInProposedComposite": 0,
+      "addedVisibleInProposedComposite": 0
+    },
+    {
+      "name": "sword",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "sha256": "b3786f8f1e69c4c2924844df57d12d65804d11b3ce24bf80a18b2e286e8b960d",
+      "addedAlphaPixels": 0,
+      "removedAlphaPixels": 0,
+      "addedHiddenInProposedComposite": 0,
+      "addedVisibleInProposedComposite": 0
+    },
+    {
+      "name": "arm_front",
+      "dimensions": [
+        768,
+        768
+      ],
+      "mode": "RGBA",
+      "sha256": "ba3736cb72deb0c0710849e8d35e643db73ec619887d3d66135939250fb111c1",
+      "addedAlphaPixels": 612,
+      "removedAlphaPixels": 13,
+      "addedHiddenInProposedComposite": 597,
+      "addedVisibleInProposedComposite": 15,
+      "originalLowerArmPixelsUnchanged": true
+    }
+  ]
+}

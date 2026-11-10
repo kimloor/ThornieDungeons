@@ -1,0 +1,657 @@
+{
+  "status": "ATTACK_REAR_TORSO_CORRECTION_COMPLETE_OWNER_ART_REVIEW_PENDING",
+  "mainChecked": "7ef31753b969386d2750857dddaa53d44c03081c",
+  "branchParent": "3f76ca6bc99c4099ee6f7f324a5d7304f740796a",
+  "risk": "MEDIUM torso material correction only",
+  "poseAcceptance": {
+    "authority": "Owner explicitly confirmed all three attack poses match",
+    "attack_01": true,
+    "attack_02": true,
+    "attack_03": true,
+    "poseChangesAuthorized": false
+  },
+  "torsoFacing": {
+    "attack_01": "front",
+    "attack_02": "three_quarter_rear",
+    "attack_03": "three_quarter_rear"
+  },
+  "changedExportPaths": [
+    "exports/attack_02/torso_armor.png",
+    "exports/attack_03/torso_armor.png"
+  ],
+  "unchangedExportPaths": 19,
+  "attack01AllSevenByteIdentical": true,
+  "allTorsoAlphaPixelIdentical": true,
+  "allCompositeAlphaPixelIdentical": true,
+  "protectedIdlePngCount": 28,
+  "baseHashes": {
+    "idle_01": "1c4e9d24d7d560b96e85dbdbccc47d17739c156a1377d4afb7f53fd90983e5e5",
+    "idle_02": "18c5935634ffbf3758eadb505864cf44a1143a349e742591e0bf7db5fc5773f9",
+    "idle_03": "bd15c3f045e362030d885fe65b5a3725ccbd6c4ed30d8da3868af66730ccc981",
+    "attack_01": "b4988d02cf36bfa982402d33f21d235bcf69695970e3141e981574bd0a8dc442",
+    "attack_02": "d6b5c542822e5d88702e882721eeabb74c07703b72ec88414410c6f0bac6db9a",
+    "attack_03": "9bde71e4bfc678ee1c2a3aaf8fb7562d7a7cdfeb3b3e2e2998c30da814ab4667",
+    "death_01": "8fe820026682becdc889f4adce522722720c78d242d7007ed994cd113fad292b",
+    "death_02": "b9c5f58a1a03a921c21ab45e3ac60fe070347988755ed639e365a9c13e0e0ae3"
+  },
+  "azureTorsoReferences": [
+    {
+      "frame": "attack_02",
+      "selectedPath": "hero/v5/g2/equipment/azure/attack_02/torso_armor.png",
+      "sha256": "3dfcffb32fae6ed95246c80df470a77a6541b535706ce7771e0f289302c5bc1f"
+    },
+    {
+      "frame": "attack_03",
+      "selectedPath": "hero/v5/g2/equipment/azure/attack_03/torso_armor.png",
+      "sha256": "2ebe36ce3aca7a4f48ae6a7031b6339f1f5c8f340b8c15acd407034ea9ffeeae"
+    }
+  ],
+  "materialRegistration": {
+    "attack_02": {
+      "nativeDonorSize": [
+        1254,
+        1254
+      ],
+      "donorSha256": "57336efa9e725a5b70a8aedd895a217a44662e6f4b9bd656eaae733fe67867b8",
+      "inputSourceCrop": [
+        220,
+        360,
+        440,
+        580
+      ],
+      "inputReviewSize": [
+        1024,
+        1024
+      ],
+      "uniformNormalization": [
+        220,
+        220
+      ],
+      "canvasPlacement": [
+        220,
+        360
+      ],
+      "admittedChannels": "RGB only; original alpha exact",
+      "transparentDonorEdgeMethod": "nearest opaque donor material color, alpha threshold 200",
+      "changedRgbPixels": 7539,
+      "changedBounds": [
+        264,
+        400,
+        384,
+        524
+      ],
+      "alphaPixelIdentical": true,
+      "torsoFacing": "three_quarter_rear"
+    },
+    "attack_03": {
+      "nativeDonorSize": [
+        1254,
+        1254
+      ],
+      "donorSha256": "6b210b236934ff4a511fd7059f80f7a149e1ca37517ac0dc54f292b3372762db",
+      "inputSourceCrop": [
+        220,
+        360,
+        440,
+        580
+      ],
+      "inputReviewSize": [
+        1024,
+        1024
+      ],
+      "uniformNormalization": [
+        220,
+        220
+      ],
+      "canvasPlacement": [
+        220,
+        360
+      ],
+      "admittedChannels": "RGB only; original alpha exact",
+      "transparentDonorEdgeMethod": "nearest opaque donor material color, alpha threshold 200",
+      "changedRgbPixels": 7535,
+      "changedBounds": [
+        265,
+        401,
+        385,
+        525
+      ],
+      "alphaPixelIdentical": true,
+      "torsoFacing": "three_quarter_rear"
+    }
+  },
+  "pipelinePath": "docs/EQUIPMENT-SPRITE-PIPELINE-V1.md",
+  "pipelineSha256": "7406ec5a128d1dca6ac065cd70678b19716c0cdf53c5bbd9911de31d1580fd79",
+  "candidatePngPaths": 21,
+  "correctedTorsoArtworkAccepted": false,
+  "G3Complete": false,
+  "G4Ready": false,
+  "deathFramesCreated": false,
+  "finalInventoryPromotion": false,
+  "runtimeChanged": false,
+  "slotMappingChanged": false,
+  "manifestChanged": false,
+  "R2Uploaded": false,
+  "deployed": false,
+  "files": [
+    {
+      "frame": "attack_01",
+      "layer": "coverage_underlay",
+      "path": "exports/attack_01/coverage_underlay.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "sourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "identicalToPrevious": true,
+      "alphaBounds": null,
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
+    },
+    {
+      "frame": "attack_01",
+      "layer": "torso_armor",
+      "path": "exports/attack_01/torso_armor.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "f84fa06dfc72da74dafca66e0425af3fccd635e4f90de17029856aa52d867ba4",
+      "sourceSha256": "f84fa06dfc72da74dafca66e0425af3fccd635e4f90de17029856aa52d867ba4",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        278,
+        370,
+        476,
+        565
+      ],
+      "alphaNonzeroPixels": 10080,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_01",
+      "layer": "legs_boots",
+      "path": "exports/attack_01/legs_boots.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "fe364938cbe6105dc66dd640db1afb1a66ae5e85250f8a2314f69856637eddaf",
+      "sourceSha256": "fe364938cbe6105dc66dd640db1afb1a66ae5e85250f8a2314f69856637eddaf",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        228,
+        493,
+        440,
+        667
+      ],
+      "alphaNonzeroPixels": 16772,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_01",
+      "layer": "arm_rear",
+      "path": "exports/attack_01/arm_rear.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "ccd36349a8191d92650db7a4d4c854e97d15b95b9f57d36d60e274929574e2bb",
+      "sourceSha256": "ccd36349a8191d92650db7a4d4c854e97d15b95b9f57d36d60e274929574e2bb",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        233,
+        277,
+        342,
+        462
+      ],
+      "alphaNonzeroPixels": 10002,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_01",
+      "layer": "helmet",
+      "path": "exports/attack_01/helmet.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "c3465a4eea526918b3d8eac6967166e44ae10f49513f03ecbf31240dfb328318",
+      "sourceSha256": "c3465a4eea526918b3d8eac6967166e44ae10f49513f03ecbf31240dfb328318",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        261,
+        240,
+        470,
+        415
+      ],
+      "alphaNonzeroPixels": 21087,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_01",
+      "layer": "sword",
+      "path": "exports/attack_01/sword.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "5561eecdbd0d53476a4259d30d3e43160609aa6e0a6fcad80e39bee389f3acbb",
+      "sourceSha256": "5561eecdbd0d53476a4259d30d3e43160609aa6e0a6fcad80e39bee389f3acbb",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        125,
+        167,
+        348,
+        339
+      ],
+      "alphaNonzeroPixels": 6341,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_01",
+      "layer": "arm_front",
+      "path": "exports/attack_01/arm_front.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "c770895a656139cb1a8b1f5a9d9e3e537e72503b9be3db2d0a88d62c933d5148",
+      "sourceSha256": "c770895a656139cb1a8b1f5a9d9e3e537e72503b9be3db2d0a88d62c933d5148",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        374,
+        432,
+        515,
+        518
+      ],
+      "alphaNonzeroPixels": 5692,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_02",
+      "layer": "coverage_underlay",
+      "path": "exports/attack_02/coverage_underlay.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "sourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "identicalToPrevious": true,
+      "alphaBounds": null,
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
+    },
+    {
+      "frame": "attack_02",
+      "layer": "torso_armor",
+      "path": "exports/attack_02/torso_armor.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "474fa5144e7826c7f1d2e8fed116242e7346c5abd191bd83e5566cfeb9d1ff58",
+      "sourceSha256": "92191d34c6dedc42b8bc6ba399431e012ca9d09e480c4784c57669b385995d5c",
+      "identicalToPrevious": false,
+      "alphaBounds": [
+        264,
+        400,
+        442,
+        565
+      ],
+      "alphaNonzeroPixels": 7543,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_02",
+      "layer": "legs_boots",
+      "path": "exports/attack_02/legs_boots.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "2bfd21ee0b43ac37e522f4c4d6969ac01bfd6e6400dde41a7be1f2de7222e7c4",
+      "sourceSha256": "2bfd21ee0b43ac37e522f4c4d6969ac01bfd6e6400dde41a7be1f2de7222e7c4",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        189,
+        495,
+        401,
+        669
+      ],
+      "alphaNonzeroPixels": 16772,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_02",
+      "layer": "arm_rear",
+      "path": "exports/attack_02/arm_rear.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "6653c23663d9a263d6bf9d504f7dbc02142c847ee2428541f6d53790899fa086",
+      "sourceSha256": "6653c23663d9a263d6bf9d504f7dbc02142c847ee2428541f6d53790899fa086",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        337,
+        417,
+        515,
+        482
+      ],
+      "alphaNonzeroPixels": 8047,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_02",
+      "layer": "helmet",
+      "path": "exports/attack_02/helmet.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "13b3766ef2bf7ad0831e8e80350887aded8599c607baa15669ce7591a82ee4a4",
+      "sourceSha256": "13b3766ef2bf7ad0831e8e80350887aded8599c607baa15669ce7591a82ee4a4",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        227,
+        239,
+        436,
+        414
+      ],
+      "alphaNonzeroPixels": 21087,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_02",
+      "layer": "sword",
+      "path": "exports/attack_02/sword.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "e0dc0057c3c10c0a42348038896954722b254a6a870eefa0b0fba3d26fde850a",
+      "sourceSha256": "e0dc0057c3c10c0a42348038896954722b254a6a870eefa0b0fba3d26fde850a",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        462,
+        251,
+        614,
+        487
+      ],
+      "alphaNonzeroPixels": 6332,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_02",
+      "layer": "arm_front",
+      "path": "exports/attack_02/arm_front.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "02c6b3b5f74a28931fbb3c183b4c39dcc5135277586b891adc9aa3048b1a6b50",
+      "sourceSha256": "02c6b3b5f74a28931fbb3c183b4c39dcc5135277586b891adc9aa3048b1a6b50",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        189,
+        408,
+        292,
+        478
+      ],
+      "alphaNonzeroPixels": 3860,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_03",
+      "layer": "coverage_underlay",
+      "path": "exports/attack_03/coverage_underlay.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "sourceSha256": "4969b58a1b0895fca393e36f8a9b5a86562d236dccb936df7d4082012485123b",
+      "identicalToPrevious": true,
+      "alphaBounds": null,
+      "alphaNonzeroPixels": 0,
+      "edgeAlphaNonzero": 0,
+      "emptyReason": "Owner: coverage belongs to each equipment piece; no shared underlay artwork"
+    },
+    {
+      "frame": "attack_03",
+      "layer": "torso_armor",
+      "path": "exports/attack_03/torso_armor.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "2bc9388f7d0fa88baa5409262e8407ca7760de3ad33d5ea20990719d389c8e2c",
+      "sourceSha256": "8f2cabce41905140c1274e1396e18382e120d6359acf11b2d64497f7d7541476",
+      "identicalToPrevious": false,
+      "alphaBounds": [
+        265,
+        401,
+        443,
+        566
+      ],
+      "alphaNonzeroPixels": 7539,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_03",
+      "layer": "legs_boots",
+      "path": "exports/attack_03/legs_boots.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "209ee607054365a7ec17a44922557d0cfc978f186de4b01b89b63c3ddd2aba55",
+      "sourceSha256": "209ee607054365a7ec17a44922557d0cfc978f186de4b01b89b63c3ddd2aba55",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        209,
+        492,
+        393,
+        672
+      ],
+      "alphaNonzeroPixels": 16625,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_03",
+      "layer": "arm_rear",
+      "path": "exports/attack_03/arm_rear.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "9b5ff381f9ad3645e7c500e3e891a18aed9226848f8526868416a5e432f33a00",
+      "sourceSha256": "9b5ff381f9ad3645e7c500e3e891a18aed9226848f8526868416a5e432f33a00",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        330,
+        431,
+        437,
+        575
+      ],
+      "alphaNonzeroPixels": 7093,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_03",
+      "layer": "helmet",
+      "path": "exports/attack_03/helmet.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "13b3766ef2bf7ad0831e8e80350887aded8599c607baa15669ce7591a82ee4a4",
+      "sourceSha256": "13b3766ef2bf7ad0831e8e80350887aded8599c607baa15669ce7591a82ee4a4",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        227,
+        239,
+        436,
+        414
+      ],
+      "alphaNonzeroPixels": 21087,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_03",
+      "layer": "sword",
+      "path": "exports/attack_03/sword.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "4c07195c55d4136e6275a03a3373059b317ee219e4c858d16db1d2764a235e77",
+      "sourceSha256": "4c07195c55d4136e6275a03a3373059b317ee219e4c858d16db1d2764a235e77",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        371,
+        526,
+        634,
+        626
+      ],
+      "alphaNonzeroPixels": 6344,
+      "edgeAlphaNonzero": 0
+    },
+    {
+      "frame": "attack_03",
+      "layer": "arm_front",
+      "path": "exports/attack_03/arm_front.png",
+      "dimensions": [
+        768,
+        768
+      ],
+      "origin": [
+        0,
+        0
+      ],
+      "mode": "RGBA",
+      "sha256": "816873b3eedc694d1e40ad3516a019afcfdb4784f1703136d65de2b81100e54e",
+      "sourceSha256": "816873b3eedc694d1e40ad3516a019afcfdb4784f1703136d65de2b81100e54e",
+      "identicalToPrevious": true,
+      "alphaBounds": [
+        209,
+        420,
+        304,
+        518
+      ],
+      "alphaNonzeroPixels": 4261,
+      "edgeAlphaNonzero": 0
+    }
+  ],
+  "knownIssues": [
+    "Owner has accepted the poses, not yet this corrected rear-torso artwork.",
+    "Previously existing non-torso seams are preserved; no new pose/arm/leg fitting is authorized here.",
+    "Runtime compatibility for Owner offline ordering and reconstructed per-pose hand crops remains a separate DEV review; no crop was broadened.",
+    "Death_01/02 still outstanding; do not claim G3 complete or 56/56 accepted."
+  ]
+}

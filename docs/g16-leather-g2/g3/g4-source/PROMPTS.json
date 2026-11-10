@@ -1,0 +1,21 @@
+{
+  "mode": "built-in ImageGen; isolated-part RGB donors only",
+  "sourceCommit": "7c9d72d938a60cd1d363234bdb8a0905fb2d1f4c",
+  "edits": [
+    {
+      "frame": "death_01",
+      "part": "arm_rear",
+      "prompt": "Use case: precise-object-edit. Image1 is the EXACT isolated leather arm edit target; image2 is approved material/design reference ONLY. Repair ONLY the flat stretched horizontal brown/orange streaks and black color-fill artifacts at the image-left edge of the bracer, cuff, glove palm and fingers in image1. Reconstruct continuous natural brown leather, thin dark contour, smooth material shading and glove finger creases matching image2. Keep image1 EXACT silhouette, relaxed separate fingers, pose, insertion cap, wrist/hand/bracer registration, proportions, canvas framing, blank margins and coordinate placement. Do NOT change image1 into image2's fist or pose. Preserve the existing bracer shape, single rivet, buckle and brass trim; do not add new hardware. No black rectangular tabs, flat bands, skin, missing fingertips, extra fingers, body, text or shadow. Retouch the existing arm in place; don't recenter, scale, rotate or redraw anatomy. Transparent background. One equipment arm only."
+    },
+    {
+      "frame": "death_01",
+      "part": "legs_boots",
+      "prompt": "Use case precise-object-edit. Image1 is the exact isolated backward-falling bent-leg equipment edit target. Image2 is approved Leather material/design reference ONLY. Repair ONLY the flat stretched tan bands, black rectangular/tab-like color patches and repeated stripe artifacts around the heels, outer boot/shin contours and sole edges in image1. Repaint those areas with continuous dark brown leather, subtle natural shading, smooth sewn boot edges and a thin dark outline consistent with image2. Keep EXACT image1 pose, leg and boot silhouettes, foot tips, knees, ankles, canvas positions, same margins and proportions. Preserve all existing knee pads/rivets, trousers, shin wraps and toe-panel design; no new straps or armor design. Do not use image2's standing pose. Do not move, rotate, resize or recenter any part. No body, skin, arms, face, scenery, text, shadows or new objects. Transparent background. One isolated pair of existing trousers/boots, retouched in place, not a new outfit."
+    },
+    {
+      "frame": "death_02",
+      "part": "legs_boots",
+      "prompt": "Use case precise-object-edit. Image1 is the EXACT isolated kneeling Leather trousers/boots target. Its artwork occupies ONLY THE UPPER HALF of a square canvas; keep the LOWER HALF completely blank/transparent. Image2 is approved Leather material/design reference only. Repair ONLY the irregular BLACK BLOCKS and stretched tan stripe artifacts along the rear boot/sole at the image-left edge. Make that existing boot's outer surface continuous dark brown leather with a thin smooth dark sole rim and subtle rounded shading, matching image2. The black rectangular blocks are damage, NOT boot tread: REMOVE the visual block pattern. No new lugs, teeth, tread ridges, thick soles, hardware, straps or design changes. Preserve EXACT image1 folded kneeling anatomy, original outer silhouette, foot tips, leg/knee/ankle locations, knee pads/rivets, shin bands, pants, canvas positions and blank margins. Do NOT use standing pose from image2. Do not move, recenter, rotate, scale or change the legs. No hands, arms, body, skin, face, weapon, text, background or shadow. Retouch original legs in place, transparent output."
+    }
+  ]
+}

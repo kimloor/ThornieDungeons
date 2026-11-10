@@ -1,0 +1,208 @@
+{
+  "canvas": {
+    "width": 768,
+    "height": 768
+  },
+  "idle": [
+    [
+      {
+        "name": "base",
+        "path": "hero/v5/g2/base/idle_01.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "coverage_underlay",
+        "path": "hero/v5/g2/equipment/skeleton/idle_01/coverage_underlay.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "torso_armor",
+        "path": "hero/v5/g2/equipment/skeleton/idle_01/torso_armor.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "legs_boots",
+        "path": "hero/v5/g2/equipment/skeleton/idle_01/legs_boots.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "arm_rear",
+        "path": "hero/v5/g2/equipment/skeleton/idle_01/arm_rear.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "helmet",
+        "path": "hero/v5/g2/equipment/skeleton/idle_01/helmet.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "sword",
+        "path": "hero/v5/g2/equipment/skeleton/idle_01/sword.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "arm_front",
+        "path": "hero/v5/g2/equipment/skeleton/idle_01/arm_front.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      }
+    ],
+    [
+      {
+        "name": "base",
+        "path": "hero/v5/g2/base/idle_02.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "coverage_underlay",
+        "path": "hero/v5/g2/equipment/skeleton/idle_02/coverage_underlay.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "torso_armor",
+        "path": "hero/v5/g2/equipment/skeleton/idle_02/torso_armor.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "legs_boots",
+        "path": "hero/v5/g2/equipment/skeleton/idle_02/legs_boots.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "arm_rear",
+        "path": "hero/v5/g2/equipment/skeleton/idle_02/arm_rear.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "helmet",
+        "path": "hero/v5/g2/equipment/skeleton/idle_02/helmet.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "sword",
+        "path": "hero/v5/g2/equipment/skeleton/idle_02/sword.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "arm_front",
+        "path": "hero/v5/g2/equipment/skeleton/idle_02/arm_front.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      }
+    ],
+    [
+      {
+        "name": "base",
+        "path": "hero/v5/g2/base/idle_03.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "coverage_underlay",
+        "path": "hero/v5/g2/equipment/skeleton/idle_03/coverage_underlay.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "torso_armor",
+        "path": "hero/v5/g2/equipment/skeleton/idle_03/torso_armor.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "legs_boots",
+        "path": "hero/v5/g2/equipment/skeleton/idle_03/legs_boots.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "arm_rear",
+        "path": "hero/v5/g2/equipment/skeleton/idle_03/arm_rear.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "helmet",
+        "path": "hero/v5/g2/equipment/skeleton/idle_03/helmet.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "sword",
+        "path": "hero/v5/g2/equipment/skeleton/idle_03/sword.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      },
+      {
+        "name": "arm_front",
+        "path": "hero/v5/g2/equipment/skeleton/idle_03/arm_front.png",
+        "x": 0,
+        "y": 84,
+        "scale": 1,
+        "rotation": 0
+      }
+    ]
+  ],
+  "frameMs": 440,
+  "visualFallbacks": []
+}
