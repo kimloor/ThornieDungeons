@@ -55,7 +55,7 @@ test("Inventory order: Sort stores the sorted ids and the overlay receives the o
   assert.equal(applyInventoryOrder(items(["a", "b"]), sorted.map(i => i.id)).length, 2);
 });
 
-test("Ver 1.1.47: visible badge, meta and roadmap are in sync", () => {
+test("Ver 1.1.49: visible badge, meta and roadmap are in sync", () => {
   const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
   assert.match(read("src/data/styles.js"), /content: "Ver 1\.1\.47"/);
   assert.match(read("head.html"), /name="application-version" content="1\.1\.47"/);
