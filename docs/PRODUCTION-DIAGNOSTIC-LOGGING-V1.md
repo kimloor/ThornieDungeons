@@ -220,7 +220,7 @@ Toggle it with `BATTLE_ERROR_CATCHER.setEnabled(false)` or re-enable with `setEn
 
 ### Phaser Enhancement Aura presentation
 
-The shared `BATTLE_ERROR_CATCHER.capturePresentation` boundary records Aura renderer
+Introduced in visible game version 1.1.49, the shared `BATTLE_ERROR_CATCHER.capturePresentation` boundary records Aura renderer
 construction/update failures as `enhancement_aura_failed` under `phaser_presentation`.
 It includes only the bounded surface (`inventory`, `dungeon`, or `arena`) and phase
 (`create` or `update`), plus a sanitized reason code. Exception messages, stacks,
