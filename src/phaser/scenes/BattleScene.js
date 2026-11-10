@@ -114,7 +114,7 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         this.createArenaActors();
         return;
       }
-      this.actors.hero = new HeroActor(this, this.snapshot.hero || {});
+      this.actors.hero = new HeroActor(this, this.snapshot.hero || {}, { auraSurface: "dungeon" });
       if (this.snapshot.pet) this.actors.pet = new PetActor(this, this.snapshot.pet);
       this.actors.monsters = (this.snapshot.monsters || []).map(monster => new MonsterActor(this, monster, id => onTargetSelected?.(id)));
     }
@@ -125,9 +125,9 @@ function createBattleScene(Phaser, { initialSnapshot, onReady, onError, onTarget
         || null;
     }
 
-    createArenaActor(data, selectable = false) {
+    createArenaActor(data, selectable = false, auraSurface = "arena") {
       if (!data) return null;
-      const options = selectable ? { onSelect: id => onTargetSelected?.(id) } : {};
+      const options = { auraSurface, ...(selectable ? { onSelect: id => onTargetSelected?.(id) } : {}) };
       return data.kind === "pet"
         ? new PetActor(this, data, options)
         : new HeroActor(this, data, options);
