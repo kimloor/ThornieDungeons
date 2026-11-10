@@ -199,3 +199,9 @@ Workflow `prod-d1-restore-point.yml` (QA branch) ran `wrangler d1 time-travel in
 ### Final sync before merge (2026-11-10)
 - `main` advanced to `104af247` (Ver 1.1.48, Enhancement Aura render fix) after the review of `a758ef4c`, so this PR was synced again by a normal merge (no conflicts, no force push) and bumped to **Ver 1.1.49** to avoid reusing 1.1.48. The sync commit changes only version files, the Info Center entry version, the roadmap line, the version test and these docs; no Worker/admin/seed code. The staging evidence above tested `51d5c3bd` (Ver 1.1.48-era code) and does not cover this sync commit; Production QA has not been done and the flag stays OFF.
 - Synced once more with `main` `23215130` (Ver 1.1.49, Aura fix #209) immediately before merge and bumped to **Ver 1.1.50**; version/docs only, no Worker/admin/seed code. The merge method is a squash merge, matching how main's history is recorded.
+
+### Merge and deployment record (2026-11-10)
+- PR #202 was squash-merged into `main` as `be685bc627d8e14f4c5c9b94597435fb5c97a686` (Ver 1.1.50) at 2026-11-10T04:06:57Z from PR head `01bc6d03`.
+- The merge automatically ran `Deploy ThornieDungeons API` (run 42753758313: credentials, runtime config, pending D1 migrations step, Worker deploy and existence check succeeded; no migration file was part of the PR; live smoke test skipped) and `Deploy ThornieDungeons Frontend` (run 42753758340: succeeded).
+- Status: Implemented yes; Tested yes (unit, and STAGING D1 35/35 on `51d5c3bd`); Merged yes; Deployed yes (code only); Production Verified **no**. `admin_seed_enabled` has no row, so the feature is OFF by design; that was inferred from code and still has to be confirmed by the read-only Production check in the first-use runbook. No Production QA, no Production UI QA, no flag change and no Production data write were done.
+- First use is governed by `ADMIN-V2-W2H-FIRST-USE-RUNBOOK.md` (fresh restore point, Owner-supervised, Owner OK).
