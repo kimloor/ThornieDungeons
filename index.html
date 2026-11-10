@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.53" />
+<meta name="application-version" content="1.1.55" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.53";
+  content: "Ver 1.1.55";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -10485,7 +10485,7 @@ if (typeof module !== "undefined") module.exports = {
       const reason = safeCode(thrown?.code) || `phaser_${safePhase}_failed`;
       const diagnostic = {
         event: "phaser_stage_failed", system: "phaser_presentation",
-        component: "phaser_stage", reason, version: "1.1.53", surface: safeSurface, phase: safePhase
+        component: "phaser_stage", reason, version: "1.1.55", surface: safeSurface, phase: safePhase
       };
       try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
       return { reason, surface: safeSurface, phase: safePhase };
@@ -10497,7 +10497,7 @@ if (typeof module !== "undefined") module.exports = {
       const reason = safeCode(thrown?.code) || `aura_${safePhase}_failed`;
       const diagnostic = {
         event: "enhancement_aura_failed", system: "phaser_presentation",
-        component: "enhancement_aura", reason, version: "1.1.53", surface: safeSurface, phase: safePhase
+        component: "enhancement_aura", reason, version: "1.1.55", surface: safeSurface, phase: safePhase
       };
       try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
       return { reason, surface: safeSurface, phase: safePhase };
@@ -13565,12 +13565,24 @@ const ENHANCEMENT_AURA_THRESHOLDS = Object.freeze([
   Object.freeze({ min: 8, stage: 3 }),
   Object.freeze({ min: 10, stage: 4 })
 ]);
-const ENHANCEMENT_AURA_PALETTE = Object.freeze({
-  1: 0x72d7ff,
-  2: 0x9c8aff,
-  3: 0xffc56b,
-  4: 0xff82cf
+// Replaceable appearance profiles; enhancement stage selects color only.
+const ENHANCEMENT_AURA_STYLES = Object.freeze({
+  goldenPower: Object.freeze({
+    id: "goldenPower",
+    name: "Golden Power",
+    palette: Object.freeze({ 1: 0xfff0a6, 2: 0xffd447, 3: 0xffa52f, 4: 0xff7138 }),
+    intensity: Object.freeze({
+      ringCount: 3, ringLineWidth: 2.6, ringAlpha: 0.34,
+      particleCount: 10, particleAlpha: 0.82, particleRadius: 0.0105,
+      particleOrbitX: 0.39, particleOrbitY: 0.12, pulseDuration: 1120,
+      weaponHaloCount: 3, weaponHaloAlpha: 0.20, weaponHaloPulseAlpha: 0.12
+    })
+  })
 });
+const DEFAULT_ENHANCEMENT_AURA_STYLE = "goldenPower";
+function resolveEnhancementAuraStyle(styleId = DEFAULT_ENHANCEMENT_AURA_STYLE) {
+  return ENHANCEMENT_AURA_STYLES[String(styleId)] || ENHANCEMENT_AURA_STYLES[DEFAULT_ENHANCEMENT_AURA_STYLE];
+}
 
 function enhancementAuraItemLevel(item) {
   if (!item || typeof item !== "object") return 0;
@@ -13606,10 +13618,11 @@ function resolveEnhancementAura(equipped = {}) {
 }
 
 class EnhancementAuraRenderer {
-  constructor(scene, root, displaySize = () => 150) {
+  constructor(scene, root, displaySize = () => 150, styleId = DEFAULT_ENHANCEMENT_AURA_STYLE) {
     this.scene = scene;
     this.root = root;
     this.displaySizeSource = displaySize;
+    this.style = resolveEnhancementAuraStyle(styleId);
     this.characterStage = -1;
     this.weaponStage = -1;
     this.characterRoot = scene.add.container(0, 0).setVisible(false);
@@ -13621,6 +13634,10 @@ class EnhancementAuraRenderer {
     this.weaponHalos = [];
     this.weaponTweens = [];
     this.weaponDiagnosticSignature = "";
+    this.weaponDiagnosticText = typeof scene.add.text === "function"
+      ? scene.add.text(0, 0, "", { fontFamily: "Arial, sans-serif", fontSize: "10px", color: "#ffffff", backgroundColor: "#21152f", padding: { x: 5, y: 3 }, align: "center" }).setOrigin(0.5, 0).setVisible(false)
+      : null;
+    if (this.weaponDiagnosticText) root?.add(this.weaponDiagnosticText);
     this.destroyed = false;
     root?.add(this.characterRoot);
   }
@@ -13655,25 +13672,26 @@ class EnhancementAuraRenderer {
       return;
     }
 
-    const color = ENHANCEMENT_AURA_PALETTE[stage];
-    const ringCount = stage >= 4 ? 3 : stage >= 2 ? 2 : 1;
+    const color = this.style.palette[stage];
+    const intensity = this.style.intensity;
+    const ringCount = intensity.ringCount;
     for (let index = 0; index < ringCount; index += 1) {
       const width = size * (0.72 + index * 0.13);
       const height = size * (0.16 + index * 0.055);
       this.characterGraphics
-        .lineStyle(1.25 + stage * 0.35, color, Math.max(0.16, 0.42 - index * 0.09))
-        .strokeEllipse(0, -size * (0.28 + index * 0.025), width, height);
+        .lineStyle(intensity.ringLineWidth, color, Math.max(0.16, intensity.ringAlpha - index * 0.09))
+        .strokeEllipse(0, size * (0.05 + index * 0.015), width, height);
     }
 
-    const particleCount = Math.min(10, 2 + stage * 2);
+    const particleCount = intensity.particleCount;
     for (let index = 0; index < particleCount; index += 1) {
       const angle = (Math.PI * 2 * index) / particleCount;
       const particle = this.scene.add.circle(
-        Math.cos(angle) * size * 0.39,
-        -size * 0.30 + Math.sin(angle) * size * 0.22,
-        Math.max(1.5, size * (0.009 + stage * 0.0015)),
+        Math.cos(angle) * size * intensity.particleOrbitX,
+        size * 0.05 + Math.sin(angle) * size * intensity.particleOrbitY,
+        Math.max(1.5, size * intensity.particleRadius),
         color,
-        0.82
+        intensity.particleAlpha
       );
       this.characterRoot.add(particle);
       this.characterParticles.push(particle);
@@ -13693,7 +13711,7 @@ class EnhancementAuraRenderer {
     const pulse = this.scene.tweens?.add?.({
       targets: this.characterRoot,
       alpha: 0.62,
-      duration: Math.max(700, 1120 - stage * 70),
+      duration: intensity.pulseDuration,
       yoyo: true,
       repeat: -1,
       ease: "Sine.easeInOut"
@@ -13727,6 +13745,10 @@ class EnhancementAuraRenderer {
     const signature = JSON.stringify(diagnostic);
     if (signature !== this.weaponDiagnosticSignature) {
       this.weaponDiagnosticSignature = signature;
+      const layerSummary = layerNames.slice(0, 5).join(",") || "none";
+      this.weaponDiagnosticText?.setText?.(`Weapon Aura: ${reason}\\n${layerName} / ${layerSummary}`);
+      this.weaponDiagnosticText?.setPosition?.(0, this.displaySize() * 0.66);
+      this.weaponDiagnosticText?.setVisible?.(true);
       try { globalThis.console?.info?.("[weapon-aura-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
     }
     const stageChanged = stage !== this.weaponStage;
@@ -13743,8 +13765,9 @@ class EnhancementAuraRenderer {
 
     const key = weaponImage.texture.key;
     const created = this.ensureWeaponHalos(key);
-    const color = ENHANCEMENT_AURA_PALETTE[stage];
-    const count = stage >= 4 ? 3 : stage >= 3 ? 2 : 1;
+    const color = this.style.palette[stage];
+    const intensity = this.style.intensity;
+    const count = intensity.weaponHaloCount;
     const startPulse = stageChanged || created.length > 0 || this.weaponTweens.length === 0;
     if (startPulse) {
       this.stopTweens(this.weaponTweens);
@@ -13753,10 +13776,10 @@ class EnhancementAuraRenderer {
           halo.setVisible(false);
           return;
         }
-        halo.setTint(color).setAlpha(0.20 - index * 0.035);
+        halo.setTint(color).setAlpha(intensity.weaponHaloAlpha - index * 0.035);
         const tween = this.scene.tweens?.add?.({
           targets: halo,
-          alpha: Math.max(0.035, 0.12 - index * 0.025),
+          alpha: Math.max(0.035, intensity.weaponHaloPulseAlpha - index * 0.025),
           duration: 760 + index * 130,
           yoyo: true,
           repeat: -1,
@@ -13796,16 +13819,14 @@ class EnhancementAuraRenderer {
     this.weaponHalos.filter(halo => halo.visible && root.list.includes(halo)).forEach(halo => {
       root.moveTo(halo, root.list.length - 1);
     });
+    if (this.weaponDiagnosticText && root.list.includes(this.weaponDiagnosticText)) root.moveTo(this.weaponDiagnosticText, root.list.length - 1);
   }
 
   update(aura, heroRenderer) {
     if (this.destroyed) return;
-    // TEMPORARY OWNER-REQUESTED VISIBILITY DIAGNOSTIC:
-    // bypass enhancement/loadout stage gates so the renderer is visibly exercised
-    // on Inventory preview and battlefield HeroActor. Remove after visual diagnosis.
-    const forceVisible = true;
-    const characterStage = forceVisible ? 4 : Math.max(0, Math.min(4, Math.floor(Number(aura?.characterStage) || 0)));
-    const weaponStage = forceVisible ? 4 : Math.max(0, Math.min(4, Math.floor(Number(aura?.weaponStage) || 0)));
+    // Equipped enhancement stage selects palette only; style intensity stays constant.
+    const characterStage = Math.max(0, Math.min(4, Math.floor(Number(aura?.characterStage) || 0)));
+    const weaponStage = Math.max(0, Math.min(4, Math.floor(Number(aura?.weaponStage) || 0)));
     this.updateCharacter(characterStage);
     this.updateWeapon(weaponStage, heroRenderer);
     this.reorder(heroRenderer);
@@ -13825,6 +13846,8 @@ class EnhancementAuraRenderer {
     });
     this.characterParticles = [];
     this.weaponHalos = [];
+    this.weaponDiagnosticText?.destroy?.();
+    this.weaponDiagnosticText = null;
     this.weaponDiagnosticSignature = "";
     this.characterRoot = null;
     this.characterGraphics = null;
@@ -13836,7 +13859,9 @@ class EnhancementAuraRenderer {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     ENHANCEMENT_AURA_THRESHOLDS,
-    ENHANCEMENT_AURA_PALETTE,
+    ENHANCEMENT_AURA_STYLES,
+    DEFAULT_ENHANCEMENT_AURA_STYLE,
+    resolveEnhancementAuraStyle,
     enhancementAuraItemLevel,
     enhancementAuraStage,
     resolveEnhancementAura,
