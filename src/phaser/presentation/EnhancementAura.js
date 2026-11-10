@@ -231,8 +231,12 @@ class EnhancementAuraRenderer {
 
   update(aura, heroRenderer) {
     if (this.destroyed) return;
-    const characterStage = Math.max(0, Math.min(4, Math.floor(Number(aura?.characterStage) || 0)));
-    const weaponStage = Math.max(0, Math.min(4, Math.floor(Number(aura?.weaponStage) || 0)));
+    // TEMPORARY OWNER-REQUESTED VISIBILITY DIAGNOSTIC:
+    // bypass enhancement/loadout stage gates so the renderer is visibly exercised
+    // on Inventory preview and battlefield HeroActor. Remove after visual diagnosis.
+    const forceVisible = true;
+    const characterStage = forceVisible ? 4 : Math.max(0, Math.min(4, Math.floor(Number(aura?.characterStage) || 0)));
+    const weaponStage = forceVisible ? 4 : Math.max(0, Math.min(4, Math.floor(Number(aura?.weaponStage) || 0)));
     this.updateCharacter(characterStage);
     this.updateWeapon(weaponStage, heroRenderer);
     this.reorder(heroRenderer);

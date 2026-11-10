@@ -122,3 +122,10 @@ test("Shared catcher logs sanitized Aura failures and obeys its switch", () => {
     assert.equal(messages.length, 1);
   } finally { catcher.setEnabled(true); console.warn = originalWarn; }
 });
+
+test("Temporary visibility diagnostic bypasses enhancement/loadout Aura stages", () => {
+  const renderer = read("src/phaser/presentation/EnhancementAura.js");
+  assert.match(renderer, /TEMPORARY OWNER-REQUESTED VISIBILITY DIAGNOSTIC/);
+  assert.match(renderer, /const forceVisible = true/);
+  assert.match(renderer, /forceVisible \? 4/);
+});

@@ -509,3 +509,13 @@ Rules:
 - Phaser may place/scale/sequence the whole actor but must not replace authored V5 frames with skeletal or bone-driven motion.
 
 Dungeon exploration is not part of the active Hero V5/Phaser roadmap.
+
+
+## 17.6 Temporary forced-visibility diagnostic — Ver 1.1.52
+
+At the Owner's request, the shared EnhancementAuraRenderer temporarily bypasses the enhancement-level and defensive-loadout stage gates and forces both Character Aura and Weapon Aura to Stage 4. This diagnostic is active in both Inventory Hero Preview and Phaser battlefield HeroActor surfaces.
+
+- Character Aura should render even with no qualifying defensive equipment.
+- Weapon Aura is forced to Stage 4 but still requires a visible, resolved weapon sprite layer to clone; it cannot render when no weapon layer exists.
+- This is a temporary renderer-isolation test, not a change to the approved enhancement rules.
+- Remove the forced override after the Owner confirms the visual result, then restore the normal loadout-derived stage values.

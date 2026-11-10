@@ -15,7 +15,7 @@
       const reason = safeCode(thrown?.code) || `phaser_${safePhase}_failed`;
       const diagnostic = {
         event: "phaser_stage_failed", system: "phaser_presentation",
-        component: "phaser_stage", reason, version: "1.1.51", surface: safeSurface, phase: safePhase
+        component: "phaser_stage", reason, version: "1.1.52", surface: safeSurface, phase: safePhase
       };
       try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
       return { reason, surface: safeSurface, phase: safePhase };
@@ -27,7 +27,7 @@
       const reason = safeCode(thrown?.code) || `aura_${safePhase}_failed`;
       const diagnostic = {
         event: "enhancement_aura_failed", system: "phaser_presentation",
-        component: "enhancement_aura", reason, version: "1.1.51", surface: safeSurface, phase: safePhase
+        component: "enhancement_aura", reason, version: "1.1.52", surface: safeSurface, phase: safePhase
       };
       try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
       return { reason, surface: safeSurface, phase: safePhase };
