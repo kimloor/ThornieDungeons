@@ -115,7 +115,7 @@ test("Shared catcher logs sanitized Aura failures and obeys its switch", () => {
     catcher.capturePresentation({ thrown: Object.assign(new Error("private detail"), { code: "AURA_RENDER_FAILED" }), surface: "inventory", phase: "update" });
     assert.equal(messages.length, 1);
     const payload = JSON.parse(messages[0][1]);
-    assert.deepEqual(payload, { event: "enhancement_aura_failed", system: "phaser_presentation", component: "enhancement_aura", reason: "aura_render_failed", surface: "inventory", phase: "update" });
+    assert.deepEqual(payload, { event: "enhancement_aura_failed", system: "phaser_presentation", component: "enhancement_aura", reason: "aura_render_failed", version: "1.1.49", surface: "inventory", phase: "update" });
     assert.equal(JSON.stringify(payload).includes("private detail"), false);
     catcher.setEnabled(false);
     catcher.capturePresentation({ thrown: new Error("hidden"), surface: "dungeon", phase: "create" });
