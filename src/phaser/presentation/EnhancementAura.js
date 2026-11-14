@@ -12,16 +12,22 @@ const ENHANCEMENT_AURA_STYLES = Object.freeze({
     name: "Golden Power",
     palette: Object.freeze({ 1: 0xfff0a6, 2: 0xffd447, 3: 0xffa52f, 4: 0xff7138 }),
     intensity: Object.freeze({
-      ringCount: 3, ringLineWidth: 2.6, ringAlpha: 0.34,
-      particleCount: 10, particleAlpha: 0.82, particleRadius: 0.0105,
-      particleOrbitX: 0.39, particleOrbitY: 0.12, pulseDuration: 1120,
-      weaponHaloCount: 3, weaponHaloAlpha: 0.20, weaponHaloPulseAlpha: 0.12
+      ringCount: 3, ringLineWidth: 4, ringAlpha: 0.78, groundGlowAlpha: 0.24, groundY: -0.02,
+      particleCount: 10, particleAlpha: 0.95, particleRadius: 0.017,
+      particleOrbitX: 0.42, particleOrbitY: 0.1, particleRise: 0.14, pulseDuration: 1120,
+      weaponHaloCount: 3, weaponHaloAlpha: 0.55, weaponHaloPulseAlpha: 0.28, weaponHaloGrowth: 0.015,
+      weaponGlowStrength: 4
     })
   })
 });
 const DEFAULT_ENHANCEMENT_AURA_STYLE = "goldenPower";
 function resolveEnhancementAuraStyle(styleId = DEFAULT_ENHANCEMENT_AURA_STYLE) {
   return ENHANCEMENT_AURA_STYLES[String(styleId)] || ENHANCEMENT_AURA_STYLES[DEFAULT_ENHANCEMENT_AURA_STYLE];
+}
+
+// Additive blending makes the cosmetic glow readable on any background.
+function enhancementAuraBlendAdd() {
+  return typeof Phaser !== "undefined" && Phaser.BlendModes ? Phaser.BlendModes.ADD : 1;
 }
 
 function enhancementAuraItemLevel(item) {
@@ -115,12 +121,17 @@ class EnhancementAuraRenderer {
     const color = this.style.palette[stage];
     const intensity = this.style.intensity;
     const ringCount = intensity.ringCount;
+    const groundY = size * intensity.groundY;
+    this.characterGraphics.setBlendMode?.(enhancementAuraBlendAdd());
+    this.characterGraphics
+      .fillStyle(color, intensity.groundGlowAlpha)
+      .fillEllipse(0, groundY, size * 0.92, size * 0.22);
     for (let index = 0; index < ringCount; index += 1) {
-      const width = size * (0.72 + index * 0.13);
-      const height = size * (0.16 + index * 0.055);
+      const width = size * (0.8 + index * 0.14);
+      const height = size * (0.17 + index * 0.05);
       this.characterGraphics
-        .lineStyle(intensity.ringLineWidth, color, Math.max(0.16, intensity.ringAlpha - index * 0.09))
-        .strokeEllipse(0, size * (0.05 + index * 0.015), width, height);
+        .lineStyle(intensity.ringLineWidth, color, Math.max(0.3, intensity.ringAlpha - index * 0.16))
+        .strokeEllipse(0, groundY + size * index * 0.012, width, height);
     }
 
     const particleCount = intensity.particleCount;
@@ -128,18 +139,19 @@ class EnhancementAuraRenderer {
       const angle = (Math.PI * 2 * index) / particleCount;
       const particle = this.scene.add.circle(
         Math.cos(angle) * size * intensity.particleOrbitX,
-        size * 0.05 + Math.sin(angle) * size * intensity.particleOrbitY,
-        Math.max(1.5, size * intensity.particleRadius),
+        groundY + Math.sin(angle) * size * intensity.particleOrbitY,
+        Math.max(2, size * intensity.particleRadius),
         color,
         intensity.particleAlpha
       );
+      particle.setBlendMode?.(enhancementAuraBlendAdd());
       this.characterRoot.add(particle);
       this.characterParticles.push(particle);
       const tween = this.scene.tweens?.add?.({
         targets: particle,
-        alpha: 0.16,
-        scale: 0.58,
-        y: particle.y - size * 0.035,
+        alpha: 0.2,
+        scale: 0.55,
+        y: particle.y - size * intensity.particleRise,
         duration: 720 + index * 55,
         delay: index * 65,
         yoyo: true,
@@ -166,6 +178,7 @@ class EnhancementAuraRenderer {
     while (this.weaponHalos.length < 3) {
       const halo = this.scene.add.image(0, 0, textureKey);
       halo.setOrigin(0.5, 1).setVisible(false);
+      halo.setBlendMode?.(enhancementAuraBlendAdd());
       this.root.add(halo);
       this.weaponHalos.push(halo);
       created.push(halo);
@@ -173,7 +186,31 @@ class EnhancementAuraRenderer {
     return created;
   }
 
-  updateWeapon(stage, heroRenderer) {
+  // WebGL-only soft outline; Canvas renderers simply keep the additive halo copies.
+  applyWeaponGlow(halo, color, strength) {
+    try {
+      const fx = halo?.postFX;
+      if (!fx || typeof fx.addGlow !== "function") return;
+      fx.clear?.();
+      fx.addGlow(color, strength, 0, false, 0.1, 12);
+    } catch (_) { /* optional glow must never break the Aura */ }
+  }
+
+  diagnosticPosition() {
+    // Pin the label near the top edge of the visible stage, not below the feet
+    // where the Hero preview canvas clips it.
+    const size = this.displaySize();
+    let y = -size * 0.92;
+    try {
+      const matrix = this.root?.getWorldTransformMatrix?.();
+      const scaleY = Math.abs(Number(matrix?.scaleY)) || 1;
+      const worldY = Number(matrix?.ty);
+      if (Number.isFinite(worldY)) y = (4 - worldY) / scaleY;
+    } catch (_) { /* fall back to the size-based position */ }
+    return { x: 0, y };
+  }
+
+  updateWeapon(stage, heroRenderer, characterStage = 0) {
     const layerName = String(heroRenderer?.data?.visualMode || "").startsWith("v5-g2") ? "sword" : "weapon";
     const entry = heroRenderer?.layerImages?.find(item => item.name === layerName);
     const weaponImage = entry?.image;
@@ -181,16 +218,17 @@ class EnhancementAuraRenderer {
     const layerNames = (heroRenderer?.currentLayers || []).map(layer => String(layer?.name || "")).filter(Boolean);
     const reason = stage <= 0 ? "stage_disabled" : !currentLayer ? "weapon_layer_missing" : !weaponImage ? "weapon_image_missing" : !weaponImage.visible ? "weapon_image_hidden" : !weaponImage.texture?.key ? "weapon_texture_missing" : "weapon_layer_ready";
     const usable = reason === "weapon_layer_ready";
-    const diagnostic = { event: "weapon_aura_diagnostic", reason, visualMode: String(heroRenderer?.data?.visualMode || "unknown").slice(0, 40), expectedLayer: layerName, availableLayers: layerNames.slice(0, 24), textureKey: String(weaponImage?.texture?.key || "").slice(0, 160), visible: !!weaponImage?.visible, x: Number.isFinite(Number(weaponImage?.x)) ? Number(weaponImage.x) : null, y: Number.isFinite(Number(weaponImage?.y)) ? Number(weaponImage.y) : null, displayWidth: Number.isFinite(Number(weaponImage?.displayWidth)) ? Number(weaponImage.displayWidth) : null, displayHeight: Number.isFinite(Number(weaponImage?.displayHeight)) ? Number(weaponImage.displayHeight) : null, originX: Number.isFinite(Number(weaponImage?.originX)) ? Number(weaponImage.originX) : null, originY: Number.isFinite(Number(weaponImage?.originY)) ? Number(weaponImage.originY) : null, angle: Number.isFinite(Number(weaponImage?.angle)) ? Number(weaponImage.angle) : null, crop: Array.isArray(currentLayer?.crop) ? currentLayer.crop.slice(0, 4) : null };
+    const diagnostic = { event: "weapon_aura_diagnostic", reason, weaponStage: stage, characterStage, visualMode: String(heroRenderer?.data?.visualMode || "unknown").slice(0, 40), expectedLayer: layerName, availableLayers: layerNames.slice(0, 24), textureKey: String(weaponImage?.texture?.key || "").slice(0, 160), visible: !!weaponImage?.visible, x: Number.isFinite(Number(weaponImage?.x)) ? Number(weaponImage.x) : null, y: Number.isFinite(Number(weaponImage?.y)) ? Number(weaponImage.y) : null, displayWidth: Number.isFinite(Number(weaponImage?.displayWidth)) ? Number(weaponImage.displayWidth) : null, displayHeight: Number.isFinite(Number(weaponImage?.displayHeight)) ? Number(weaponImage.displayHeight) : null, originX: Number.isFinite(Number(weaponImage?.originX)) ? Number(weaponImage.originX) : null, originY: Number.isFinite(Number(weaponImage?.originY)) ? Number(weaponImage.originY) : null, angle: Number.isFinite(Number(weaponImage?.angle)) ? Number(weaponImage.angle) : null, crop: Array.isArray(currentLayer?.crop) ? currentLayer.crop.slice(0, 4) : null };
     const signature = JSON.stringify(diagnostic);
     if (signature !== this.weaponDiagnosticSignature) {
       this.weaponDiagnosticSignature = signature;
       const layerSummary = layerNames.slice(0, 5).join(",") || "none";
-      this.weaponDiagnosticText?.setText?.(`Weapon Aura: ${reason}\\n${layerName} / ${layerSummary}`);
-      this.weaponDiagnosticText?.setPosition?.(0, this.displaySize() * 0.66);
+      this.weaponDiagnosticText?.setText?.(`Weapon Aura: ${reason}\nW${stage} C${characterStage} ${layerName} / ${layerSummary}`);
       this.weaponDiagnosticText?.setVisible?.(true);
       try { globalThis.console?.info?.("[weapon-aura-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
     }
+    const labelPosition = this.diagnosticPosition();
+    this.weaponDiagnosticText?.setPosition?.(labelPosition.x, labelPosition.y);
     const stageChanged = stage !== this.weaponStage;
     if (stageChanged) {
       this.weaponStage = stage;
@@ -216,10 +254,11 @@ class EnhancementAuraRenderer {
           halo.setVisible(false);
           return;
         }
-        halo.setTint(color).setAlpha(intensity.weaponHaloAlpha - index * 0.035);
+        halo.setTint(color).setAlpha(intensity.weaponHaloAlpha - index * 0.08);
+        if (index === 0) this.applyWeaponGlow(halo, color, intensity.weaponGlowStrength);
         const tween = this.scene.tweens?.add?.({
           targets: halo,
-          alpha: Math.max(0.035, intensity.weaponHaloPulseAlpha - index * 0.025),
+          alpha: Math.max(0.06, intensity.weaponHaloPulseAlpha - index * 0.06),
           duration: 760 + index * 130,
           yoyo: true,
           repeat: -1,
@@ -241,8 +280,8 @@ class EnhancementAuraRenderer {
         .setPosition(weaponImage.x, weaponImage.y)
         .setAngle(weaponImage.angle || 0)
         .setDisplaySize(
-          Math.max(1, weaponImage.displayWidth) * (1.055 + index * 0.045),
-          Math.max(1, weaponImage.displayHeight) * (1.055 + index * 0.045)
+          Math.max(1, weaponImage.displayWidth) * (1 + index * intensity.weaponHaloGrowth),
+          Math.max(1, weaponImage.displayHeight) * (1 + index * intensity.weaponHaloGrowth)
         );
       if (Array.isArray(currentLayer.crop) && currentLayer.crop.length === 4) halo.setCrop(...currentLayer.crop);
       else halo.setCrop();
@@ -268,7 +307,7 @@ class EnhancementAuraRenderer {
     const characterStage = Math.max(0, Math.min(4, Math.floor(Number(aura?.characterStage) || 0)));
     const weaponStage = Math.max(0, Math.min(4, Math.floor(Number(aura?.weaponStage) || 0)));
     this.updateCharacter(characterStage);
-    this.updateWeapon(weaponStage, heroRenderer);
+    this.updateWeapon(weaponStage, heroRenderer, characterStage);
     this.reorder(heroRenderer);
   }
 

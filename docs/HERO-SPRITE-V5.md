@@ -542,3 +542,18 @@ At the Owner's request, the shared EnhancementAuraRenderer temporarily bypasses 
 - Effect intensity is fixed across stages: ring count/width/alpha, particle count/size/orbit/alpha, pulse duration and weapon halo count/alpha do not increase with enhancement level.
 - Removed the temporary forced Stage 4 override. Character and Weapon Aura now use the actual equipped loadout stage, so each stage's color is observable.
 - Character Aura remains positioned at the Owner-approved lower-body/ground reference. Weapon diagnostic label remains temporarily enabled for mobile QA.
+
+## 26. Aura visibility and on-screen diagnostic fix (Ver 1.1.56)
+
+**Root cause (evidence, 2026-11-14).** The renderer was running, not failing: the real `EnhancementAuraRenderer` + `HeroRenderer` were exercised on Phaser 3.90.0 in headless Chromium (Canvas and WebGL) with the Inventory Hero preview layout (root at 86% of canvas height, `displaySize = min(0.92w, 1.06h)`), with no exceptions. Three independent defects made the effect invisible:
+1. The Weapon diagnostic label was placed at `+0.66 × displaySize` below the Hero root, which is far below the canvas bottom (y≈374 on a 280px canvas), so it was clipped. Its text also contained a literal `\n`.
+2. Character Aura rings were thin, low-alpha lines (width 2.6, alpha 0.34) drawn normally; the lower rings sat on the canvas bottom edge.
+3. Weapon halos were 20%-alpha tinted copies drawn over the sprite with normal blending and scaled 1.055–1.145 about the full-layer bottom-centre origin, so they were nearly invisible and drifted off the blade.
+
+**Changes (presentation only; no gameplay, stats, enhancement, or save changes).**
+- Diagnostic label is pinned near the top of the visible stage using the root world transform, always shown (also for `stage_disabled`), uses a real newline, and now reports `W<weaponStage> C<characterStage> <layer> / <layers>`. Console record still logs only when the state signature changes.
+- Golden Power style (still registry-driven, intensity identical for every stage; only the palette changes): ring width 4 / alpha 0.78, soft additive ground glow, larger particles that rise, ring centre at `-0.02 × displaySize` (at the feet, not the head).
+- Weapon halos are same-origin additive copies (growth 1.5% per copy) plus an optional WebGL glow (`postFX.addGlow`, guarded; Canvas keeps the additive copies).
+- Tests: `tests/enhancement-aura.test.js` (16) adds label-on-screen, real-newline, ground reference, equal-intensity and additive/halo checks.
+
+**Verification.** Local node tests; headless Chromium harness (synthetic sprites, not production art) showed visible ground rings, a gold glow on the blade at stages 1, 2 and 4 (stage 4 = orange), and the label at stage 0. **Not verified:** Production art alignment (real layer offsets) and iPhone visual check — Owner confirmation required.
