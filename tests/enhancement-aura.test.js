@@ -6,6 +6,7 @@ const {
   enhancementAuraItemLevel,
   enhancementAuraStage,
   resolveEnhancementAura,
+  EnhancementAuraRenderer,
   ENHANCEMENT_AURA_STYLES,
   resolveEnhancementAuraStyle
 } = require("../src/phaser/presentation/EnhancementAura.js");
@@ -117,7 +118,7 @@ test("Shared catcher logs sanitized Aura failures and obeys its switch", () => {
     catcher.capturePresentation({ thrown: Object.assign(new Error("private detail"), { code: "AURA_RENDER_FAILED" }), surface: "inventory", phase: "update" });
     assert.equal(messages.length, 1);
     const payload = JSON.parse(messages[0][1]);
-    assert.deepEqual(payload, { event: "enhancement_aura_failed", system: "phaser_presentation", component: "enhancement_aura", reason: "aura_render_failed", version: "1.1.55", surface: "inventory", phase: "update" });
+    assert.deepEqual(payload, { event: "enhancement_aura_failed", system: "phaser_presentation", component: "enhancement_aura", reason: "aura_render_failed", version: "1.1.56", surface: "inventory", phase: "update" });
     assert.equal(JSON.stringify(payload).includes("private detail"), false);
     catcher.setEnabled(false);
     catcher.capturePresentation({ thrown: new Error("hidden"), surface: "dungeon", phase: "create" });
@@ -161,4 +162,58 @@ test("Golden Power effect intensity is fixed and stages only select colors", () 
   assert.equal(intensity.ringCount, 3);
   assert.equal(intensity.particleCount, 10);
   assert.equal(intensity.weaponHaloCount, 3);
+});
+
+// ---------- Ver 1.1.56: visibility + on-screen diagnostic regression ----------
+function fakeAuraScene({ rootWorldY = 241, canvasHeight = 280 } = {}) {
+  const made = [];
+  const chain = obj => new Proxy(obj, { get: (t, k) => (k in t ? t[k] : (...a) => { t.calls.push([k, ...a]); if (k === "setText") t.text = a[0]; if (k === "setPosition") { t.x = a[0]; t.y = a[1]; } if (k === "setVisible") t.visible = a[0]; if (k === "setBlendMode") t.blend = a[0]; return t.self; }) });
+  const mk = type => { const o = { type, calls: [], visible: true }; o.self = chain(o); made.push(o); return o.self; };
+  const scene = {
+    add: { container: () => mk("container"), graphics: () => mk("graphics"), text: () => mk("text"), circle: () => mk("circle"), image: () => mk("image") },
+    tweens: { add: () => ({ stop() {} }) }
+  };
+  const root = { list: [], add(o) { this.list.push(o); }, remove() {}, moveTo() {},
+    getWorldTransformMatrix: () => ({ ty: rootWorldY, scaleY: 1 }) };
+  return { scene, root, made, canvasHeight };
+}
+
+test("Weapon diagnostic label is pinned inside the visible stage with a real newline", () => {
+  const { scene, root, canvasHeight } = fakeAuraScene();
+  const renderer = new EnhancementAuraRenderer(scene, root, () => 202);
+  renderer.update({ characterStage: 0, weaponStage: 0 }, { data: { visualMode: "v3" }, layerImages: [], currentLayers: [] });
+  const label = renderer.weaponDiagnosticText;
+  assert.ok(label.visible, "label shows even when the stage is disabled");
+  assert.match(label.text, /^Weapon Aura: stage_disabled\nW0 C0 /);
+  assert.equal(label.text.includes("\\n"), false);
+  const screenY = label.y + 241;
+  assert.ok(screenY >= 0 && screenY < canvasHeight * 0.25, `label screen Y ${screenY} must be inside the canvas`);
+});
+
+test("Character Aura sits on the ground reference, additive, with stage-independent intensity", () => {
+  const { scene, root, made } = fakeAuraScene();
+  const renderer = new EnhancementAuraRenderer(scene, root, () => 200);
+  const counts = [];
+  let strokeSeen = 0;
+  [1, 2, 3, 4].forEach(stage => {
+    renderer.characterStage = -1;
+    renderer.update({ characterStage: stage, weaponStage: 0 }, { data: {}, layerImages: [], currentLayers: [] });
+    const g = made.find(o => o.type === "graphics");
+    const total = g.calls.filter(c => c[0] === "strokeEllipse").length;
+    counts.push([renderer.characterParticles.length, total - strokeSeen]);
+    strokeSeen = total;
+  });
+  assert.deepEqual(new Set(counts.map(c => c.join(","))).size, 1);
+  const style = ENHANCEMENT_AURA_STYLES.goldenPower.intensity;
+  assert.ok(style.groundY <= 0 && style.groundY > -0.1, "ring centre stays at the feet, not at the head");
+  assert.ok(style.ringAlpha >= 0.6 && style.weaponHaloAlpha >= 0.4, "effects are strong enough to read on mobile");
+  assert.ok(made.find(o => o.type === "graphics").blend === 1, "additive blend is applied to the ground glow");
+});
+
+test("Weapon halos are same-origin additive copies and release the WebGL glow safely", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "src/phaser/presentation/EnhancementAura.js"), "utf8");
+  assert.match(source, /halo\.setBlendMode\?\.\(enhancementAuraBlendAdd\(\)\)/);
+  assert.match(source, /weaponHaloGrowth/);
+  assert.doesNotMatch(source, /1\.055 \+ index/);
+  assert.match(source, /applyWeaponGlow\(halo, color, intensity\.weaponGlowStrength\)/);
 });
