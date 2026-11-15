@@ -563,3 +563,9 @@ At the Owner's request, the shared EnhancementAuraRenderer temporarily bypasses 
 Owner confirmed on production (Ver 1.1.56, iPhone) that Character Aura and Weapon Aura are visible, so the on-screen `Weapon Aura: ...` label and the `[weapon-aura-diagnostic]` console record are now OFF by default. The code is intentionally kept: `ENHANCEMENT_AURA_DIAGNOSTIC_DEFAULT = false` in `EnhancementAura.js`; to debug again, set `globalThis.THORNIE_AURA_DIAGNOSTIC = true` before the Hero scene is created (or flip the constant). With the switch off, no label object is created and the per-frame diagnostic payload is not computed.
 
 Shared renderer: Inventory Hero preview (`HeroPreviewScene`), Dungeon battlefield and Arena (`HeroActor` via `BattleScene`) all use the same `EnhancementAuraRenderer`; the Arena snapshot only passes an Aura for the `attacker` side.
+
+## 28. Enhancement Aura — documentation synced to code (Ver 1.1.57) and pending visual changes
+
+- `docs/PHASER-COMBAT-ARENA-V1.md` §17 is now the single source for the Aura: §17.4 describes the renderer exactly as shipped in Ver 1.1.57 (Golden Power values, Character/Weapon construction, diagnostic switch, Arena attacker-only rule); §17.3 was corrected (outermost layer order since Ver 1.1.48, optional guarded WebGL glow since Ver 1.1.56, `+10 and above` = Stage 4).
+- The Golden Power palette in §25 above is superseded as soon as §17.5 is implemented.
+- §17.5 records the Owner's approved, **not yet implemented** changes: stage colours green (+4) / purple (+6) / pink (+8) / gold (+10) shared by Weapon and Character Aura, and a Super Saiyan power-up style (spiky golden-flame-like rays, shape only) for both. No code was changed for this record.
