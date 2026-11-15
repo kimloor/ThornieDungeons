@@ -118,7 +118,7 @@ test("Shared catcher logs sanitized Aura failures and obeys its switch", () => {
     catcher.capturePresentation({ thrown: Object.assign(new Error("private detail"), { code: "AURA_RENDER_FAILED" }), surface: "inventory", phase: "update" });
     assert.equal(messages.length, 1);
     const payload = JSON.parse(messages[0][1]);
-    assert.deepEqual(payload, { event: "enhancement_aura_failed", system: "phaser_presentation", component: "enhancement_aura", reason: "aura_render_failed", version: "1.1.56", surface: "inventory", phase: "update" });
+    assert.deepEqual(payload, { event: "enhancement_aura_failed", system: "phaser_presentation", component: "enhancement_aura", reason: "aura_render_failed", version: "1.1.57", surface: "inventory", phase: "update" });
     assert.equal(JSON.stringify(payload).includes("private detail"), false);
     catcher.setEnabled(false);
     catcher.capturePresentation({ thrown: new Error("hidden"), surface: "dungeon", phase: "create" });
@@ -178,9 +178,26 @@ function fakeAuraScene({ rootWorldY = 241, canvasHeight = 280 } = {}) {
   return { scene, root, made, canvasHeight };
 }
 
-test("Weapon diagnostic label is pinned inside the visible stage with a real newline", () => {
+test("Weapon diagnostic is OFF by default and creates no label or console record", () => {
+  delete globalThis.THORNIE_AURA_DIAGNOSTIC;
+  const { scene, root, made } = fakeAuraScene();
+  const infoCalls = [];
+  const originalInfo = console.info;
+  console.info = (...a) => infoCalls.push(a);
+  try {
+    const renderer = new EnhancementAuraRenderer(scene, root, () => 202);
+    renderer.update({ characterStage: 2, weaponStage: 2 }, { data: { visualMode: "v3" }, layerImages: [], currentLayers: [] });
+    assert.equal(renderer.weaponDiagnosticText, null);
+    assert.equal(made.some(o => o.type === "text"), false);
+    assert.equal(infoCalls.length, 0);
+  } finally { console.info = originalInfo; }
+});
+
+test("Weapon diagnostic label is pinned inside the visible stage with a real newline (opt-in)", () => {
+  globalThis.THORNIE_AURA_DIAGNOSTIC = true;
   const { scene, root, canvasHeight } = fakeAuraScene();
   const renderer = new EnhancementAuraRenderer(scene, root, () => 202);
+  delete globalThis.THORNIE_AURA_DIAGNOSTIC;
   renderer.update({ characterStage: 0, weaponStage: 0 }, { data: { visualMode: "v3" }, layerImages: [], currentLayers: [] });
   const label = renderer.weaponDiagnosticText;
   assert.ok(label.visible, "label shows even when the stage is disabled");
