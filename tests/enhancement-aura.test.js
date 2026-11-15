@@ -5,6 +5,7 @@ const path = require("node:path");
 const {
   enhancementAuraItemLevel,
   enhancementAuraStage,
+  enhancementAuraBladeGeometry,
   resolveEnhancementAura,
   EnhancementAuraRenderer,
   ENHANCEMENT_AURA_STYLES,
@@ -70,8 +71,9 @@ test("Aura follows the verified V3/V5 weapon layers and cleans up with HeroActor
   assert.match(renderer, /Aura is intentionally the outermost presentation layer/);
   assert.match(renderer, /root\.moveTo\(this\.characterRoot, root\.list\.length - 1\)/);
   assert.match(renderer, /root\.moveTo\(halo, root\.list\.length - 1\)/);
-  assert.match(renderer, /this\.stopTweens\(this\.characterTweens\)/);
-  assert.match(renderer, /this\.stopTweens\(this\.weaponTweens\)/);
+  assert.match(renderer, /this\.flickerDriver\?\.stop\?\.\(\)/);
+  assert.match(renderer, /this\.weaponFlameRoot\?\.destroy\?\.\(true\)/);
+  assert.match(renderer, /this\.characterRoot\?\.destroy\?\.\(true\)/);
   assert.match(heroRenderer, /this\.currentLayers = layers/);
   assert.match(heroActor, /new EnhancementAuraRenderer/);
   assert.match(heroActor, /this\.enhancementAuraRenderer\?\.update/);
@@ -118,7 +120,7 @@ test("Shared catcher logs sanitized Aura failures and obeys its switch", () => {
     catcher.capturePresentation({ thrown: Object.assign(new Error("private detail"), { code: "AURA_RENDER_FAILED" }), surface: "inventory", phase: "update" });
     assert.equal(messages.length, 1);
     const payload = JSON.parse(messages[0][1]);
-    assert.deepEqual(payload, { event: "enhancement_aura_failed", system: "phaser_presentation", component: "enhancement_aura", reason: "aura_render_failed", version: "1.1.57", surface: "inventory", phase: "update" });
+    assert.deepEqual(payload, { event: "enhancement_aura_failed", system: "phaser_presentation", component: "enhancement_aura", reason: "aura_render_failed", version: "1.1.58", surface: "inventory", phase: "update" });
     assert.equal(JSON.stringify(payload).includes("private detail"), false);
     catcher.setEnabled(false);
     catcher.capturePresentation({ thrown: new Error("hidden"), surface: "dungeon", phase: "create" });
@@ -141,27 +143,6 @@ test("Weapon Aura diagnostic is visible in the Hero preview for mobile QA", () =
   assert.match(renderer, /Weapon Aura: \$\{reason\}/);
   assert.match(renderer, /weaponDiagnosticText\?\.setVisible\?\.\(true\)/);
   assert.match(renderer, /weaponDiagnosticText\?\.destroy/);
-});
-
-test("Golden Power is a replaceable style profile with four distinct stage colors", () => {
-  const style = resolveEnhancementAuraStyle("goldenPower");
-  assert.equal(style.id, "goldenPower");
-  assert.deepEqual(Object.keys(style.palette), ["1", "2", "3", "4"]);
-  assert.equal(new Set(Object.values(style.palette)).size, 4);
-  assert.equal(resolveEnhancementAuraStyle("future-style"), ENHANCEMENT_AURA_STYLES.goldenPower);
-});
-
-test("Golden Power effect intensity is fixed and stages only select colors", () => {
-  const source = read("src/phaser/presentation/EnhancementAura.js");
-  assert.match(source, /this\.style\.palette\[stage\]/);
-  assert.match(source, /const ringCount = intensity\.ringCount/);
-  assert.match(source, /const particleCount = intensity\.particleCount/);
-  assert.match(source, /const count = intensity\.weaponHaloCount/);
-  assert.doesNotMatch(source, /forceVisible = true/);
-  const intensity = ENHANCEMENT_AURA_STYLES.goldenPower.intensity;
-  assert.equal(intensity.ringCount, 3);
-  assert.equal(intensity.particleCount, 10);
-  assert.equal(intensity.weaponHaloCount, 3);
 });
 
 // ---------- Ver 1.1.56: visibility + on-screen diagnostic regression ----------
@@ -207,30 +188,204 @@ test("Weapon diagnostic label is pinned inside the visible stage with a real new
   assert.ok(screenY >= 0 && screenY < canvasHeight * 0.25, `label screen Y ${screenY} must be inside the canvas`);
 });
 
-test("Character Aura sits on the ground reference, additive, with stage-independent intensity", () => {
-  const { scene, root, made } = fakeAuraScene();
-  const renderer = new EnhancementAuraRenderer(scene, root, () => 200);
-  const counts = [];
-  let strokeSeen = 0;
-  [1, 2, 3, 4].forEach(stage => {
-    renderer.characterStage = -1;
-    renderer.update({ characterStage: stage, weaponStage: 0 }, { data: {}, layerImages: [], currentLayers: [] });
-    const g = made.find(o => o.type === "graphics");
-    const total = g.calls.filter(c => c[0] === "strokeEllipse").length;
-    counts.push([renderer.characterParticles.length, total - strokeSeen]);
-    strokeSeen = total;
-  });
-  assert.deepEqual(new Set(counts.map(c => c.join(","))).size, 1);
-  const style = ENHANCEMENT_AURA_STYLES.goldenPower.intensity;
-  assert.ok(style.groundY <= 0 && style.groundY > -0.1, "ring centre stays at the feet, not at the head");
-  assert.ok(style.ringAlpha >= 0.6 && style.weaponHaloAlpha >= 0.4, "effects are strong enough to read on mobile");
-  assert.ok(made.find(o => o.type === "graphics").blend === 1, "additive blend is applied to the ground glow");
+// ---------- Ver 1.1.58: Power Flame style (flame rays, new palette, blade-following weapon Aura) ----------
+function fakeFlameScene({ rendererType } = {}) {
+  const made = [];
+  const textures = new Map();
+  const chain = obj => new Proxy(obj, { get: (t, k) => (k in t ? t[k] : (...a) => {
+    t.calls.push([k, ...a]);
+    if (k === "setPosition") { t.x = a[0]; t.y = a[1]; }
+    if (k === "setScale") { t.scaleX = a[0]; t.scaleY = a[1]; }
+    if (k === "setAlpha") t.alpha = a[0];
+    if (k === "setAngle") t.angle = a[0];
+    if (k === "setVisible") t.visible = a[0];
+    if (k === "setTexture") t.key = a[0];
+    return t.self;
+  }) });
+  const mk = (type, extra = {}) => { const o = { type, calls: [], visible: true, ...extra }; o.self = chain(o); made.push(o); return o.self; };
+  const ctx = new Proxy({}, { get: (t, k) => (k === "createLinearGradient" ? () => ({ addColorStop() {} }) : () => {}), set: () => true });
+  const scene = {
+    sys: rendererType === undefined ? undefined : { game: { renderer: { type: rendererType } } },
+    add: { container: () => mk("container"), image: (x, y, key) => mk("image", { key }), text: () => mk("text") },
+    textures: {
+      exists: key => textures.has(key),
+      createCanvas: key => { textures.set(key, true); return { context: ctx, refresh() {} }; }
+    },
+    tweens: { add: cfg => { const tween = { cfg, stopped: false, stop() { this.stopped = true; } }; made.push({ type: "tween", tween }); return tween; } }
+  };
+  const root = { list: [], add(o) { this.list.push(o); }, remove() {}, moveTo(o, i) { this.moved = [...(this.moved || []), [o, i]]; } };
+  return { scene, root, made, textures };
+}
+const flameImages = made => made.filter(o => o.type === "image" && String(o.key).startsWith("enhancement-aura-flame"));
+const NO_HERO = { data: { visualMode: "v3" }, layerImages: [], currentLayers: [] };
+
+test("Power Flame is the default replaceable style with the approved green/purple/pink/gold stage colours", () => {
+  const style = resolveEnhancementAuraStyle("powerFlame");
+  assert.equal(style.id, "powerFlame");
+  assert.deepEqual(style.palette, { 1: 0x3dff7a, 2: 0xb15cff, 3: 0xff4fd8, 4: 0xffd23a });
+  assert.equal(resolveEnhancementAuraStyle("future-style"), ENHANCEMENT_AURA_STYLES.powerFlame);
+  assert.equal(resolveEnhancementAuraStyle(), ENHANCEMENT_AURA_STYLES.powerFlame);
+  assert.equal(Object.isFrozen(style.intensity), true);
 });
 
-test("Weapon halos are same-origin additive copies and release the WebGL glow safely", () => {
-  const source = fs.readFileSync(path.join(__dirname, "..", "src/phaser/presentation/EnhancementAura.js"), "utf8");
-  assert.match(source, /halo\.setBlendMode\?\.\(enhancementAuraBlendAdd\(\)\)/);
-  assert.match(source, /weaponHaloGrowth/);
-  assert.doesNotMatch(source, /1\.055 \+ index/);
-  assert.match(source, /applyWeaponGlow\(halo, color, intensity\.weaponGlowStrength\)/);
+test("Effect intensity is identical for every stage; only the baked colour texture changes", () => {
+  const source = read("src/phaser/presentation/EnhancementAura.js");
+  assert.doesNotMatch(source, /intensity\.\w+\[stage\]/);
+  assert.match(source, /this\.style\.palette\[stage\]/);
+  const { scene, root, made } = fakeFlameScene();
+  const renderer = new EnhancementAuraRenderer(scene, root, () => 200);
+  const perStage = [];
+  [1, 2, 3, 4].forEach(stage => {
+    renderer.update({ characterStage: stage, weaponStage: 0 }, NO_HERO);
+    const flames = renderer.characterFlames;
+    perStage.push({
+      count: flames.length,
+      shape: flames.map(f => [Math.round(f.sx * 1000), Math.round(f.sy * 1000), f.rot, f.alpha].join(":")).join("|"),
+      keys: new Set(flameImages(made).slice(-flames.length).map(o => o.key))
+    });
+  });
+  assert.equal(new Set(perStage.map(p => p.count)).size, 1);
+  assert.equal(new Set(perStage.map(p => p.shape)).size, 1, "sizes, angles and alphas never depend on the stage");
+  const allKeys = perStage.flatMap(p => [...p.keys]);
+  assert.equal(new Set(allKeys).size, 8, "4 stages x (outer + core) distinct baked textures");
+});
+
+test("Character Aura is flame rays only (no ground rings, glow or orbit particles) on the outermost layer", () => {
+  const { scene, root, made } = fakeFlameScene();
+  const renderer = new EnhancementAuraRenderer(scene, root, () => 200);
+  renderer.update({ characterStage: 2, weaponStage: 0 }, NO_HERO);
+  const intensity = ENHANCEMENT_AURA_STYLES.powerFlame.intensity;
+  assert.equal(renderer.characterFlames.length, intensity.characterFlameCount * 2);
+  assert.equal(made.some(o => o.type === "graphics" || o.type === "circle"), false);
+  assert.equal(renderer.characterRoot.visible, true);
+  const heights = renderer.characterFlames.filter((_, i) => i % 2 === 0).map(f => f.sy * 256);
+  assert.ok(Math.max(...heights) > Math.min(...heights), "centre flames are taller than the outer ones");
+  assert.ok(Math.max(...heights) <= 200 * intensity.characterFlameMaxHeight + 1);
+  const last = root.moved[root.moved.length - 1][0];
+  assert.equal(last, renderer.characterRoot, "Character Aura is raised to the very top after each frame");
+  renderer.update({ characterStage: 0, weaponStage: 0 }, NO_HERO);
+  assert.equal(renderer.characterFlames.length, 0);
+  assert.equal(renderer.characterRoot.visible, false);
+});
+
+test("Flame colours are baked into textures, never applied with setTint (Canvas ignores tint)", () => {
+  const { scene, root, made, textures } = fakeFlameScene();
+  const renderer = new EnhancementAuraRenderer(scene, root, () => 200);
+  renderer.update({ characterStage: 3, weaponStage: 0 }, NO_HERO);
+  assert.equal(textures.size, 2);
+  renderer.characterStage = -1;
+  renderer.update({ characterStage: 3, weaponStage: 0 }, NO_HERO);
+  assert.equal(textures.size, 2, "textures are reused, not recreated");
+  flameImages(made).forEach(o => assert.equal(o.calls.some(c => c[0] === "setTint"), false));
+});
+
+test("Flame animation is one shared driver tween that is stopped on destroy", () => {
+  const { scene, root, made } = fakeFlameScene();
+  const renderer = new EnhancementAuraRenderer(scene, root, () => 200);
+  renderer.update({ characterStage: 4, weaponStage: 0 }, NO_HERO);
+  renderer.update({ characterStage: 4, weaponStage: 0 }, NO_HERO);
+  const tweens = made.filter(o => o.type === "tween");
+  assert.equal(tweens.length, 1, "one driver for all flames");
+  const before = renderer.characterFlames[0].obj.calls.length;
+  renderer.flickerState.t = 1.3;
+  renderer.animateFlames();
+  assert.ok(renderer.characterFlames[0].obj.calls.length > before);
+  const rootRef = renderer.characterRoot;
+  renderer.destroy();
+  assert.equal(tweens[0].tween.stopped, true);
+  assert.equal(rootRef.calls.some(c => c[0] === "destroy"), true);
+  assert.equal(renderer.scene, null);
+  renderer.update({ characterStage: 4, weaponStage: 0 }, NO_HERO);
+});
+
+test("Blade geometry follows the sprite's own silhouette and picks a sensible tip direction", () => {
+  const W = 120;
+  const H = 120;
+  const draw = predicate => {
+    const rgba = new Uint8ClampedArray(W * H * 4);
+    for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) if (predicate(x, y)) rgba[(y * W + x) * 4 + 3] = 255;
+    return rgba;
+  };
+  const tilted = enhancementAuraBladeGeometry(draw((x, y) => y > 10 && y < 100 && Math.abs(x - (60 + (100 - y) * 0.35)) < 3), W, H);
+  assert.ok(tilted.uy < -0.9, "steep blade: the tip points up");
+  assert.ok(tilted.ux > 0.25 && tilted.ux < 0.45, "lean to the right is detected from the pixels");
+  assert.ok(tilted.tmax - tilted.tmin > 80);
+  const flat = enhancementAuraBladeGeometry(draw((x, y) => x > 20 && x < 100 && Math.abs(y - 60) < 3), W, H);
+  assert.ok(flat.ux > 0.95, "horizontal blade: the tip points forward (+x)");
+  assert.equal(enhancementAuraBladeGeometry(draw(() => false), W, H), null);
+});
+
+function stubBladeDom(rgba, size) {
+  globalThis.document = { createElement: () => ({ width: size, height: size, getContext: () => ({ drawImage() {}, getImageData: () => ({ data: rgba }) }) }) };
+}
+function fakeWeaponHero(weaponImage) {
+  return { data: { visualMode: "v3" }, layerImages: [{ name: "weapon", image: weaponImage }], currentLayers: [{ name: "weapon", crop: null }] };
+}
+function fakeWeaponImage(overrides = {}) {
+  return { visible: true, texture: { key: "weapon-frame-1" }, x: 12, y: -6, angle: 15, originX: 0.5, originY: 1,
+    displayWidth: 240, displayHeight: 240, width: 480, height: 480,
+    frame: { name: "__BASE", cutX: 0, cutY: 0, cutWidth: 480, cutHeight: 480, source: { image: {} } }, ...overrides };
+}
+
+test("Weapon flames sit on the blade axis and the container follows the weapon image", () => {
+  const size = 160;
+  const rgba = new Uint8ClampedArray(size * size * 4);
+  for (let y = 20; y < 140; y += 1) for (let x = 0; x < size; x += 1) if (Math.abs(x - (60 + (140 - y) * 0.25)) < 2) rgba[(y * size + x) * 4 + 3] = 255;
+  stubBladeDom(rgba, size);
+  try {
+    const { scene, root, made } = fakeFlameScene({ rendererType: 2 });
+    const renderer = new EnhancementAuraRenderer(scene, root, () => 240);
+    const weaponImage = fakeWeaponImage();
+    renderer.update({ characterStage: 0, weaponStage: 2 }, fakeWeaponHero(weaponImage));
+    const intensity = ENHANCEMENT_AURA_STYLES.powerFlame.intensity;
+    assert.equal(renderer.weaponFlames.length, (intensity.weaponFlameCount + 1) * 2);
+    const geometry = [...renderer.bladeCache.values()][0];
+    assert.ok(geometry && geometry.frameW === 480);
+    const tip = renderer.weaponFlameParts.find(f => f.tip).outer;
+    const tipX = tip.obj.x + 0.5 * 480;
+    const tipY = tip.obj.y + 1 * 480;
+    const expectedX = geometry.mx + geometry.ux * geometry.tmax;
+    const expectedY = geometry.my + geometry.uy * geometry.tmax;
+    assert.ok(Math.abs(tipX - expectedX) < 0.5 && Math.abs(tipY - expectedY) < 0.5, "tip flame is at the blade tip");
+    const container = renderer.weaponFlameRoot;
+    assert.equal(container.visible, true);
+    assert.deepEqual(container.calls.find(c => c[0] === "setPosition").slice(1), [12, -6]);
+    assert.equal(container.calls.find(c => c[0] === "setAngle")[1], 15);
+    assert.deepEqual(container.calls.find(c => c[0] === "setScale").slice(1), [0.5, 0.5]);
+    weaponImage.x = 40;
+    weaponImage.angle = -20;
+    renderer.update({ characterStage: 0, weaponStage: 2 }, fakeWeaponHero(weaponImage));
+    assert.equal(renderer.weaponFlames.length, (intensity.weaponFlameCount + 1) * 2, "flames are reused, not duplicated");
+    const lastPosition = container.calls.filter(c => c[0] === "setPosition").pop();
+    assert.equal(lastPosition[1], 40);
+    renderer.update({ characterStage: 0, weaponStage: 0 }, fakeWeaponHero(weaponImage));
+    assert.equal(renderer.weaponFlames.length, 0);
+    assert.equal(made.filter(o => o.type === "tween").length, 1);
+  } finally { delete globalThis.document; }
+});
+
+test("Weapon Aura hides when the weapon layer is missing/hidden or its pixels cannot be read", () => {
+  const { scene, root } = fakeFlameScene({ rendererType: 2 });
+  const renderer = new EnhancementAuraRenderer(scene, root, () => 240);
+  renderer.update({ characterStage: 0, weaponStage: 3 }, NO_HERO);
+  assert.equal(renderer.weaponFlameRoot.visible, false);
+  const hidden = fakeWeaponImage({ visible: false });
+  renderer.update({ characterStage: 0, weaponStage: 3 }, fakeWeaponHero(hidden));
+  assert.equal(renderer.weaponFlameRoot.visible, false);
+  renderer.update({ characterStage: 0, weaponStage: 3 }, fakeWeaponHero(fakeWeaponImage()));
+  assert.equal(renderer.weaponFlameRoot.visible, false, "no DOM / unreadable pixels: no flames, no exception");
+});
+
+test("Tint-based silhouette halos are WebGL-only; Canvas relies on the baked flame textures", () => {
+  globalThis.Phaser = { CANVAS: 1, WEBGL: 2, BlendModes: { ADD: 1 } };
+  try {
+    const run = rendererType => {
+      const { scene, root, made } = fakeFlameScene({ rendererType });
+      const renderer = new EnhancementAuraRenderer(scene, root, () => 240);
+      renderer.update({ characterStage: 0, weaponStage: 4 }, fakeWeaponHero(fakeWeaponImage()));
+      return made.filter(o => o.type === "image" && o.key === "weapon-frame-1");
+    };
+    assert.equal(run(1).length, 0, "Canvas: no tinted halos");
+    assert.equal(run(2).length, ENHANCEMENT_AURA_STYLES.powerFlame.intensity.weaponHaloCount, "WebGL: halos plus glow");
+  } finally { delete globalThis.Phaser; }
 });

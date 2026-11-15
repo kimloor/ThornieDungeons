@@ -691,9 +691,9 @@ W7A A2 adds presentation-only Chapter Boss cues on top of the shared BattleScene
 
 ---
 
-## 17. Enhancement Aura — approved design / implemented and in production (Ver 1.1.57)
+## 17. Enhancement Aura — approved design / implemented (Power Flame style, Ver 1.1.58)
 
-This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. The runtime is merged, deployed and Owner-verified on production (Inventory Hero Preview, Dungeon, Arena). §17.4 records what the renderer does today (Ver 1.1.57); §17.5 records Owner-approved changes that are **not implemented yet**.
+This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. The runtime is in production (Inventory Hero Preview, Dungeon, Arena). §17.4 records what the renderer does today (Ver 1.1.58, Power Flame); §17.5 records the Owner decisions that produced it.
 
 ### 17.1 Gameplay rules (presentation-only)
 
@@ -751,56 +751,50 @@ Implemented (merged to `main`):
 4. Verified layer names are V3 `weapon` and V5 `sword`. The renderer follows the current animation frame and, after each frame, raises its own halo images (and the Character Aura container) to the top of the Hero display list.
 5. Repeated snapshots reconcile existing objects. Stage transitions stop/reuse bounded tweens and particles instead of creating duplicates.
 6. `HeroActor.destroy()` stops and destroys Aura tweens, particles, graphics, and weapon halo images. Aura remains presentation-only.
-7. The effect is built from Phaser Graphics, circles and tinted additive sprite copies, so it works on the Canvas renderer fallback. Since Ver 1.1.56 the first weapon halo additionally gets an optional, guarded WebGL glow (`postFX.addGlow`); it is skipped silently when `postFX` is unavailable (Canvas), so Canvas devices see a weaker weapon effect. Particle count is capped at 10; weapon halo count is capped at 3. The game uses `Phaser.AUTO`.
+7. Since Ver 1.1.58 the effect is built from small canvas-baked flame textures (one outer + one paler core texture per stage colour) drawn additively; colours are baked into the textures and `setTint()` is not used for flames, because the Phaser Canvas renderer ignores tint. The optional tinted silhouette halos around the weapon (with a guarded `postFX.addGlow`) are created on WebGL only and skipped on Canvas. All flames share one driver tween (no per-flame tweens). The game uses `Phaser.AUTO`.
 
-### 17.4 Current visual implementation (Ver 1.1.57, as in code)
+### 17.4 Current visual implementation (Ver 1.1.58, as in code)
 
 Source: `src/phaser/presentation/EnhancementAura.js`. One shared `EnhancementAuraRenderer` serves the Inventory Hero Preview (`HeroPreviewScene`), the Dungeon battlefield and Arena (`HeroActor` via `BattleScene`). In Arena the snapshot passes an Aura only for the `attacker` side; the `defender` side receives `null`.
 
-Style registry: `ENHANCEMENT_AURA_STYLES`, default `goldenPower` (replaceable; stage calculation is separate). Effect intensity is identical for every stage; the stage only selects a palette colour.
+Style registry: `ENHANCEMENT_AURA_STYLES`, default `powerFlame` ("Power Flame", replaceable; stage calculation is separate). Effect intensity is identical for every stage; the stage only selects a palette colour, shared by Character and Weapon Aura.
 
-| Stage | Colour today (`goldenPower`) |
-| --- | --- |
-| 1 (+4/+5) | `0xfff0a6` pale gold |
-| 2 (+6/+7) | `0xffd447` bright gold |
-| 3 (+8/+9) | `0xffa52f` amber |
-| 4 (+10+) | `0xff7138` golden flame / orange |
+| Stage | Level | Colour (`powerFlame`) |
+| --- | --- | --- |
+| 1 | +4/+5 | `0x3dff7a` green |
+| 2 | +6/+7 | `0xb15cff` purple |
+| 3 | +8/+9 | `0xff4fd8` pink |
+| 4 | +10 and above | `0xffd23a` gold |
 
-Character Aura (defensive-slot minimum rule, see §17.1):
-- 3 concentric additive ellipse rings at the feet: widths `0.80/0.94/1.08 × displaySize`, heights `0.17/0.22/0.27 ×`, line width 4, alpha `0.78/0.62/0.46`, ring centre at `-0.02 × displaySize` from the Hero root baseline (+`0.012 × size` per ring).
-- Soft additive ground-glow ellipse (`0.92 × 0.22 × size`, alpha 0.24).
-- 10 additive particles on an ellipse (orbit `0.42 × 0.10 × size`, radius `0.017 × size`, alpha 0.95) that rise `0.14 × size` while fading/shrinking and yoyo-repeating (duration `720 + 55×i` ms, delay `65×i` ms).
-- Whole container alpha-pulses with a `1120` ms duration. No flame shapes, no body-enveloping glow.
+Look: a Super Saiyan power-up feel (shape only) — spiky, flickering flame rays; the stage colour is the table above. Every flame is a soft outer tongue plus a shorter, paler core (`coreLighten` 0.55 toward white), additive blend.
+
+Character Aura (defensive-slot minimum rule, §17.1):
+- 9 flame rays anchored near the feet (`characterBaseY = -0.02 × displaySize`), spread `±0.25 × size`, tallest in the centre (`0.52–0.95 × size`), width `0.115 × size`, outward lean up to 24°, alpha 0.55 (core 0.6). No ground rings, no ground glow, no orbit particles.
+- Rendered as the outermost layer of the Hero (raised to the top of the display list after every frame).
 
 Weapon Aura (weapon-only rule):
-- Layer lookup: `sword` for V5 G2 (`visualMode` starting `v5-g2`), `weapon` otherwise; looked up in `heroRenderer.layerImages` / `currentLayers`. Hidden when stage is 0, the layer or its image is missing/hidden, or the texture key is missing.
-- 3 halo images that clone the live weapon texture, crop, position, origin, angle and display size; additive blend, tinted by stage colour; scale growth only `+1.5%` per halo (practically the same size as the blade); alpha `0.55/0.47/0.39`, alpha-pulsing between `0.28/0.22/0.16` and the start value over `760 + 130×i` ms.
-- WebGL only: glow on the first halo (`postFX.addGlow`, strength 4, distance 12). Canvas fallback keeps only the additive copies.
-- No particles, flame shapes or motion other than the alpha pulse.
+- Layer lookup: `sword` for V5 G2 (`visualMode` starting `v5-g2`), `weapon` otherwise; hidden when stage is 0, the layer/image is missing or hidden, or the texture key is missing.
+- Blade axis: principal axis of the weapon sprite's opaque pixels (`enhancementAuraBladeGeometry`, sampled once per texture frame from a downscaled copy and cached). Tip points up for a steep blade and forward (+x) for a near-horizontal one.
+- 9 flames along the axis (alternating sides, leaning outward and toward the tip, length `0.27–0.47 ×` blade length, width `0.18 ×`) plus one larger tip flame (`0.59 ×` long). They live in a container positioned in the weapon texture's pixel space and mirrored to the weapon image's position, angle and display scale every frame, so they follow the animation.
+- If pixels cannot be read (no DOM, tainted image) the blade flames are skipped silently.
+- WebGL only: 2 tinted silhouette halos cloned from the real weapon texture (alpha 0.35, additive) with a guarded glow on the first; skipped on Canvas.
 
-Diagnostic (Ver 1.1.57): the on-screen `Weapon Aura: <reason>` label and the `[weapon-aura-diagnostic]` console record are OFF by default (`ENHANCEMENT_AURA_DIAGNOSTIC_DEFAULT = false`). Re-enable by setting `globalThis.THORNIE_AURA_DIAGNOSTIC = true` before the Hero scene is created, or flip the constant. When on, the label is pinned near the top of the visible stage.
+Animation: one shared driver tween (`flickerPeriod` 1600 ms) computes every flame's scale (±16%), alpha (±25%) and, for the Character Aura, sway (±5°) from a seamless phase; per-flame phase/speed come from a deterministic hash, so every Hero has the same silhouette.
+
+Diagnostic: the on-screen `Weapon Aura: <reason>` label and the `[weapon-aura-diagnostic]` console record are OFF by default (`ENHANCEMENT_AURA_DIAGNOSTIC_DEFAULT = false`). Re-enable by setting `globalThis.THORNIE_AURA_DIAGNOSTIC = true` before the Hero scene is created, or flip the constant. When on, the label is pinned near the top of the visible stage.
 
 Failure isolation: Aura creation/update errors are reported through `BATTLE_ERROR_CATCHER.capturePresentation` (`surface`: `inventory` / `dungeon` / `arena`) and the Aura is destroyed; the Hero and combat are unaffected.
 
-### 17.5 Owner-approved changes — NOT implemented yet (recorded 2026-11-15)
+### 17.5 Owner decisions behind the Power Flame style (2026-11-15) — implemented in Ver 1.1.58
 
-Status: decisions recorded; no code has been changed. Everything not listed here stays as in §17.4.
+1. Stage colours: +4 green, +6 purple, +8 pink, +10 gold; the same colours for Weapon and Character Aura. Hex values were chosen by Claude as delegated by the Owner.
+2. Super Saiyan power-up look for both auras (spiky flame-like rays, shape only; colours come from item 1).
+3. Ground glow/rings removed; Character Aura stays the outermost layer; the Weapon Aura follows the blade shape.
+4. The former particle/halo caps (10 and 3) no longer apply to the flame effect; the old Golden Power style (`goldenPower`) was removed from the registry.
+5. Unchanged: stage thresholds and slot rules (§17.1), cosmetic-only scope, equal intensity for every stage (colour only), replaceable style registry, shared renderer across Inventory/Dungeon/Arena, Arena attacker-only rule, diagnostic OFF by default.
+6. Not changed: Player Guide ("ออร่าจากการตีบวก") and Info Center text (no colour wording added).
 
-1. **New stage colours** (replaces the Golden Power palette in §17.4):
-
-   | Stage | Level | Colour |
-   | --- | --- | --- |
-   | 1 | +4/+5 | green |
-   | 2 | +6/+7 | purple |
-   | 3 | +8/+9 | pink |
-   | 4 | +10 | gold |
-
-   Exact hex values are not yet chosen (to be proposed to the Owner before implementation).
-2. **One shared palette for Weapon Aura and Character Aura** — both families use the same stage colour table (already structurally true in code; the table just changes).
-3. **Super Saiyan power-up look** for both Character Aura and Weapon Aura: spiky, flame-like light rays/tongues ("แสงแฉก") rising around the subject in the manner of a Super Saiyan charging power. Only the *shape/feel* is taken from that reference; the colours come from item 1 (gold is only the Stage 4 colour). This replaces the current ground rings/orbiting particles (Character) and the plain glow copies (Weapon) as the main visual; whether any ring or ground glow is kept is not decided.
-4. Unchanged by these decisions: stage thresholds and slot rules (§17.1), cosmetic-only scope, equal intensity for every stage (only colour changes), replaceable style registry, shared renderer across Inventory/Dungeon/Arena, Arena attacker-only rule, diagnostic OFF by default.
-
-Open design questions before implementation: exact colour hex values; the flame/ray construction (Graphics polygons vs sprite/particle emitter, must keep the Canvas fallback usable and stay within the particle/halo caps or raise them explicitly); whether the weapon effect rays follow the blade silhouette; layer order (still outermost, or behind the body for the Character Aura); whether the Player Guide ("ออร่าจากการตีบวก") and Info Center announcement should mention colours.
+Known limits: weapon flame placement was verified on synthetic sprites, not production art; the blade-tip direction is a heuristic (up when steep, forward when near-horizontal); weapon flames are not cropped by the layer crop.
 
 The same HeroActor is reused by Dungeon Battle and Arena presentation. The first implementation must explicitly confirm which controlled Hero(s) receive Aura in Arena; do not accidentally show the local player's equipped Aura on an opponent or apply it to every HeroActor by default.
 
