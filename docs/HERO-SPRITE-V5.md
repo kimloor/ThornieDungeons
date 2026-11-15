@@ -564,8 +564,14 @@ Owner confirmed on production (Ver 1.1.56, iPhone) that Character Aura and Weapo
 
 Shared renderer: Inventory Hero preview (`HeroPreviewScene`), Dungeon battlefield and Arena (`HeroActor` via `BattleScene`) all use the same `EnhancementAuraRenderer`; the Arena snapshot only passes an Aura for the `attacker` side.
 
-## 28. Enhancement Aura — documentation synced to code (Ver 1.1.57) and pending visual changes
+## 28. Enhancement Aura — documentation synced to code (Ver 1.1.57)
 
-- `docs/PHASER-COMBAT-ARENA-V1.md` §17 is now the single source for the Aura: §17.4 describes the renderer exactly as shipped in Ver 1.1.57 (Golden Power values, Character/Weapon construction, diagnostic switch, Arena attacker-only rule); §17.3 was corrected (outermost layer order since Ver 1.1.48, optional guarded WebGL glow since Ver 1.1.56, `+10 and above` = Stage 4).
-- The Golden Power palette in §25 above is superseded as soon as §17.5 is implemented.
-- §17.5 records the Owner's approved, **not yet implemented** changes: stage colours green (+4) / purple (+6) / pink (+8) / gold (+10) shared by Weapon and Character Aura, and a Super Saiyan power-up style (spiky golden-flame-like rays, shape only) for both. No code was changed for this record.
+- `docs/PHASER-COMBAT-ARENA-V1.md` §17 is the single source for the Aura (§17.4 = renderer as shipped, §17.5 = Owner decisions). §17.3 was corrected: outermost layer order since Ver 1.1.48, `+10 and above` = Stage 4.
+
+## 29. Power Flame Aura (Ver 1.1.58)
+
+- Replaces the Golden Power style (§25) as the default (`powerFlame`): stage colours green (+4) / purple (+6) / pink (+8) / gold (+10), shared by Character and Weapon Aura, with a Super Saiyan power-up look (spiky, flickering flame rays). Ground rings/glow and orbit particles were removed.
+- Weapon Aura flames follow the blade axis computed from the weapon sprite's own pixels and track the weapon image every frame; Character Aura stays on the outermost layer.
+- Colours are baked into canvas textures instead of `setTint()` (the Canvas renderer ignores tint); the optional tinted silhouette halos with WebGL glow exist on WebGL only.
+- Details, values and known limits: `docs/PHASER-COMBAT-ARENA-V1.md` §17.4 and §17.5. Tests: `tests/enhancement-aura.test.js` (22).
+- Verification: real Phaser 3.90.0 in headless Chromium (WebGL and Canvas) with synthetic sprites; production art and iPhone visual confirmation require the Owner.
