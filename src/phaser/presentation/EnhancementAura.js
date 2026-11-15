@@ -30,6 +30,15 @@ function enhancementAuraBlendAdd() {
   return typeof Phaser !== "undefined" && Phaser.BlendModes ? Phaser.BlendModes.ADD : 1;
 }
 
+// Weapon Aura on-screen label + console record. Verified in production (Ver 1.1.56) and
+// switched OFF by default; the code is kept intact for future debugging.
+// Re-enable without a rebuild: set globalThis.THORNIE_AURA_DIAGNOSTIC = true before the
+// Hero scene is created, or flip this constant to true.
+const ENHANCEMENT_AURA_DIAGNOSTIC_DEFAULT = false;
+function enhancementAuraDiagnosticEnabled() {
+  return ENHANCEMENT_AURA_DIAGNOSTIC_DEFAULT === true || globalThis.THORNIE_AURA_DIAGNOSTIC === true;
+}
+
 function enhancementAuraItemLevel(item) {
   if (!item || typeof item !== "object") return 0;
   const level = Number(item.enhanceLevel);
@@ -80,7 +89,8 @@ class EnhancementAuraRenderer {
     this.weaponHalos = [];
     this.weaponTweens = [];
     this.weaponDiagnosticSignature = "";
-    this.weaponDiagnosticText = typeof scene.add.text === "function"
+    this.diagnosticEnabled = enhancementAuraDiagnosticEnabled();
+    this.weaponDiagnosticText = this.diagnosticEnabled && typeof scene.add.text === "function"
       ? scene.add.text(0, 0, "", { fontFamily: "Arial, sans-serif", fontSize: "10px", color: "#ffffff", backgroundColor: "#21152f", padding: { x: 5, y: 3 }, align: "center" }).setOrigin(0.5, 0).setVisible(false)
       : null;
     if (this.weaponDiagnosticText) root?.add(this.weaponDiagnosticText);
@@ -218,6 +228,7 @@ class EnhancementAuraRenderer {
     const layerNames = (heroRenderer?.currentLayers || []).map(layer => String(layer?.name || "")).filter(Boolean);
     const reason = stage <= 0 ? "stage_disabled" : !currentLayer ? "weapon_layer_missing" : !weaponImage ? "weapon_image_missing" : !weaponImage.visible ? "weapon_image_hidden" : !weaponImage.texture?.key ? "weapon_texture_missing" : "weapon_layer_ready";
     const usable = reason === "weapon_layer_ready";
+    if (this.diagnosticEnabled) {
     const diagnostic = { event: "weapon_aura_diagnostic", reason, weaponStage: stage, characterStage, visualMode: String(heroRenderer?.data?.visualMode || "unknown").slice(0, 40), expectedLayer: layerName, availableLayers: layerNames.slice(0, 24), textureKey: String(weaponImage?.texture?.key || "").slice(0, 160), visible: !!weaponImage?.visible, x: Number.isFinite(Number(weaponImage?.x)) ? Number(weaponImage.x) : null, y: Number.isFinite(Number(weaponImage?.y)) ? Number(weaponImage.y) : null, displayWidth: Number.isFinite(Number(weaponImage?.displayWidth)) ? Number(weaponImage.displayWidth) : null, displayHeight: Number.isFinite(Number(weaponImage?.displayHeight)) ? Number(weaponImage.displayHeight) : null, originX: Number.isFinite(Number(weaponImage?.originX)) ? Number(weaponImage.originX) : null, originY: Number.isFinite(Number(weaponImage?.originY)) ? Number(weaponImage.originY) : null, angle: Number.isFinite(Number(weaponImage?.angle)) ? Number(weaponImage.angle) : null, crop: Array.isArray(currentLayer?.crop) ? currentLayer.crop.slice(0, 4) : null };
     const signature = JSON.stringify(diagnostic);
     if (signature !== this.weaponDiagnosticSignature) {
@@ -229,6 +240,7 @@ class EnhancementAuraRenderer {
     }
     const labelPosition = this.diagnosticPosition();
     this.weaponDiagnosticText?.setPosition?.(labelPosition.x, labelPosition.y);
+    }
     const stageChanged = stage !== this.weaponStage;
     if (stageChanged) {
       this.weaponStage = stage;

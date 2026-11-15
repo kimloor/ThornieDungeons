@@ -557,3 +557,9 @@ At the Owner's request, the shared EnhancementAuraRenderer temporarily bypasses 
 - Tests: `tests/enhancement-aura.test.js` (16) adds label-on-screen, real-newline, ground reference, equal-intensity and additive/halo checks.
 
 **Verification.** Local node tests; headless Chromium harness (synthetic sprites, not production art) showed visible ground rings, a gold glow on the blade at stages 1, 2 and 4 (stage 4 = orange), and the label at stage 0. **Not verified:** Production art alignment (real layer offsets) and iPhone visual check — Owner confirmation required.
+
+## 27. Weapon Aura diagnostic switched off (Ver 1.1.57)
+
+Owner confirmed on production (Ver 1.1.56, iPhone) that Character Aura and Weapon Aura are visible, so the on-screen `Weapon Aura: ...` label and the `[weapon-aura-diagnostic]` console record are now OFF by default. The code is intentionally kept: `ENHANCEMENT_AURA_DIAGNOSTIC_DEFAULT = false` in `EnhancementAura.js`; to debug again, set `globalThis.THORNIE_AURA_DIAGNOSTIC = true` before the Hero scene is created (or flip the constant). With the switch off, no label object is created and the per-frame diagnostic payload is not computed.
+
+Shared renderer: Inventory Hero preview (`HeroPreviewScene`), Dungeon battlefield and Arena (`HeroActor` via `BattleScene`) all use the same `EnhancementAuraRenderer`; the Arena snapshot only passes an Aura for the `attacker` side.
