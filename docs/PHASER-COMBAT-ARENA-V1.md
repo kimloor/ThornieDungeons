@@ -691,9 +691,9 @@ W7A A2 adds presentation-only Chapter Boss cues on top of the shared BattleScene
 
 ---
 
-## 17. Enhancement Aura — approved design / implemented (Power Flame style, Ver 1.1.59)
+## 17. Enhancement Aura — approved design / implemented (Power Flame style, Ver 1.1.60)
 
-This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. The runtime is in production (Inventory Hero Preview, Dungeon, Arena). §17.4 records what the renderer does today (Ver 1.1.59, Power Flame); §17.5 records the Owner decisions that produced it.
+This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. The runtime is in production (Inventory Hero Preview, Dungeon, Arena). §17.4 records what the renderer does today (Ver 1.1.60, Power Flame); §17.5 records the Owner decisions that produced it.
 
 ### 17.1 Gameplay rules (presentation-only)
 
@@ -753,7 +753,7 @@ Implemented (merged to `main`):
 6. `HeroActor.destroy()` stops and destroys Aura tweens, particles, graphics, and weapon halo images. Aura remains presentation-only.
 7. Since Ver 1.1.58 the effect is built from small canvas-baked flame textures (one outer + one paler core texture per stage colour) drawn additively; colours are baked into the textures and `setTint()` is not used for flames, because the Phaser Canvas renderer ignores tint. The optional tinted silhouette halos around the weapon (with a guarded `postFX.addGlow`) are created on WebGL only and skipped on Canvas. All flames share one driver tween (no per-flame tweens). The game uses `Phaser.AUTO`.
 
-### 17.4 Current visual implementation (Ver 1.1.59, as in code)
+### 17.4 Current visual implementation (Ver 1.1.60, as in code)
 
 Source: `src/phaser/presentation/EnhancementAura.js`. One shared `EnhancementAuraRenderer` serves the Inventory Hero Preview (`HeroPreviewScene`), the Dungeon battlefield and Arena (`HeroActor` via `BattleScene`). In Arena the snapshot passes an Aura only for the `attacker` side; the `defender` side receives `null`.
 
@@ -768,9 +768,11 @@ Style registry: `ENHANCEMENT_AURA_STYLES`, default `powerFlame` ("Power Flame", 
 
 Look: a Super Saiyan power-up feel (shape only) — spiky, flickering flame rays; the stage colour is the table above. Every flame is a soft outer tongue plus a shorter, paler core (`coreLighten` 0.55 toward white), additive blend.
 
-Character Aura (defensive-slot minimum rule, §17.1) — a flame envelope around the Hero (Ver 1.1.59, per the Owner's red-outline sketch):
-- 18 flames whose bases sit on an ellipse around the body: centre `-0.35 × displaySize` above the feet, radii `0.23 × / 0.26 ×` (X/Y). Each flame points along the outward ellipse normal, biased upward (`characterUpBias` 0.7, so the lower flames lick upward instead of down), with length `(0.09 + 0.06·cosθ⁺ + 0.035·|sinθ|) × size` (θ = 0 at the top: the crown above the head is the tallest, the bottom ones the shortest), width `0.13 × size`, alpha 0.55 (core 0.6). Tips stay within about `-0.8 × size`, so they do not clip at the top of the Hero preview.
-- A soft baked radial glow ellipse behind the flames (`characterGlowAlpha` 0.3, pad 0.1) makes the aura read as one body; it flickers at 30% of the flame strength. No ground rings, no ground glow, no orbit particles.
+Character Aura (defensive-slot minimum rule, §17.1) — a flame ring OUTSIDE a clear ellipse (Ver 1.1.60, placed from the Owner's marked screenshot):
+- The clear ellipse is left empty so the Hero stays fully visible: centre `(-0.055, -0.425) × displaySize` from the Hero root (feet baseline; the art sits left of the root, hence the negative X), radii `0.27 × / 0.365 ×`; its bottom touches the ground line.
+- 24 flames sit on that ellipse and point outward along its normal, tilted upward (`characterUpBias` 0.3; the lower half always points up and outward). Length = the distance to the outer limit ellipse (radii `0.405 × / 0.445 ×`) × `characterFlameReach` 1.2 × a stable 0.85–1.15 variation, and each tip is trimmed to stay inside the outer limit (+4%) and above the top limit (`-0.86 ×`, inside the Hero preview canvas). Width `0.125 × size`, alpha 0.68 (core 0.7).
+- Ground rule: nothing is drawn below the ground line (`characterGroundY` = `-0.058 ×`): flames whose base is at/below it, or whose tip would cross it, are skipped.
+- No ground rings, ground glow, body glow or orbit particles; the interior of the clear ellipse never receives Character Aura.
 - Rendered as the outermost layer of the Hero (raised to the top of the display list after every frame).
 
 Weapon Aura (weapon-only rule):
@@ -794,7 +796,8 @@ Failure isolation: Aura creation/update errors are reported through `BATTLE_ERRO
 4. The former particle/halo caps (10 and 3) no longer apply to the flame effect; the old Golden Power style (`goldenPower`) was removed from the registry.
 5. Unchanged: stage thresholds and slot rules (§17.1), cosmetic-only scope, equal intensity for every stage (colour only), replaceable style registry, shared renderer across Inventory/Dungeon/Arena, Arena attacker-only rule, diagnostic OFF by default.
 6. Follow-up (2026-11-15, Ver 1.1.59): the Character Aura was reshaped from ground-anchored rays into a flame envelope wrapping the Hero, as sketched by the Owner (red outline: wide around the body, pointed crown above the head). The Weapon Aura was kept as is.
-7. Not changed: Player Guide ("ออร่าจากการตีบวก") and Info Center text (no colour wording added).
+7. Second follow-up (2026-11-15, Ver 1.1.60): the Owner marked a clear red ellipse for the Hero and an outer jagged limit around it, plus a ground line. The Character Aura is now a flame ring in that band only (clear inside, nothing below the ground line); the soft body glow of Ver 1.1.59 was removed. Weapon Aura unchanged.
+8. Not changed: Player Guide ("ออร่าจากการตีบวก") and Info Center text (no colour wording added).
 
 Known limits: weapon flame placement was verified on synthetic sprites, not production art; the blade-tip direction is a heuristic (up when steep, forward when near-horizontal); weapon flames are not cropped by the layer crop.
 

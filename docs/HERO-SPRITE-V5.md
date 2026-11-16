@@ -576,7 +576,8 @@ Shared renderer: Inventory Hero preview (`HeroPreviewScene`), Dungeon battlefiel
 - Details, values and known limits: `docs/PHASER-COMBAT-ARENA-V1.md` §17.4 and §17.5. Tests: `tests/enhancement-aura.test.js` (22).
 - Verification: real Phaser 3.90.0 in headless Chromium (WebGL and Canvas) with synthetic sprites; production art and iPhone visual confirmation require the Owner.
 
-## 30. Character Aura envelope (Ver 1.1.59)
+## 30. Character Aura flame ring (Ver 1.1.59 → 1.1.60)
 
-- The Character Aura is no longer a fan of rays rising from the feet. It is now a ring of 18 flames on an ellipse around the Hero body (centre `-0.35 × size`, radii `0.23 × / 0.26 ×`), pointing outward and licking upward, with the tallest flame as the crown above the head, plus a soft baked glow behind. Stage colours, equal intensity, outermost layer order and the Weapon Aura are unchanged. Details and values: `docs/PHASER-COMBAT-ARENA-V1.md` §17.4.
-- Verification: real Phaser 3.90.0 (headless Chromium, WebGL + Canvas) at the Inventory preview proportions with a synthetic Hero and a reference ellipse taken from the Owner's sketch; Owner iPhone check with real art still required.
+- Ver 1.1.59 reshaped the Character Aura from ground-anchored rays into flames around the Hero. Ver 1.1.60 aligns it with the Owner's marked screenshot: a ring of 24 flames OUTSIDE a clear ellipse (centre `(-0.055, -0.425) × size`, radii `0.27 × / 0.365 ×`), limited to an outer ellipse (`0.405 × / 0.445 ×`), with nothing inside the clear ellipse and nothing below the ground line (`-0.058 ×`). The body glow was removed. Stage colours, equal intensity, outermost layer order and the Weapon Aura are unchanged. Values and rules: `docs/PHASER-COMBAT-ARENA-V1.md` §17.4.
+- Calibration note: the fractions were derived from the Owner's screenshot using the Ver 1.1.59 flames visible in it as a scale reference (displaySize ≈ 452 px, Hero root ≈ (412, 402) in that screenshot). Different preview sizes scale proportionally; a different Hero art offset would shift the ring and needs a re-measure.
+- Verification: real Phaser 3.90.0 (headless Chromium, WebGL + Canvas) at the measured proportions with the clear ellipse, outer limit and ground line overlaid; Owner iPhone check with real art still required.
