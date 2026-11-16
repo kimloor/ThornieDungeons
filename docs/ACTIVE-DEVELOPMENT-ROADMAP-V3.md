@@ -1,5 +1,7 @@
 # ThornieDungeons — Active Development Roadmap V3
 
+Visible game version Ver 1.1.62
+
 Status: **ACTIVE-PLANNING — Ver 1.1.1 RELEASED 2026-10-21; WAVE 1 COMPLETE; WAVE 1 PREP (Client Systems V1) contract awaiting Owner approval**
 
 This is the successor roadmap after the completed historical W0-W9R and Gameplay WAVE 1-7 roadmap. Historical numbering is not reused here.

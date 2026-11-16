@@ -1,6 +1,6 @@
 # Blacksmith V2 — Module Separation and UI Redesign
 
-Status: **ACTIVE — Wave 3.1 UI redesign implemented on feature branch; QA pending**
+Status: **ACTIVE — Wave 3.1 UI redesign merged; Ver 1.1.62 mobile layout follow-up on PR; CI correction in progress**
 
 ## 1. Purpose
 
@@ -72,4 +72,4 @@ Owner screenshot identified the top Inventory shortcut, heading readability, ove
 - Added bounded detail expansion/collapse and an internally scrollable detail body; the page scrolls within the available viewport.
 - No operation handlers, costs, materials, success rates, server/API/Worker/D1 behavior or item rules changed.
 
-Validation: focused layout assertions and frontend build/CI are required on the PR. Production visual acceptance remains pending owner recheck.
+Validation: the first PR CI run exposed a single shared regression-test failure: the version-sync test expected `Visible game version Ver 1.1.62`, but the roadmap had no visible-version marker. The same assertion caused the Frontend Build, Battle Core parity wrapper and Admin V2 QA Build step to fail; the P0 suite did not report a separate gameplay-authority defect. The roadmap marker is being restored to match the existing `head.html` and UI badge version. Rerun all required PR checks before merge. Production visual acceptance remains pending owner recheck.
