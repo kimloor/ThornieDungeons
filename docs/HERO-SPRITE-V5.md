@@ -575,3 +575,8 @@ Shared renderer: Inventory Hero preview (`HeroPreviewScene`), Dungeon battlefiel
 - Colours are baked into canvas textures instead of `setTint()` (the Canvas renderer ignores tint); the optional tinted silhouette halos with WebGL glow exist on WebGL only.
 - Details, values and known limits: `docs/PHASER-COMBAT-ARENA-V1.md` §17.4 and §17.5. Tests: `tests/enhancement-aura.test.js` (22).
 - Verification: real Phaser 3.90.0 in headless Chromium (WebGL and Canvas) with synthetic sprites; production art and iPhone visual confirmation require the Owner.
+
+## 30. Character Aura envelope (Ver 1.1.59)
+
+- The Character Aura is no longer a fan of rays rising from the feet. It is now a ring of 18 flames on an ellipse around the Hero body (centre `-0.35 × size`, radii `0.23 × / 0.26 ×`), pointing outward and licking upward, with the tallest flame as the crown above the head, plus a soft baked glow behind. Stage colours, equal intensity, outermost layer order and the Weapon Aura are unchanged. Details and values: `docs/PHASER-COMBAT-ARENA-V1.md` §17.4.
+- Verification: real Phaser 3.90.0 (headless Chromium, WebGL + Canvas) at the Inventory preview proportions with a synthetic Hero and a reference ellipse taken from the Owner's sketch; Owner iPhone check with real art still required.
