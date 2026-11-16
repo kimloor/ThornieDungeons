@@ -22,6 +22,10 @@ Production code/configuration describes the current implementation, but does not
 
 If a meaningful conflict exists, report it instead of silently choosing one source.
 
+## Blacksmith V2 module separation
+
+- [`BLACKSMITH-V2.md`](BLACKSMITH-V2.md) — Blacksmith UI and dedicated Phaser module boundaries, behavior preservation, and implementation notes.
+
 ## 3. Active core documentation
 
 | Document | Scope |

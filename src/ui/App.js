@@ -3257,7 +3257,7 @@ function ThornieDungeons() {
       setPhase("guild");
     },
     onClose: () => setInvOpen(false)
-  }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithOverlay, {
+  }), blacksmithOpen && /*#__PURE__*/React.createElement(BlacksmithPage, {
     equipped: equipped,
     inventory: inventory,
     busy: itemActionBusy,

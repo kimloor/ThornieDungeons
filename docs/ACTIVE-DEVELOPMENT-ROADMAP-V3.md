@@ -245,6 +245,8 @@ Implementation follows risk routing in `AGENTS.md`; API/DB/player data changes r
 Wave 3 is split into two independently designed and sequenced work packages:
 
 #### WAVE 3.1 — Blacksmith UI Redesign
+
+**Code organization preparation:** Blacksmith UI and its Phaser forge presentation are separated into dedicated source modules before visual redesign. This refactor preserves current behavior; see [`BLACKSMITH-V2.md`](BLACKSMITH-V2.md).
 **Status: DESIGN DIRECTION AGREED / MOCKUP REFERENCE RECORDED / DESIGN CONTRACT PENDING**
 **Reference mockup:** [Blacksmith mobile portrait reference](wave3-blacksmith-mobile-reference.jpg)
 
