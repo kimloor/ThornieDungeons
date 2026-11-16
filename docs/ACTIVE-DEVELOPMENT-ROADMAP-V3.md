@@ -239,9 +239,45 @@ Graphics dependency: **G15 Player Information Center UI Pack** provides the shar
 Implementation follows risk routing in `AGENTS.md`; API/DB/player data changes require appropriate branches, QA, deployment and live verification. Do not infer approval for economy mutations, destructive tooling or schema changes from this roadmap.
 
 ### WAVE 3 — Blacksmith + Crafting Redesign
-**Status: APPROVED ROADMAP SLOT / SCOPE DESIGN PENDING**
+**Status: APPROVED ROADMAP SLOT / UX DESIGN IN PROGRESS — Blacksmith visual direction agreed; Crafting design pending**
+**Scope boundary: VISUAL / UX REDESIGN ONLY. Existing gameplay, economy, server authority, API and persistence behavior must remain unchanged unless separately approved by the Owner.**
 
-Redesign the Blacksmith/Crafting experience around the existing authoritative Enhance, Empower, Salvage, Craft, Recipe and Protection Stone systems. Detailed UX/mechanics changes remain subject to a separate scope contract.
+Wave 3 is split into two independently designed and sequenced work packages:
+
+#### WAVE 3.1 — Blacksmith UI Redesign
+**Status: DESIGN DIRECTION AGREED / MOCKUP REFERENCE RECORDED / DESIGN CONTRACT PENDING**
+**Reference mockup:** [Blacksmith mobile portrait reference](wave3-blacksmith-mobile-reference.jpg)
+
+The approved visual target is to bring the in-game Blacksmith as close as practical to the attached mobile portrait mockup. Treat the image as a visual/layout reference, not as a pixel-perfect or implementation-ready specification. Preserve ThornieDungeons' existing theme, real shared Global Currency Bar and real Global Navigation / GameDock components.
+
+Agreed layout and interaction direction:
+- Mobile-first portrait page, opened as a dedicated Blacksmith page from Town Hub (rather than the current Blacksmith panel).
+- Top area reuses the game's existing global currency/status presentation; do not create a parallel currency bar.
+- Bottom area reuses the existing Global Navigation / GameDock; do not create a parallel navigation system.
+- Main content: forge / equipment animation presentation on the left side of the main work area, with currently equipped gear icons on the right. The equipped gear list shows only items equipped at that moment, arranged as a two-column icon grid (two slots per row).
+- No equipment is selected automatically on first entry. The player selects an equipped item from the icon grid.
+- Selecting an item updates the expandable/collapsible Equipment Detail panel. The detail panel contains the item's existing Enchant options and the option-lock controls.
+- Keep the Enchant and Refine action buttons separate at the bottom of the Blacksmith work area.
+- The Enchant action button is state-labelled and routed according to the existing item state: use **Enchant** while the item has fewer Enchant options than its rarity allows; when the allowed option count is full, change the action to **Reroll**. Preserve the existing Reroll rules and Lock behavior.
+- Refine and Enchant/Reroll trigger their corresponding presentation/animation in the forge area. Animation is presentation only and must not become a source of gameplay outcome or server authority.
+- Salvage remains in Inventory as it is today; do not move Salvage into the new Blacksmith page as part of this redesign.
+
+Visual acceptance target:
+- Match the reference's overall dark fantasy / ornate gold-and-purple visual language, portrait composition, currency header, forge-versus-equipped-items split, expandable detail area, distinct action buttons, and bottom navigation as closely as practical.
+- Use actual shared game components/assets and responsive runtime UI where available. The reference artwork itself is illustrative and does not authorize replacing production assets or baking functional text/controls into a background image.
+- On mobile, verify safe areas, vertical scrolling, touch target sizes, detail expand/collapse, and no overlap with the global navigation. Then verify desktop/web responsive behavior.
+
+Strict non-change requirements:
+- This is a presentation and navigation redesign only. Do not alter Refine success rates, level rules, costs, materials, Protection Stone behavior, Enchant pools, rarity option limits, Lock rules, Reroll rules, Salvage behavior, inventory ownership, API/Worker contracts, database/schema, or authoritative server-side calculations.
+- Do not add, remove, or rebalance gameplay mechanics. Reuse existing authoritative operations and state.
+- No implementation is authorized by this roadmap note alone. Complete and approve a detailed Design Contract before DEV implementation.
+
+#### WAVE 3.2 — Crafting UI Redesign
+**Status: DESIGN PENDING / NOT YET AUTHORIZED**
+
+Redesign the presentation and navigation of the existing Crafting experience only. Preserve all current recipes, requirements, material quantities, Gold costs, eligibility rules, output generation, server authority, API and persistence behavior. Define its own UX direction and Design Contract after Wave 3.1 design is finalized; do not infer Crafting layout or behavior from the Blacksmith mockup.
+
+Wave 3.1 and Wave 3.2 are separate design/implementation work packages. Do not combine them into one broad implementation without a separate Owner-approved plan.
 
 ### LEGAL & POLICY GATE — PRE-LIVE-MONETIZATION
 **Status: REQUIRED BEFORE REAL-MONEY PURCHASES**
