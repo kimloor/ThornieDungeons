@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.59" />
+<meta name="application-version" content="1.1.60" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.59";
+  content: "Ver 1.1.60";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -10485,7 +10485,7 @@ if (typeof module !== "undefined") module.exports = {
       const reason = safeCode(thrown?.code) || `phaser_${safePhase}_failed`;
       const diagnostic = {
         event: "phaser_stage_failed", system: "phaser_presentation",
-        component: "phaser_stage", reason, version: "1.1.59", surface: safeSurface, phase: safePhase
+        component: "phaser_stage", reason, version: "1.1.60", surface: safeSurface, phase: safePhase
       };
       try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
       return { reason, surface: safeSurface, phase: safePhase };
@@ -10497,7 +10497,7 @@ if (typeof module !== "undefined") module.exports = {
       const reason = safeCode(thrown?.code) || `aura_${safePhase}_failed`;
       const diagnostic = {
         event: "enhancement_aura_failed", system: "phaser_presentation",
-        component: "enhancement_aura", reason, version: "1.1.59", surface: safeSurface, phase: safePhase
+        component: "enhancement_aura", reason, version: "1.1.60", surface: safeSurface, phase: safePhase
       };
       try { root.console?.warn?.("[production-diagnostic]", JSON.stringify(diagnostic)); } catch (_) {}
       return { reason, surface: safeSurface, phase: safePhase };
@@ -13574,14 +13574,15 @@ const ENHANCEMENT_AURA_STYLES = Object.freeze({
     palette: Object.freeze({ 1: 0x3dff7a, 2: 0xb15cff, 3: 0xff4fd8, 4: 0xffd23a }),
     // Identical for every stage: only the palette colour changes with enhancement level.
     intensity: Object.freeze({
-      // Flames wrap the Hero: bases sit on an ellipse around the body (centre/radii are fractions of
-      // displaySize measured from the feet), pointing outward and licking upward. Tips stay inside the
-      // preview canvas (top of the Hero preview is about -0.8 x displaySize).
-      characterFlameCount: 18, characterCenterY: -0.35, characterRadiusX: 0.23, characterRadiusY: 0.26,
-      characterFlameBase: 0.09, characterFlameTop: 0.06, characterFlameSide: 0.035, characterCrownBoost: 1,
-      characterFlameWidth: 0.13, characterUpBias: 0.7, characterFlameAlpha: 0.55,
-      characterGlowAlpha: 0.3, characterGlowPad: 0.1,
-      coreWidthRatio: 0.42, coreHeightRatio: 0.58, coreAlpha: 0.6, coreLighten: 0.55,
+      // Character Aura = a ring of flames OUTSIDE a clear ellipse that is left empty for the Hero.
+      // All values are fractions of displaySize measured from the Hero root (feet baseline), taken from
+      // the Owner's sketch: clear ellipse centre/radii, outer limit of the flames, and a ground line
+      // below which no Aura is drawn. Wings/sword sit left of the body, hence the negative centre X.
+      characterFlameCount: 24, characterCenterX: -0.055, characterCenterY: -0.425,
+      characterRadiusX: 0.27, characterRadiusY: 0.365, characterOuterRadiusX: 0.405, characterOuterRadiusY: 0.445,
+      characterGroundY: -0.058, characterTopLimit: -0.86, characterFlameWidth: 0.125,
+      characterFlameReach: 1.2, characterUpBias: 0.3, characterLowerUpBias: 0.3, characterFlameAlpha: 0.68,
+      coreWidthRatio: 0.42, coreHeightRatio: 0.58, coreAlpha: 0.7, coreLighten: 0.55,
       flickerPeriod: 1600, flickerScale: 0.16, flickerAlpha: 0.25, swayDegrees: 5,
       weaponFlameCount: 9, weaponFlameWidth: 0.18, weaponFlameMinLength: 0.27, weaponFlameMaxLength: 0.47,
       weaponFlameOffset: 0.03, weaponTipWidth: 0.27, weaponTipLength: 0.59, weaponFlameAlpha: 0.7,
@@ -13674,28 +13675,6 @@ function enhancementAuraFlameTextureKey(scene, color, kind, lighten = 0.6) {
     ctx.quadraticCurveTo(52, 120, 60, 252);
     ctx.closePath();
     ctx.fill();
-    canvasTexture.refresh();
-    return key;
-  } catch (_) {
-    return null;
-  }
-}
-
-// Soft radial glow behind the flames so the aura reads as one envelope around the Hero.
-function enhancementAuraGlowTextureKey(scene, color) {
-  const key = `enhancement-aura-glow-${color.toString(16).padStart(6, "0")}`;
-  try {
-    if (scene.textures.exists(key)) return key;
-    const canvasTexture = scene.textures.createCanvas(key, 128, 128);
-    const ctx = canvasTexture?.context;
-    if (!ctx) return null;
-    const rgb = `${(color >> 16) & 255},${(color >> 8) & 255},${color & 255}`;
-    const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gradient.addColorStop(0, `rgba(${rgb},0.55)`);
-    gradient.addColorStop(0.6, `rgba(${rgb},0.3)`);
-    gradient.addColorStop(1, `rgba(${rgb},0)`);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 128, 128);
     canvasTexture.refresh();
     return key;
   } catch (_) {
@@ -13903,42 +13882,48 @@ class EnhancementAuraRenderer {
       this.characterRoot.setVisible(false);
       return;
     }
+    const centerX = size * intensity.characterCenterX;
     const centerY = size * intensity.characterCenterY;
     const radiusX = size * intensity.characterRadiusX;
     const radiusY = size * intensity.characterRadiusY;
-
-    const glowKey = enhancementAuraGlowTextureKey(this.scene, color);
-    if (glowKey) {
-      const glow = this.scene.add.image(0, centerY, glowKey);
-      glow.setBlendMode?.(enhancementAuraBlendAdd());
-      glow.setScale((2 * (radiusX + size * intensity.characterGlowPad)) / 128, (2 * (radiusY + size * intensity.characterGlowPad)) / 128);
-      this.characterRoot.add(glow);
-      this.characterFlames.push({
-        obj: glow, sx: (2 * (radiusX + size * intensity.characterGlowPad)) / 128, sy: (2 * (radiusY + size * intensity.characterGlowPad)) / 128,
-        rot: 0, alpha: intensity.characterGlowAlpha, phase: 0, speed: 1, sway: 0, flicker: 0.3
-      });
-    }
-
+    const ground = size * intensity.characterGroundY;
+    const topLimit = size * intensity.characterTopLimit;
     const count = intensity.characterFlameCount;
     for (let index = 0; index < count; index += 1) {
-      const theta = (index / count) * Math.PI * 2; // 0 = top of the Hero, clockwise
+      const theta = ((index + 0.5) / count) * Math.PI * 2; // 0 = top of the Hero, clockwise
       const sin = Math.sin(theta);
       const cos = Math.cos(theta);
-      // Outward ellipse normal, tilted upward so the flames lick upward like rising fire.
+      const baseX = centerX + sin * radiusX;
+      const baseY = centerY - cos * radiusY;
+      // Nothing is drawn below the ground line, and the empty ellipse stays empty.
+      if (baseY > ground - size * 0.012) continue;
+      // Outward ellipse normal, tilted upward (stronger in the lower half) so the flames lick upward.
       const norm = Math.hypot(sin / radiusX, cos / radiusY) || 1;
       let dx = sin / radiusX / norm;
-      let dy = -cos / radiusY / norm - intensity.characterUpBias;
-      dy = Math.min(dy, 0.15);
-      const length = Math.hypot(dx, dy) || 1;
-      dx /= length;
-      dy /= length;
-      const crown = index === 0;
-      const height = size * (intensity.characterFlameBase + intensity.characterFlameTop * Math.max(0, cos) + intensity.characterFlameSide * Math.abs(sin))
-        * (crown ? intensity.characterCrownBoost : 0.9 + 0.2 * enhancementAuraHash(index, 1));
+      let dy = -cos / radiusY / norm - (cos < 0 ? intensity.characterLowerUpBias : intensity.characterUpBias);
+      if (cos < 0) dy = Math.min(dy, -0.1);
+      const dirLength = Math.hypot(dx, dy) || 1;
+      dx /= dirLength;
+      dy /= dirLength;
+      // Length = distance from the clear ellipse to the outer limit in this direction.
+      const thickness = Math.hypot((intensity.characterOuterRadiusX - intensity.characterRadiusX) * sin, (intensity.characterOuterRadiusY - intensity.characterRadiusY) * cos) * size;
+      let height = thickness * intensity.characterFlameReach * (0.85 + 0.3 * enhancementAuraHash(index, 1));
+      if (dy < 0) height = Math.min(height, (baseY - topLimit) / -dy);
+      if (dy > 0) height = Math.min(height, (ground - baseY) / dy);
+      // Keep the tip inside the outer limit (a little slack for the flicker).
+      const outerX = size * intensity.characterOuterRadiusX * 1.04;
+      const outerY = size * intensity.characterOuterRadiusY * 1.04;
+      for (let step = 0; step < 8; step += 1) {
+        const tipX = baseX + dx * height - centerX;
+        const tipY = baseY + dy * height - centerY;
+        if ((tipX / outerX) ** 2 + (tipY / outerY) ** 2 <= 1) break;
+        height *= 0.9;
+      }
+      if (!(height > size * 0.02)) continue;
       const flame = this.createFlame(this.characterRoot, keys, index, intensity.swayDegrees);
       this.placeFlame(flame, {
-        x: sin * radiusX,
-        y: centerY - cos * radiusY,
+        x: baseX,
+        y: baseY,
         width: size * intensity.characterFlameWidth * (0.9 + 0.2 * enhancementAuraHash(index, 2)),
         height,
         rotation: Math.atan2(dx, -dy) * 180 / Math.PI,
