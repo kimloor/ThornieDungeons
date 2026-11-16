@@ -540,3 +540,9 @@ Owner confirmed that Event Preview entry, battle completion, reward grant, persi
 - CSS-only placeholders are used where final forge artwork/VFX assets are not yet available.
 - Existing server-authoritative handlers are reused; no API/Worker/D1 changes are in scope.
 - Target app version: Ver 1.1.61. Update Build/QA/merge status only from workflow evidence.
+
+
+### Blacksmith Production mobile layout follow-up — 2026-11-16
+- Owner supplied a Production screenshot requesting removal of the top Inventory shortcut, a distinct heading panel, and compact workbench/equipment with bounded Equipment Detail expansion.
+- Presentation-only follow-up; bottom GameDock Inventory and existing Blacksmith handlers remain unchanged.
+- Target version: Ver 1.1.62. Record build, deployment and Production visual QA only from workflow and owner evidence.
