@@ -25,15 +25,15 @@ test("Forge presentation scene is presentation-only and reuses shared queue/VFX"
 
 test("Refine presentation is triggered only from resolved authoritative mutation output", () => {
   const app = read("src/ui/App.js");
-  const components = read("src/ui/components.js");
+  const blacksmith = read("src/ui/blacksmith.js");
   assert.equal(app.includes("const result = res.mutation || {};"), true);
   assert.equal(app.includes("return { ok: true, result, message:"), true);
   assert.equal(app.includes("return { ok: false, result, message:"), true);
-  const enhanceCall = components.indexOf("const res = await Promise.resolve(onEnhance(detailTarget.id, useProtectionStone));");
-  const presentation = components.indexOf("setForgePresentation({", enhanceCall);
+  const enhanceCall = blacksmith.indexOf("const res = await Promise.resolve(onEnhance(detailTarget.id, useProtectionStone));");
+  const presentation = blacksmith.indexOf("setForgePresentation({", enhanceCall);
   assert.ok(enhanceCall >= 0 && presentation > enhanceCall);
-  assert.equal(components.includes("outcome: result.success ? \"success\" : result.protectionConsumed ? \"protected\" : result.downgraded ? \"downgrade\" : \"fail\""), true);
-  assert.equal(components.includes("playAnim(res.ok && !!res?.result)"), true);
+  assert.equal(blacksmith.includes('outcome:x.success?"success":x.protectionConsumed?"protected":x.downgraded?"downgrade":"fail"'), true);
+  assert.equal(blacksmith.includes("playAnim(res.ok&&!!res.result)"), true);
 });
 
 test("Craft reveal starts only after successful server craft and authoritative hydration", () => {
@@ -62,8 +62,8 @@ test("Forge presentation uses Refine labels and mobile-safe outcome text", () =>
 
 test("Insufficient Gold/materials stay resource errors and do not become Refine failure presentation", () => {
   const app = read("src/ui/App.js");
-  const components = read("src/ui/components.js");
+  const blacksmith = read("src/ui/blacksmith.js");
   assert.match(app, /insufficient_gold: "Gold ไม่พอ"/);
   assert.match(app, /insufficient_materials: res\?\.junkId === "iron" \? "Iron ไม่พอ" : "Mana Ore ไม่พอ"/);
-  assert.match(components, /playAnim\(res\.ok && !!res\?\.result\)/);
+  assert.match(blacksmith, /playAnim\(res\.ok&&!!res\.result\)/);
 });
