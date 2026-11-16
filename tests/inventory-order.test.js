@@ -64,3 +64,19 @@ test("Ver 1.1.61: visible badge, meta and roadmap are in sync", () => {
   // Keep this source/version assertion aligned with the production build marker.
   assert.match(read("docs/ACTIVE-DEVELOPMENT-ROADMAP-V3.md"), /Visible game version\s+Ver 1\.1\.61/);
 });
+
+
+test("Blacksmith Wave 3.1 uses a dedicated page and preserves existing operation handlers", () => {
+  const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+  const page = read("src/ui/blacksmith.js");
+  const app = read("src/ui/App.js");
+  const styles = read("src/data/styles.js");
+  assert.match(page, /className:"md-blacksmith-page"/);
+  assert.doesNotMatch(page, /md-equip-overlay|md-equip-sheet/);
+  assert.match(page, /SLOT_ORDER\.filter\(s=>!!equipped\[s\]\)/);
+  assert.match(page, /onClick:openSlot\?doEmpower:doReroll/);
+  assert.match(page, /React\.createElement\(GameDock/);
+  assert.match(app, /phase === "town" && !blacksmithOpen/);
+  assert.match(app, /utilityDockProps\(phase\)/);
+  assert.match(styles, /\.md-blacksmith-gear-grid \{ display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+});
