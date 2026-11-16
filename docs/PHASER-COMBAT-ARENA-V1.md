@@ -691,9 +691,9 @@ W7A A2 adds presentation-only Chapter Boss cues on top of the shared BattleScene
 
 ---
 
-## 17. Enhancement Aura — approved design / implemented (Power Flame style, Ver 1.1.60)
+## 17. Enhancement Aura — approved design / implemented (Power Flame style, Ver 1.1.62)
 
-This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. The runtime is in production (Inventory Hero Preview, Dungeon, Arena). §17.4 records what the renderer does today (Ver 1.1.60, Power Flame); §17.5 records the Owner decisions that produced it.
+This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. The runtime is in production (Inventory Hero Preview, Dungeon, Arena). §17.4 records what the renderer does today (Ver 1.1.62, Power Flame); §17.5 records the Owner decisions that produced it.
 
 ### 17.1 Gameplay rules (presentation-only)
 
@@ -747,15 +747,15 @@ Current implementation points inspected on main:
 Implemented (merged to `main`):
 1. `resolveEnhancementAura()` derives immutable `weaponStage` and `characterStage` values from the latest equipped map. Equipped item data and gameplay authority remain outside Phaser.
 2. `EnhancementAuraRenderer` is a dedicated persistent controller owned by `HeroActor`; `VfxManager` remains unchanged and one-shot.
-3. Character rings/particles and weapon halos are rendered as the outermost presentation layer of the Hero (raised above every body/equipment layer after each frame, since Ver 1.1.48; the original "behind the Hero" placement was changed on purpose because the effect was not visible). Weapon halos clone the actual current weapon layer image and mirror its live texture, crop, position, display size, origin, and rotation; authored sprite bounds are not guessed.
-4. Verified layer names are V3 `weapon` and V5 `sword`. The renderer follows the current animation frame and, after each frame, raises its own halo images (and the Character Aura container) to the top of the Hero display list.
+3. Layer order (Ver 1.1.62): the Weapon Aura (halos and blade flames) is the outermost presentation layer of the Hero — raised above every body/equipment layer after each frame (since Ver 1.1.48, because the effect was not visible when placed behind). The Character Aura is the opposite: it is sent to the very back (index 0) after each frame so it never covers the wings, body or equipment. Weapon halos clone the actual current weapon layer image and mirror its live texture, crop, position, display size, origin, and rotation; authored sprite bounds are not guessed.
+4. Verified layer names are V3 `weapon` and V5 `sword`. The renderer follows the current animation frame; after each frame it raises the weapon halos and blade-flame container to the top of the Hero display list and sends the Character Aura container to the back (the Hero renderer re-indexes its own layers every frame, so this is repeated every frame).
 5. Repeated snapshots reconcile existing objects. Stage transitions stop/reuse bounded tweens and particles instead of creating duplicates.
 6. `HeroActor.destroy()` stops and destroys Aura tweens, particles, graphics, and weapon halo images. Aura remains presentation-only.
 7. Since Ver 1.1.58 the effect is built from small canvas-baked flame textures (one outer + one paler core texture per stage colour) drawn additively; colours are baked into the textures and `setTint()` is not used for flames, because the Phaser Canvas renderer ignores tint. The optional tinted silhouette halos around the weapon (with a guarded `postFX.addGlow`) are created on WebGL only and skipped on Canvas. All flames share one driver tween (no per-flame tweens). The game uses `Phaser.AUTO`.
 
-### 17.4 Current visual implementation (Ver 1.1.60, as in code)
+### 17.4 Current visual implementation (Ver 1.1.62, as in code)
 
-Source: `src/phaser/presentation/EnhancementAura.js`. One shared `EnhancementAuraRenderer` serves the Inventory Hero Preview (`HeroPreviewScene`), the Dungeon battlefield and Arena (`HeroActor` via `BattleScene`). In Arena the snapshot passes an Aura only for the `attacker` side; the `defender` side receives `null`.
+Source: `src/phaser/presentation/EnhancementAura.js`. One shared `EnhancementAuraRenderer` serves the Inventory Hero Preview (`HeroPreviewScene`), the Dungeon battlefield and Arena (`HeroActor` via `BattleScene`). In Arena both sides get an Aura from their own equipment (Ver 1.1.62): the opponent's prepared snapshot carries `enhanceLevel` for every item (real players and bots), so the same stage rules apply; an opponent without qualifying enhancement shows none. The defender faces left, so its Aura is mirrored with the sprite.
 
 Style registry: `ENHANCEMENT_AURA_STYLES`, default `powerFlame` ("Power Flame", replaceable; stage calculation is separate). Effect intensity is identical for every stage; the stage only selects a palette colour, shared by Character and Weapon Aura.
 
@@ -769,16 +769,16 @@ Style registry: `ENHANCEMENT_AURA_STYLES`, default `powerFlame` ("Power Flame", 
 Look: a Super Saiyan power-up feel (shape only) — spiky, flickering flame rays; the stage colour is the table above. Every flame is a soft outer tongue plus a shorter, paler core (`coreLighten` 0.55 toward white), additive blend.
 
 Character Aura (defensive-slot minimum rule, §17.1) — a flame ring OUTSIDE a clear ellipse (Ver 1.1.60, placed from the Owner's marked screenshot):
-- The clear ellipse is left empty so the Hero stays fully visible: centre `(-0.055, -0.425) × displaySize` from the Hero root (feet baseline; the art sits left of the root, hence the negative X), radii `0.27 × / 0.365 ×`; its bottom touches the ground line.
-- 24 flames sit on that ellipse and point outward along its normal, tilted upward (`characterUpBias` 0.3; the lower half always points up and outward). Length = the distance to the outer limit ellipse (radii `0.405 × / 0.445 ×`) × `characterFlameReach` 1.2 × a stable 0.85–1.15 variation, and each tip is trimmed to stay inside the outer limit (+4%) and above the top limit (`-0.86 ×`, inside the Hero preview canvas). Width `0.125 × size`, alpha 0.68 (core 0.7).
+- The clear ellipse is left empty so the Hero stays fully visible: centre `(-0.073, -0.425) × displaySize` from the Hero root (feet baseline; the art sits left of the root, hence the negative X; moved about 8 px further left in Ver 1.1.62), radii `0.27 × / 0.365 ×`; its bottom touches the ground line.
+- 24 flames sit on that ellipse and point outward along its normal, tilted upward (`characterUpBias` 0.3; the lower half always points up and outward). Length = the distance to the outer limit ellipse (radii `0.405 ×` wide, `0.445 ×` below the centre and `0.49 ×` above it — the top is deliberately taller since Ver 1.1.62) × `characterFlameReach` 1.2 × a stable 0.85–1.15 variation, and each tip is trimmed to stay inside the outer limit (+4%) and above the top limit (`-0.93 ×`, inside the Hero preview canvas). Width `0.125 × size`, alpha 0.68 (core 0.7).
 - Ground rule: nothing is drawn below the ground line (`characterGroundY` = `-0.058 ×`): flames whose base is at/below it, or whose tip would cross it, are skipped.
 - No ground rings, ground glow, body glow or orbit particles; the interior of the clear ellipse never receives Character Aura.
-- Rendered as the outermost layer of the Hero (raised to the top of the display list after every frame).
+- Rendered at the very back of the Hero (index 0 of the Hero root, re-applied after every frame), so it never covers the wings, body or equipment.
 
 Weapon Aura (weapon-only rule):
 - Layer lookup: `sword` for V5 G2 (`visualMode` starting `v5-g2`), `weapon` otherwise; hidden when stage is 0, the layer/image is missing or hidden, or the texture key is missing.
-- Blade axis: principal axis of the weapon sprite's opaque pixels (`enhancementAuraBladeGeometry`, sampled once per texture frame from a downscaled copy and cached). Tip points up for a steep blade and forward (+x) for a near-horizontal one.
-- 9 flames along the axis (alternating sides, leaning outward and toward the tip, length `0.27–0.47 ×` blade length, width `0.18 ×`) plus one larger tip flame (`0.59 ×` long). They live in a container positioned in the weapon texture's pixel space and mirrored to the weapon image's position, angle and display scale every frame, so they follow the animation.
+- Blade axis: principal axis of the weapon sprite's opaque pixels (`enhancementAuraBladeGeometry`, sampled once per texture frame from a downscaled copy and cached). Tip: the end of the axis that is farthest from the Hero body centre (`enhancementAuraOrientBlade`, evaluated in the Hero root space from the weapon image's position, angle and scale every update) — the hilt is held near the body, so this works for a sword held up, forward or pointing down. The earlier "up when steep" heuristic put the tip flare on the hilt for a downward sword and was replaced in Ver 1.1.62.
+- 9 flames along the axis (alternating sides, leaning outward and toward the tip, length `0.27–0.47 ×` blade length, width `0.18 ×`) plus one larger tip flame (`0.59 ×` long) at the blade tip pointing away from the hilt; when the tip is close to the bottom edge of the canvas the flare is shortened (down to 20%) so it is not cut off. They live in a container positioned in the weapon texture's pixel space and mirrored to the weapon image's position, angle and display scale every frame, so they follow the animation.
 - If pixels cannot be read (no DOM, tainted image) the blade flames are skipped silently.
 - WebGL only: 2 tinted silhouette halos cloned from the real weapon texture (alpha 0.35, additive) with a guarded glow on the first; skipped on Canvas.
 
@@ -794,12 +794,24 @@ Failure isolation: Aura creation/update errors are reported through `BATTLE_ERRO
 2. Super Saiyan power-up look for both auras (spiky flame-like rays, shape only; colours come from item 1).
 3. Ground glow/rings removed; Character Aura stays the outermost layer; the Weapon Aura follows the blade shape.
 4. The former particle/halo caps (10 and 3) no longer apply to the flame effect; the old Golden Power style (`goldenPower`) was removed from the registry.
-5. Unchanged: stage thresholds and slot rules (§17.1), cosmetic-only scope, equal intensity for every stage (colour only), replaceable style registry, shared renderer across Inventory/Dungeon/Arena, Arena attacker-only rule, diagnostic OFF by default.
+5. Unchanged: stage thresholds and slot rules (§17.1), cosmetic-only scope, equal intensity for every stage (colour only), replaceable style registry, shared renderer across Inventory/Dungeon/Arena, diagnostic OFF by default. (The former "Arena attacker-only" rule was removed in Ver 1.1.62, see §17.6.)
 6. Follow-up (2026-11-15, Ver 1.1.59): the Character Aura was reshaped from ground-anchored rays into a flame envelope wrapping the Hero, as sketched by the Owner (red outline: wide around the body, pointed crown above the head). The Weapon Aura was kept as is.
 7. Second follow-up (2026-11-15, Ver 1.1.60): the Owner marked a clear red ellipse for the Hero and an outer jagged limit around it, plus a ground line. The Character Aura is now a flame ring in that band only (clear inside, nothing below the ground line); the soft body glow of Ver 1.1.59 was removed. Weapon Aura unchanged.
 8. Not changed: Player Guide ("ออร่าจากการตีบวก") and Info Center text (no colour wording added).
 
 Known limits: weapon flame placement was verified on synthetic sprites, not production art; the blade-tip direction is a heuristic (up when steep, forward when near-horizontal); weapon flames are not cropped by the layer crop.
+
+### 17.6 Owner polish requests — implemented in Ver 1.1.62 (2026-11-16)
+
+From the Owner's Inventory screenshot (preview canvas about 490 × 475 px at `anchorX` 0.558, `displaySize` about 451 px, derived from the Aura ring itself):
+1. Character Aura ring moved about 8 px left (`characterCenterX` `-0.073`) and made taller at the top (`characterOuterRadiusYTop` 0.49, top limit `-0.93`).
+2. Inventory only: the Hero (with its Aura) sits lower, so its baseline reaches the red line the Owner marked: `PhaserHeroPreview` gained a `baselineY` prop (fraction of the canvas height, default `0.86` everywhere) that is passed through `HeroPreviewHost` to `HeroPreviewScene`; the Inventory passes `0.93` (baseline about 503 px in the Owner's screenshot). Dungeon, Arena and other previews keep `0.86`.
+3. Character Aura moved to the very back layer so it no longer covers the wings (see §17.3 items 3–4).
+4. Weapon tip flare: moved from the hilt to the real blade tip, pointing away from the hilt (§17.4, Weapon Aura); shortened near the bottom edge of the canvas.
+5. Arena: the opponent side now evaluates the same Aura rules from its own equipment and shows the Aura when it qualifies (§17.4).
+6. Info Center announcements were brought up to date through Ver 1.1.62 (entries 1.1.50, 1.1.55–1.1.60, 1.1.61 Blacksmith, 1.1.62). The Player Guide section "ออร่าจากการตีบวก" does not mention colours or shapes and is unchanged.
+
+Known limits: placement was verified on synthetic sprites at the measured proportions (WebGL and Canvas), not on production art; the canvas size above is inferred from one screenshot, so the Inventory baseline may need a small follow-up tweak; the Arena opponent Aura could not be checked visually here; bots normally have no enhancement and therefore no Aura.
 
 The same HeroActor is reused by Dungeon Battle and Arena presentation. The first implementation must explicitly confirm which controlled Hero(s) receive Aura in Arena; do not accidentally show the local player's equipped Aura on an opponent or apply it to every HeroActor by default.
 

@@ -6,6 +6,7 @@ const {
   enhancementAuraItemLevel,
   enhancementAuraStage,
   enhancementAuraBladeGeometry,
+  enhancementAuraOrientBlade,
   resolveEnhancementAura,
   EnhancementAuraRenderer,
   ENHANCEMENT_AURA_STYLES,
@@ -53,10 +54,11 @@ test("Character Aura uses the minimum of all four defensive slots only", () => {
   }).characterStage, 4);
 });
 
-test("Battlefield snapshots apply Aura to Dungeon Hero and controlled Arena attacker only", () => {
+test("Battlefield snapshots apply Aura to the Dungeon Hero and to BOTH Arena sides (attacker and opponent)", () => {
   const bridge = read("src/phaser/presentation/EventBridge.js");
   assert.match(bridge, /enhancementAura: resolveEnhancementAura\(equipped\)/);
-  assert.match(bridge, /enhancementAura: role === "attacker" \? resolveEnhancementAura\(equipped\) : null/);
+  assert.doesNotMatch(bridge, /enhancementAura: role === /);
+  assert.equal((bridge.match(/enhancementAura: resolveEnhancementAura\(equipped\)/g) || []).length, 3, "inventory, dungeon and arena (both roles share one builder)");
   assert.match(bridge, /const attackerSide = String\(state\.controlledSide/);
 });
 
@@ -68,8 +70,9 @@ test("Aura follows the verified V3/V5 weapon layers and cleans up with HeroActor
   assert.match(renderer, /currentLayer\.crop/);
   assert.match(renderer, /weaponImage\.displayWidth/);
   assert.match(renderer, /weaponImage\.angle/);
-  assert.match(renderer, /Aura is intentionally the outermost presentation layer/);
-  assert.match(renderer, /root\.moveTo\(this\.characterRoot, root\.list\.length - 1\)/);
+  assert.match(renderer, /Weapon Aura \(halos \+ blade flames\) stays the outermost presentation layer/);
+  assert.match(renderer, /root\.moveTo\(this\.characterRoot, 0\)/);
+  assert.match(renderer, /root\.moveTo\(this\.weaponFlameRoot, root\.list\.length - 1\)/);
   assert.match(renderer, /root\.moveTo\(halo, root\.list\.length - 1\)/);
   assert.match(renderer, /this\.flickerDriver\?\.stop\?\.\(\)/);
   assert.match(renderer, /this\.weaponFlameRoot\?\.destroy\?\.\(true\)/);
@@ -273,14 +276,16 @@ test("Character Aura is a flame ring OUTSIDE the clear Hero ellipse, with nothin
     const tip = { x: base.x + Math.sin(radians) * height, y: base.y - Math.cos(radians) * height };
     assert.ok(inside(base.x, base.y, k.characterRadiusX, k.characterRadiusY) >= 0.98, "flame bases never enter the clear ellipse");
     assert.ok(inside(tip.x, tip.y, k.characterRadiusX, k.characterRadiusY) >= 1, "tips are outside the clear ellipse");
-    assert.ok(inside(tip.x, tip.y, k.characterOuterRadiusX * 1.05, k.characterOuterRadiusY * 1.05) <= 1.001, "tips stay inside the outer limit");
+    const outerRy = tip.y < cy ? k.characterOuterRadiusYTop : k.characterOuterRadiusY;
+    assert.ok(inside(tip.x, tip.y, k.characterOuterRadiusX * 1.05, outerRy * 1.05) <= 1.001, "tips stay inside the outer limit");
     assert.ok(base.y <= ground && tip.y <= ground, "no Aura below the ground line");
     assert.ok(tip.y >= k.characterTopLimit * SIZE - 1, "tips stay inside the Hero preview canvas");
   });
   assert.ok(outer.some(f => f.obj.x < cx - 0.2 * SIZE) && outer.some(f => f.obj.x > cx + 0.2 * SIZE), "ring on both sides");
   assert.ok(outer.some(f => f.obj.y < cy - 0.3 * SIZE), "ring above the head");
-  const last = root.moved[root.moved.length - 1][0];
-  assert.equal(last, renderer.characterRoot, "Character Aura is raised to the very top after each frame");
+  const last = root.moved[root.moved.length - 1];
+  assert.equal(last[0], renderer.characterRoot);
+  assert.equal(last[1], 0, "Character Aura is sent to the very back after each frame (behind wings and body)");
   renderer.update({ characterStage: 0, weaponStage: 0 }, NO_HERO);
   assert.equal(renderer.characterFlames.length, 0);
   assert.equal(renderer.characterRoot.visible, false);
@@ -406,4 +411,85 @@ test("Tint-based silhouette halos are WebGL-only; Canvas relies on the baked fla
     assert.equal(run(1).length, 0, "Canvas: no tinted halos");
     assert.equal(run(2).length, ENHANCEMENT_AURA_STYLES.powerFlame.intensity.weaponHaloCount, "WebGL: halos plus glow");
   } finally { delete globalThis.Phaser; }
+});
+
+// ---------- Ver 1.1.62: left shift, longer top, back layer, blade tip at the far end, Arena opponent, Inventory baseline ----------
+test("Character Aura ring is shifted ~8px left and is taller at the top than at the bottom", () => {
+  const k = ENHANCEMENT_AURA_STYLES.powerFlame.intensity;
+  assert.ok(Math.abs((k.characterCenterX - -0.055) * 452 + 8) < 3, "about 8px left of the 1.1.60 position at the Inventory preview size");
+  assert.ok(k.characterOuterRadiusYTop > k.characterOuterRadiusY, "the top limit is higher than the bottom limit");
+  const { scene, root } = fakeFlameScene();
+  const renderer = new EnhancementAuraRenderer(scene, root, () => 452);
+  renderer.update({ characterStage: 1, weaponStage: 0 }, NO_HERO);
+  const tipHeights = renderer.characterFlames.filter(f => String(f.obj.key).includes("-outer-")).map(f => {
+    const radians = (f.rot * Math.PI) / 180;
+    return f.obj.y - Math.cos(radians) * f.sy * 256;
+  });
+  const topTip = Math.min(...tipHeights) / 452;
+  assert.ok(topTip < -0.86 && topTip >= k.characterTopLimit - 0.002, `top tip ${topTip.toFixed(3)} is higher than before but inside the limit`);
+});
+
+test("Blade tip is the axis end FARTHEST from the Hero body (hilt stays near the body)", () => {
+  const geometry = { mx: 200, my: 250, ux: 0.6, uy: -0.8, tmin: -100, tmax: 100, frameW: 400, frameH: 400 };
+  const image = { x: 0, y: 0, angle: 0, originX: 0.5, originY: 1, displayWidth: 400, displayHeight: 400 };
+  // axis points up-right; the body is up-right too => the lower-left end is the far one => flip
+  const flipped = enhancementAuraOrientBlade(geometry, image, { x: 60, y: -300 });
+  assert.equal(flipped.flipped, true);
+  assert.ok(Math.abs(flipped.ux + 0.6) < 1e-9 && Math.abs(flipped.uy - 0.8) < 1e-9, "axis now points toward the real tip");
+  assert.deepEqual([flipped.tmin, flipped.tmax], [-100, 100]);
+  // body at the lower-left => the existing direction is already right
+  assert.equal(enhancementAuraOrientBlade(geometry, image, { x: -200, y: 100 }), geometry);
+  // the decision is made in the Hero root space, so the weapon image angle matters
+  const rotated = enhancementAuraOrientBlade(geometry, { ...image, angle: 180 }, { x: 60, y: -300 });
+  assert.notEqual(rotated.flipped, true);
+});
+
+test("Weapon tip flare is placed at the far end (away from the hilt) and shortened near the canvas bottom", () => {
+  const size = 160;
+  const rgba = new Uint8ClampedArray(size * size * 4);
+  // blade from the upper-left (hilt) to the lower-right (tip), like the Owner's sword
+  for (let y = 20; y < 150; y += 1) for (let x = 0; x < size; x += 1) if (Math.abs(x - (30 + (y - 20) * 0.9)) < 2.5) rgba[(y * size + x) * 4 + 3] = 255;
+  stubBladeDom(rgba, size);
+  try {
+    const run = canvasHeight => {
+      const { scene, root } = fakeFlameScene({ rendererType: 2 });
+      scene.scale = { height: canvasHeight };
+      root.getWorldTransformMatrix = () => ({ ty: 400, scaleY: 1 });
+      const renderer = new EnhancementAuraRenderer(scene, root, () => 452);
+      const weaponImage = fakeWeaponImage({ x: 0, y: 0, angle: 0 });
+      renderer.update({ characterStage: 0, weaponStage: 3 }, fakeWeaponHero(weaponImage));
+      const geometry = enhancementAuraOrientBlade([...renderer.bladeCache.values()][0], weaponImage, { x: -0.073 * 452, y: -0.425 * 452 });
+      return { geometry, tip: renderer.weaponFlameParts.find(f => f.tip).outer };
+    };
+    const roomy = run(2000);
+    assert.ok(roomy.geometry.uy > 0 && roomy.geometry.ux > 0, "the axis points down-right, away from the hilt");
+    const radians = (roomy.tip.rot * Math.PI) / 180;
+    assert.ok(Math.sin(radians) > 0 && Math.cos(radians) < 0, "the flare rotation points to the lower right");
+    const natural = roomy.tip.sy * 256;
+    const cramped = run(430);
+    assert.ok(cramped.tip.sy * 256 < natural * 0.9, "flare is shortened when the canvas ends just below the tip");
+    assert.ok(cramped.tip.sy * 256 >= natural * 0.2 - 1e-6, "but never collapses completely");
+  } finally { delete globalThis.document; }
+});
+
+test("Arena opponent equipment (Worker snapshot shape) resolves an Aura with the same rules as the attacker", () => {
+  const mapEquipment = equipment => {
+    const mapped = {};
+    equipment.forEach(item => { mapped[item.slotType] = { ...item, id: item.itemId, type: item.slotType }; });
+    return mapped;
+  };
+  const gear = level => ["helmet", "chest", "gloves", "boots"].map(slotType => ({ itemId: slotType, slotType, enhanceLevel: level }));
+  const opponent = mapEquipment([...gear(6), { itemId: "w", slotType: "weapon", enhanceLevel: 8 }]);
+  assert.deepEqual(resolveEnhancementAura(opponent), { weaponLevel: 8, weaponStage: 3, characterLevel: 6, characterStage: 2 });
+  assert.deepEqual(resolveEnhancementAura(mapEquipment(gear(3))), { weaponLevel: 0, weaponStage: 0, characterLevel: 3, characterStage: 0 });
+  assert.equal(resolveEnhancementAura(mapEquipment([])).characterStage, 0, "bots/opponents without enhancement show no Aura");
+});
+
+test("Inventory preview places the Hero lower through an opt-in baseline; other surfaces keep 86%", () => {
+  const scene = read("src/phaser/scenes/HeroPreviewScene.js");
+  assert.match(scene, /baselineY = 0\.86/);
+  assert.match(scene, /Math\.round\(height \* this\.baselineY\)/);
+  assert.match(read("src/phaser/runtime/HeroPreviewHost.js"), /baselineY = 0\.86[\s\S]*baselineY,/);
+  assert.match(read("src/phaser/ui/PhaserHeroPreview.js"), /baselineY = 0\.86[\s\S]*baselineY,[\s\S]*\[enabled, anchorX, baselineY\]/);
+  assert.match(read("src/ui/components.js"), /anchorX:0\.558,\s*baselineY:0\.93/);
 });

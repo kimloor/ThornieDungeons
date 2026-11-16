@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.61" />
+<meta name="application-version" content="1.1.62" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.61";
+  content: "Ver 1.1.62";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -8412,10 +8412,23 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.50", date: "2026-11-10", title: "เตรียมเครื่องมือทดสอบหลังบ้าน",
-      items: ["เตรียมเครื่องมือสำหรับผู้ดูแลระบบเพื่อใช้ทดสอบระบบกับบัญชีทดสอบ (ยังปิดใช้งานอยู่) ไม่มีการเปลี่ยนแปลงต่อการเล่นหรือข้อมูลตัวละครของผู้เล่น"]
+      version: "1.1.62", date: "2026-11-16", title: "ปรับปรุงออร่าตัวละครและอาวุธ",
+      items: [
+        "ขยับออร่าตัวละครไปทางซ้ายเล็กน้อย และเพิ่มความสูงของเปลวไฟด้านบน",
+        "ย้ายออร่าตัวละครไปอยู่หลังสุด ไม่ทับปีกและตัวละคร",
+        "เปลวออร่าอาวุธมีปลายแหลมอยู่ที่ปลายดาบ ชี้ออกไปทางตรงข้ามกับด้ามจับ",
+        "หน้า Inventory เลื่อนตัวละครพร้อมออร่าลงมาเล็กน้อย",
+        "สนามประลอง (Arena): คู่ต่อสู้ที่มีอุปกรณ์ตีบวกถึงเงื่อนไขจะแสดงออร่าด้วย",
+        "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"
+      ]
     },
     history: [
+      { version: "1.1.61", date: "2026-11-16", title: "ปรับหน้าร้านช่างตีเหล็ก (Blacksmith)",
+        items: ["ปรับหน้า Blacksmith เป็นหน้าเฉพาะ และจัดเลย์เอาต์ให้ใช้งานบนมือถือได้ดีขึ้น", "กติกาและการทำงานเดิมของ Blacksmith ไม่เปลี่ยนแปลง"] },
+      { version: "1.1.55–1.1.60", date: "2026-11-15", title: "ออร่าจากการตีบวกแบบใหม่",
+        items: ["ออร่ากลายเป็นเปลวไฟแสง โดยสีเปลี่ยนตามระดับ: +4 เขียว, +6 ม่วง, +8 ชมพู, +10 ทอง", "ออร่าตัวละครเป็นเปลวรอบตัวละครโดยเว้นกลางไว้ให้เห็นตัวละคร ส่วนออร่าอาวุธเป็นเปลวตามแนวดาบ", "แก้ไขปัญหาออร่าตัวละครและอาวุธไม่แสดงผลในหน้า Inventory", "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"] },
+      { version: "1.1.50", date: "2026-11-10", title: "เตรียมเครื่องมือทดสอบหลังบ้าน",
+        items: ["เตรียมเครื่องมือสำหรับผู้ดูแลระบบเพื่อใช้ทดสอบระบบกับบัญชีทดสอบ (ยังปิดใช้งานอยู่) ไม่มีการเปลี่ยนแปลงต่อการเล่นหรือข้อมูลตัวละครของผู้เล่น"] },
       { version: "1.1.47", date: "2026-11-09", title: "อัปเดตคู่มือเกม: ออร่าจากการตีบวก",
         items: ["เพิ่มหัวข้อออร่าจากการตีบวกไว้ในหมวด Refine ของคู่มือเกม", "อธิบายเงื่อนไขออร่าอาวุธและออร่าตัวละคร รวมถึงระดับ +4, +6, +8 และ +10", "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"] },
       { version: "1.1.44", date: "2026-11-04", title: "ขยายการส่งต่อทรัพยากรทุกด่านและ Halloween",
@@ -13645,9 +13658,9 @@ const ENHANCEMENT_AURA_STYLES = Object.freeze({
       // All values are fractions of displaySize measured from the Hero root (feet baseline), taken from
       // the Owner's sketch: clear ellipse centre/radii, outer limit of the flames, and a ground line
       // below which no Aura is drawn. Wings/sword sit left of the body, hence the negative centre X.
-      characterFlameCount: 24, characterCenterX: -0.055, characterCenterY: -0.425,
-      characterRadiusX: 0.27, characterRadiusY: 0.365, characterOuterRadiusX: 0.405, characterOuterRadiusY: 0.445,
-      characterGroundY: -0.058, characterTopLimit: -0.86, characterFlameWidth: 0.125,
+      characterFlameCount: 24, characterCenterX: -0.073, characterCenterY: -0.425,
+      characterRadiusX: 0.27, characterRadiusY: 0.365, characterOuterRadiusX: 0.405, characterOuterRadiusY: 0.445, characterOuterRadiusYTop: 0.49,
+      characterGroundY: -0.058, characterTopLimit: -0.93, characterFlameWidth: 0.125,
       characterFlameReach: 1.2, characterUpBias: 0.3, characterLowerUpBias: 0.3, characterFlameAlpha: 0.68,
       coreWidthRatio: 0.42, coreHeightRatio: 0.58, coreAlpha: 0.7, coreLighten: 0.55,
       flickerPeriod: 1600, flickerScale: 0.16, flickerAlpha: 0.25, swayDegrees: 5,
@@ -13791,6 +13804,46 @@ function enhancementAuraBladeGeometry(rgba, width, height, threshold = 40) {
     }
   }
   return { mx, my, ux, uy, tmin, tmax, count };
+}
+
+// Maps a point / direction of the weapon texture (pixel space of its frame) into the Hero root space,
+// following the weapon image's origin, display scale, angle and position.
+function enhancementAuraBladeTransform(geometry, image) {
+  const frameW = Number(geometry.frameW) || 1;
+  const frameH = Number(geometry.frameH) || 1;
+  const originX = (Number.isFinite(Number(image.originX)) ? Number(image.originX) : 0.5) * frameW;
+  const originY = (Number.isFinite(Number(image.originY)) ? Number(image.originY) : 1) * frameH;
+  const scaleX = (Number(image.displayWidth) || frameW) / frameW;
+  const scaleY = (Number(image.displayHeight) || frameH) / frameH;
+  const radians = ((Number(image.angle) || 0) * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const vector = (x, y) => ({ x: x * cos - y * sin, y: x * sin + y * cos });
+  return {
+    scale: (scaleX + scaleY) / 2,
+    point: (px, py) => {
+      const local = vector((px - originX) * scaleX, (py - originY) * scaleY);
+      return { x: (Number(image.x) || 0) + local.x, y: (Number(image.y) || 0) + local.y };
+    },
+    direction: (dx, dy) => {
+      const rotated = vector(dx * scaleX, dy * scaleY);
+      const length = Math.hypot(rotated.x, rotated.y) || 1;
+      return { x: rotated.x / length, y: rotated.y / length };
+    }
+  };
+}
+
+// The blade tip is the end of the axis that is farthest from the Hero's body (the hilt is held near
+// the body). Works for swords held up, forward or pointing down. Pure maths in the Hero root space.
+function enhancementAuraOrientBlade(geometry, image, bodyCenter) {
+  if (!geometry || !image || !bodyCenter) return geometry;
+  const transform = enhancementAuraBladeTransform(geometry, image);
+  const far = transform.point(geometry.mx + geometry.ux * geometry.tmax, geometry.my + geometry.uy * geometry.tmax);
+  const near = transform.point(geometry.mx + geometry.ux * geometry.tmin, geometry.my + geometry.uy * geometry.tmin);
+  const farDistance = Math.hypot(far.x - bodyCenter.x, far.y - bodyCenter.y);
+  const nearDistance = Math.hypot(near.x - bodyCenter.x, near.y - bodyCenter.y);
+  if (farDistance >= nearDistance) return geometry;
+  return { ...geometry, ux: -geometry.ux, uy: -geometry.uy, tmin: -geometry.tmax, tmax: -geometry.tmin, flipped: true };
 }
 
 // Reads a downscaled copy of the weapon frame once per texture; returns null when pixels cannot
@@ -13973,16 +14026,17 @@ class EnhancementAuraRenderer {
       dx /= dirLength;
       dy /= dirLength;
       // Length = distance from the clear ellipse to the outer limit in this direction.
-      const thickness = Math.hypot((intensity.characterOuterRadiusX - intensity.characterRadiusX) * sin, (intensity.characterOuterRadiusY - intensity.characterRadiusY) * cos) * size;
+      const outerRadiusY = cos > 0 ? intensity.characterOuterRadiusYTop : intensity.characterOuterRadiusY;
+      const thickness = Math.hypot((intensity.characterOuterRadiusX - intensity.characterRadiusX) * sin, (outerRadiusY - intensity.characterRadiusY) * cos) * size;
       let height = thickness * intensity.characterFlameReach * (0.85 + 0.3 * enhancementAuraHash(index, 1));
       if (dy < 0) height = Math.min(height, (baseY - topLimit) / -dy);
       if (dy > 0) height = Math.min(height, (ground - baseY) / dy);
       // Keep the tip inside the outer limit (a little slack for the flicker).
       const outerX = size * intensity.characterOuterRadiusX * 1.04;
-      const outerY = size * intensity.characterOuterRadiusY * 1.04;
       for (let step = 0; step < 8; step += 1) {
         const tipX = baseX + dx * height - centerX;
         const tipY = baseY + dy * height - centerY;
+        const outerY = size * (tipY < 0 ? intensity.characterOuterRadiusYTop : intensity.characterOuterRadiusY) * 1.04;
         if ((tipX / outerX) ** 2 + (tipY / outerY) ** 2 <= 1) break;
         height *= 0.9;
       }
@@ -14106,6 +14160,32 @@ class EnhancementAuraRenderer {
     return true;
   }
 
+  // The tip flare points away from the hilt; near the bottom edge of the canvas shorten it so it
+  // is not cut off (the Inventory Hero sits low in its preview).
+  limitTipFlare(geometry, weaponImage) {
+    const flame = (this.weaponFlameParts || []).find(part => part.tip);
+    const canvasHeight = Number(this.scene?.scale?.height);
+    if (!flame || !(canvasHeight > 0)) return;
+    try {
+      const matrix = this.root?.getWorldTransformMatrix?.();
+      const worldY = Number(matrix?.ty);
+      if (!Number.isFinite(worldY)) return;
+      const worldScale = Math.abs(Number(matrix?.scaleY)) || 1;
+      const transform = enhancementAuraBladeTransform(geometry, weaponImage);
+      const tip = transform.point(geometry.mx + geometry.ux * geometry.tmax, geometry.my + geometry.uy * geometry.tmax);
+      const direction = transform.direction(geometry.ux, geometry.uy);
+      const intensity = this.style.intensity;
+      const natural = (geometry.tmax - geometry.tmin) * intensity.weaponTipLength;
+      let height = natural;
+      if (direction.y > 0.05) {
+        const room = (canvasHeight - 3 - (worldY + tip.y * worldScale)) / worldScale; // root-space px below the tip
+        height = Math.max(natural * 0.2, Math.min(natural, room / direction.y / Math.max(0.001, transform.scale)));
+      }
+      flame.outer.sy = height / 256;
+      flame.core.sy = (height * intensity.coreHeightRatio) / 256;
+    } catch (_) { /* optional clamp must never break the Aura */ }
+  }
+
   updateWeaponFlames(stage, weaponImage) {
     if (this.weaponFlameStage !== stage) {
       this.buildWeaponFlames(stage);
@@ -14116,19 +14196,24 @@ class EnhancementAuraRenderer {
       if (this.bladeCache.size > 64) this.bladeCache.clear();
       this.bladeCache.set(frameKey, enhancementAuraSampleBlade(weaponImage));
     }
-    const geometry = this.bladeCache.get(frameKey);
-    if (!geometry) {
+    const sampled = this.bladeCache.get(frameKey);
+    if (!sampled) {
       this.weaponFlameRoot.setVisible(false);
       return;
     }
-    if (this.weaponLayoutKey !== frameKey) {
+    const intensity = this.style.intensity;
+    const size = this.displaySize();
+    const geometry = enhancementAuraOrientBlade(sampled, weaponImage, { x: intensity.characterCenterX * size, y: intensity.characterCenterY * size });
+    const layoutKey = `${frameKey}|${geometry.flipped ? 1 : 0}`;
+    if (this.weaponLayoutKey !== layoutKey) {
       if (!this.layoutWeaponFlames(geometry, weaponImage)) {
         this.weaponFlameRoot.setVisible(false);
         return;
       }
-      this.weaponLayoutKey = frameKey;
+      this.weaponLayoutKey = layoutKey;
       this.animateFlames();
     }
+    this.limitTipFlare(geometry, weaponImage);
     this.weaponFlameRoot
       .setPosition(weaponImage.x, weaponImage.y)
       .setAngle(weaponImage.angle || 0)
@@ -14212,13 +14297,15 @@ class EnhancementAuraRenderer {
   reorder(heroRenderer) {
     const root = this.root;
     if (!root?.list || typeof root.moveTo !== "function") return;
-    // Aura is intentionally the outermost presentation layer: raise it above every Hero
-    // equipment/body layer after each frame is applied (Character Aura on the very top).
+    // Weapon Aura (halos + blade flames) stays the outermost presentation layer, raised above every
+    // Hero layer after each frame is applied.
     this.weaponHalos.filter(halo => halo.visible && root.list.includes(halo)).forEach(halo => {
       root.moveTo(halo, root.list.length - 1);
     });
     if (root.list.includes(this.weaponFlameRoot)) root.moveTo(this.weaponFlameRoot, root.list.length - 1);
-    if (root.list.includes(this.characterRoot)) root.moveTo(this.characterRoot, root.list.length - 1);
+    // Character Aura sits behind every Hero layer (wings, body, equipment); it is re-sent to the back
+    // after each frame because the Hero renderer re-indexes its own layers every frame.
+    if (root.list.includes(this.characterRoot)) root.moveTo(this.characterRoot, 0);
     if (this.weaponDiagnosticText && root.list.includes(this.weaponDiagnosticText)) root.moveTo(this.weaponDiagnosticText, root.list.length - 1);
   }
 
@@ -14272,6 +14359,8 @@ if (typeof module !== "undefined" && module.exports) {
     enhancementAuraStage,
     resolveEnhancementAura,
     enhancementAuraBladeGeometry,
+    enhancementAuraOrientBlade,
+    enhancementAuraBladeTransform,
     EnhancementAuraRenderer
   };
 }
@@ -14710,7 +14799,7 @@ function buildArenaBattlefieldSnapshot({
         visualMode: heroFrames.mode || "v3",
         layers: heroFrames.idle?.[0] || [],
         layerFrames: heroFrames,
-        enhancementAura: role === "attacker" ? resolveEnhancementAura(equipped) : null
+        enhancementAura: resolveEnhancementAura(equipped)
       } : null,
       pet: pet ? {
         ...pet,
@@ -16211,7 +16300,7 @@ function heroPreviewFallbackLayerNames(name) {
   return name ? [name] : [];
 }
 
-function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, surface = "inventory", onReady, onError } = {}) {
+function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, baselineY = 0.86, surface = "inventory", onReady, onError } = {}) {
   return class HeroPreviewScene extends Phaser.Scene {
     constructor() {
       super({ key: "HeroPreviewScene" });
@@ -16231,6 +16320,8 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, surfac
       this.coreLoadFailed = false;
       this.readyNotified = false;
       this.anchorX = Math.max(0, Math.min(1, Number(anchorX) || 0.5));
+      // Hero baseline (feet) as a fraction of the canvas height; Inventory passes a lower value.
+      this.baselineY = Math.max(0.5, Math.min(0.99, Number(baselineY) || 0.86));
       this.handleResize = this.handleResize.bind(this);
       this.handleLoadError = this.handleLoadError.bind(this);
     }
@@ -16337,7 +16428,7 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, surfac
       if (!this.heroRoot) return;
       const width = Math.max(1, Number(this.scale.width) || 1);
       const height = Math.max(1, Number(this.scale.height) || 1);
-      this.heroRoot.setPosition(Math.round(width * this.anchorX), Math.round(height * 0.86));
+      this.heroRoot.setPosition(Math.round(width * this.anchorX), Math.round(height * this.baselineY));
     }
 
     updateEnhancementAura() {
@@ -16854,7 +16945,7 @@ function createRaidBossHost({ mountNode, snapshot, onReady, onError, onDestroyed
 
 // ===== phaser/runtime/HeroPreviewHost.js =====
 // ---------- W8 Shared Hero Preview Host ----------
-function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, onError, onDestroyed } = {}) {
+function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, baselineY = 0.86, onReady, onError, onDestroyed } = {}) {
   let game = null;
   let scene = null;
   let destroyed = false;
@@ -16913,6 +17004,7 @@ function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, on
       const SceneClass = createHeroPreviewScene(Phaser, {
         initialSnapshot: currentSnapshot,
         anchorX,
+        baselineY,
         onReady: payload => {
           scene = payload?.scene || null;
           if (scene) scene.sync(currentSnapshot);
@@ -17173,7 +17265,7 @@ function isPhaserHeroPreviewEnabled() {
   }
 }
 
-function PhaserHeroPreview({ equipped = {}, heroName = "Hero", fallback = null, className = "", anchorX = 0.5 }) {
+function PhaserHeroPreview({ equipped = {}, heroName = "Hero", fallback = null, className = "", anchorX = 0.5, baselineY = 0.86 }) {
   const hostRef = React.useRef(null);
   const handleRef = React.useRef(null);
   const [status, setStatus] = React.useState("loading");
@@ -17190,6 +17282,7 @@ function PhaserHeroPreview({ equipped = {}, heroName = "Hero", fallback = null, 
       mountNode: hostRef.current,
       snapshot,
       anchorX,
+      baselineY,
       onReady: () => { if (!disposed) setStatus("ready"); },
       onError: () => { if (!disposed) setStatus("error"); },
       onDestroyed: () => {}
@@ -17202,7 +17295,7 @@ function PhaserHeroPreview({ equipped = {}, heroName = "Hero", fallback = null, 
       handle.destroy();
       handleRef.current = null;
     };
-  }, [enabled, anchorX]);
+  }, [enabled, anchorX, baselineY]);
 
   React.useEffect(() => {
     if (enabled) handleRef.current?.sync(snapshot);
@@ -27922,6 +28015,7 @@ function EquipmentStage({ equipped, previewEquipped = equipped, characterName, o
         equipped:previewEquipped,
         heroName:characterName || "Adventurer",
         anchorX:0.558,
+        baselineY:0.93,
         fallback:fallbackHero
       })),
     /*#__PURE__*/React.createElement("div", { className: "md-inv2-slots" }, SLOT_ORDER.map(slot => /*#__PURE__*/React.createElement(EquipmentSlot, {

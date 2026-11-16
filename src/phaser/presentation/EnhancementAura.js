@@ -18,9 +18,9 @@ const ENHANCEMENT_AURA_STYLES = Object.freeze({
       // All values are fractions of displaySize measured from the Hero root (feet baseline), taken from
       // the Owner's sketch: clear ellipse centre/radii, outer limit of the flames, and a ground line
       // below which no Aura is drawn. Wings/sword sit left of the body, hence the negative centre X.
-      characterFlameCount: 24, characterCenterX: -0.055, characterCenterY: -0.425,
-      characterRadiusX: 0.27, characterRadiusY: 0.365, characterOuterRadiusX: 0.405, characterOuterRadiusY: 0.445,
-      characterGroundY: -0.058, characterTopLimit: -0.86, characterFlameWidth: 0.125,
+      characterFlameCount: 24, characterCenterX: -0.073, characterCenterY: -0.425,
+      characterRadiusX: 0.27, characterRadiusY: 0.365, characterOuterRadiusX: 0.405, characterOuterRadiusY: 0.445, characterOuterRadiusYTop: 0.49,
+      characterGroundY: -0.058, characterTopLimit: -0.93, characterFlameWidth: 0.125,
       characterFlameReach: 1.2, characterUpBias: 0.3, characterLowerUpBias: 0.3, characterFlameAlpha: 0.68,
       coreWidthRatio: 0.42, coreHeightRatio: 0.58, coreAlpha: 0.7, coreLighten: 0.55,
       flickerPeriod: 1600, flickerScale: 0.16, flickerAlpha: 0.25, swayDegrees: 5,
@@ -164,6 +164,46 @@ function enhancementAuraBladeGeometry(rgba, width, height, threshold = 40) {
     }
   }
   return { mx, my, ux, uy, tmin, tmax, count };
+}
+
+// Maps a point / direction of the weapon texture (pixel space of its frame) into the Hero root space,
+// following the weapon image's origin, display scale, angle and position.
+function enhancementAuraBladeTransform(geometry, image) {
+  const frameW = Number(geometry.frameW) || 1;
+  const frameH = Number(geometry.frameH) || 1;
+  const originX = (Number.isFinite(Number(image.originX)) ? Number(image.originX) : 0.5) * frameW;
+  const originY = (Number.isFinite(Number(image.originY)) ? Number(image.originY) : 1) * frameH;
+  const scaleX = (Number(image.displayWidth) || frameW) / frameW;
+  const scaleY = (Number(image.displayHeight) || frameH) / frameH;
+  const radians = ((Number(image.angle) || 0) * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const vector = (x, y) => ({ x: x * cos - y * sin, y: x * sin + y * cos });
+  return {
+    scale: (scaleX + scaleY) / 2,
+    point: (px, py) => {
+      const local = vector((px - originX) * scaleX, (py - originY) * scaleY);
+      return { x: (Number(image.x) || 0) + local.x, y: (Number(image.y) || 0) + local.y };
+    },
+    direction: (dx, dy) => {
+      const rotated = vector(dx * scaleX, dy * scaleY);
+      const length = Math.hypot(rotated.x, rotated.y) || 1;
+      return { x: rotated.x / length, y: rotated.y / length };
+    }
+  };
+}
+
+// The blade tip is the end of the axis that is farthest from the Hero's body (the hilt is held near
+// the body). Works for swords held up, forward or pointing down. Pure maths in the Hero root space.
+function enhancementAuraOrientBlade(geometry, image, bodyCenter) {
+  if (!geometry || !image || !bodyCenter) return geometry;
+  const transform = enhancementAuraBladeTransform(geometry, image);
+  const far = transform.point(geometry.mx + geometry.ux * geometry.tmax, geometry.my + geometry.uy * geometry.tmax);
+  const near = transform.point(geometry.mx + geometry.ux * geometry.tmin, geometry.my + geometry.uy * geometry.tmin);
+  const farDistance = Math.hypot(far.x - bodyCenter.x, far.y - bodyCenter.y);
+  const nearDistance = Math.hypot(near.x - bodyCenter.x, near.y - bodyCenter.y);
+  if (farDistance >= nearDistance) return geometry;
+  return { ...geometry, ux: -geometry.ux, uy: -geometry.uy, tmin: -geometry.tmax, tmax: -geometry.tmin, flipped: true };
 }
 
 // Reads a downscaled copy of the weapon frame once per texture; returns null when pixels cannot
@@ -346,16 +386,17 @@ class EnhancementAuraRenderer {
       dx /= dirLength;
       dy /= dirLength;
       // Length = distance from the clear ellipse to the outer limit in this direction.
-      const thickness = Math.hypot((intensity.characterOuterRadiusX - intensity.characterRadiusX) * sin, (intensity.characterOuterRadiusY - intensity.characterRadiusY) * cos) * size;
+      const outerRadiusY = cos > 0 ? intensity.characterOuterRadiusYTop : intensity.characterOuterRadiusY;
+      const thickness = Math.hypot((intensity.characterOuterRadiusX - intensity.characterRadiusX) * sin, (outerRadiusY - intensity.characterRadiusY) * cos) * size;
       let height = thickness * intensity.characterFlameReach * (0.85 + 0.3 * enhancementAuraHash(index, 1));
       if (dy < 0) height = Math.min(height, (baseY - topLimit) / -dy);
       if (dy > 0) height = Math.min(height, (ground - baseY) / dy);
       // Keep the tip inside the outer limit (a little slack for the flicker).
       const outerX = size * intensity.characterOuterRadiusX * 1.04;
-      const outerY = size * intensity.characterOuterRadiusY * 1.04;
       for (let step = 0; step < 8; step += 1) {
         const tipX = baseX + dx * height - centerX;
         const tipY = baseY + dy * height - centerY;
+        const outerY = size * (tipY < 0 ? intensity.characterOuterRadiusYTop : intensity.characterOuterRadiusY) * 1.04;
         if ((tipX / outerX) ** 2 + (tipY / outerY) ** 2 <= 1) break;
         height *= 0.9;
       }
@@ -479,6 +520,32 @@ class EnhancementAuraRenderer {
     return true;
   }
 
+  // The tip flare points away from the hilt; near the bottom edge of the canvas shorten it so it
+  // is not cut off (the Inventory Hero sits low in its preview).
+  limitTipFlare(geometry, weaponImage) {
+    const flame = (this.weaponFlameParts || []).find(part => part.tip);
+    const canvasHeight = Number(this.scene?.scale?.height);
+    if (!flame || !(canvasHeight > 0)) return;
+    try {
+      const matrix = this.root?.getWorldTransformMatrix?.();
+      const worldY = Number(matrix?.ty);
+      if (!Number.isFinite(worldY)) return;
+      const worldScale = Math.abs(Number(matrix?.scaleY)) || 1;
+      const transform = enhancementAuraBladeTransform(geometry, weaponImage);
+      const tip = transform.point(geometry.mx + geometry.ux * geometry.tmax, geometry.my + geometry.uy * geometry.tmax);
+      const direction = transform.direction(geometry.ux, geometry.uy);
+      const intensity = this.style.intensity;
+      const natural = (geometry.tmax - geometry.tmin) * intensity.weaponTipLength;
+      let height = natural;
+      if (direction.y > 0.05) {
+        const room = (canvasHeight - 3 - (worldY + tip.y * worldScale)) / worldScale; // root-space px below the tip
+        height = Math.max(natural * 0.2, Math.min(natural, room / direction.y / Math.max(0.001, transform.scale)));
+      }
+      flame.outer.sy = height / 256;
+      flame.core.sy = (height * intensity.coreHeightRatio) / 256;
+    } catch (_) { /* optional clamp must never break the Aura */ }
+  }
+
   updateWeaponFlames(stage, weaponImage) {
     if (this.weaponFlameStage !== stage) {
       this.buildWeaponFlames(stage);
@@ -489,19 +556,24 @@ class EnhancementAuraRenderer {
       if (this.bladeCache.size > 64) this.bladeCache.clear();
       this.bladeCache.set(frameKey, enhancementAuraSampleBlade(weaponImage));
     }
-    const geometry = this.bladeCache.get(frameKey);
-    if (!geometry) {
+    const sampled = this.bladeCache.get(frameKey);
+    if (!sampled) {
       this.weaponFlameRoot.setVisible(false);
       return;
     }
-    if (this.weaponLayoutKey !== frameKey) {
+    const intensity = this.style.intensity;
+    const size = this.displaySize();
+    const geometry = enhancementAuraOrientBlade(sampled, weaponImage, { x: intensity.characterCenterX * size, y: intensity.characterCenterY * size });
+    const layoutKey = `${frameKey}|${geometry.flipped ? 1 : 0}`;
+    if (this.weaponLayoutKey !== layoutKey) {
       if (!this.layoutWeaponFlames(geometry, weaponImage)) {
         this.weaponFlameRoot.setVisible(false);
         return;
       }
-      this.weaponLayoutKey = frameKey;
+      this.weaponLayoutKey = layoutKey;
       this.animateFlames();
     }
+    this.limitTipFlare(geometry, weaponImage);
     this.weaponFlameRoot
       .setPosition(weaponImage.x, weaponImage.y)
       .setAngle(weaponImage.angle || 0)
@@ -585,13 +657,15 @@ class EnhancementAuraRenderer {
   reorder(heroRenderer) {
     const root = this.root;
     if (!root?.list || typeof root.moveTo !== "function") return;
-    // Aura is intentionally the outermost presentation layer: raise it above every Hero
-    // equipment/body layer after each frame is applied (Character Aura on the very top).
+    // Weapon Aura (halos + blade flames) stays the outermost presentation layer, raised above every
+    // Hero layer after each frame is applied.
     this.weaponHalos.filter(halo => halo.visible && root.list.includes(halo)).forEach(halo => {
       root.moveTo(halo, root.list.length - 1);
     });
     if (root.list.includes(this.weaponFlameRoot)) root.moveTo(this.weaponFlameRoot, root.list.length - 1);
-    if (root.list.includes(this.characterRoot)) root.moveTo(this.characterRoot, root.list.length - 1);
+    // Character Aura sits behind every Hero layer (wings, body, equipment); it is re-sent to the back
+    // after each frame because the Hero renderer re-indexes its own layers every frame.
+    if (root.list.includes(this.characterRoot)) root.moveTo(this.characterRoot, 0);
     if (this.weaponDiagnosticText && root.list.includes(this.weaponDiagnosticText)) root.moveTo(this.weaponDiagnosticText, root.list.length - 1);
   }
 
@@ -645,6 +719,8 @@ if (typeof module !== "undefined" && module.exports) {
     enhancementAuraStage,
     resolveEnhancementAura,
     enhancementAuraBladeGeometry,
+    enhancementAuraOrientBlade,
+    enhancementAuraBladeTransform,
     EnhancementAuraRenderer
   };
 }
