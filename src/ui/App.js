@@ -2743,13 +2743,13 @@ function ThornieDungeons() {
   // chooses its own veil strength so scenery never competes with stats, targets or actions.
   const heavyDungeonFade = ["map", "combat", "result", "defeat"].includes(phase);
   const dungeonFade = phase === "menu" ? "light" : heavyDungeonFade ? "heavy" : "medium";
-  const dungeonModalOpen = invOpen || shopOpen || blacksmithOpen || craftingOpen;
+  const dungeonModalOpen = invOpen || shopOpen || craftingOpen;
   const isTown = phase === "town";
   return /*#__PURE__*/React.createElement("div", {
-    className: (phase !== "combat" ? "md-has-currency " : "") + (isTown
+    className: (phase !== "combat" ? "md-has-currency " : "") + (blacksmithOpen ? "md-root-blacksmith " : "") + (isTown
       ? `md-root md-root-town${dungeonModalOpen ? " md-town-modal-open" : ""}`
       : `md-root md-root-dungeon md-dungeon-fade-${dungeonFade}${phase === "map" ? " md-root-map" : ""}${phase === "combat" ? " md-root-combat" : ""}${dungeonModalOpen ? " md-dungeon-modal-open" : ""}`)
-  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "combat" && /*#__PURE__*/React.createElement("div", { className: "md-app-currency" }, /*#__PURE__*/React.createElement(GlobalCurrencyBar, { save: save, arena: arenaHud })), phase === "menu" && /*#__PURE__*/React.createElement(HubScreen, {
+  }, /*#__PURE__*/React.createElement("style", null, STYLE), !isTown && /*#__PURE__*/React.createElement(Starfield, null), phase !== "combat" && /*#__PURE__*/React.createElement("div", { className: "md-app-currency" }, /*#__PURE__*/React.createElement(GlobalCurrencyBar, { save: save, arena: arenaHud })), phase === "menu" && !blacksmithOpen && /*#__PURE__*/React.createElement(HubScreen, {
     save: save,
     cp: cp,
     arenaHud: arenaHud,
@@ -2805,7 +2805,7 @@ function ThornieDungeons() {
     dailyLoginClaimResult: dailyLoginClaimResult,
     onClaimDailyLogin: claimDailyLogin,
     onClearDailyLoginResult: () => setDailyLoginClaimResult(null)
-  }), phase === "town" && /*#__PURE__*/React.createElement(TownScreen, {
+  }), phase === "town" && !blacksmithOpen && /*#__PURE__*/React.createElement(TownScreen, {
     save: save,
     arenaHud: arenaHud,
     onMainHub: () => setPhase("menu"),
@@ -3268,7 +3268,8 @@ function ThornieDungeons() {
     onReroll: guardItemAction(rerollEmpowerItem),
     onToggleLock: guardItemAction(toggleEmpowerLock),
     onOpenInventory: () => { setBlacksmithOpen(false); setInvOpen(true); },
-    onClose: () => setBlacksmithOpen(false)
+    onClose: () => setBlacksmithOpen(false),
+    dockProps: Object.assign({}, utilityDockProps(phase), { onOpenInv: () => { setBlacksmithOpen(false); setInvOpen(true); } })
   }), craftingOpen && /*#__PURE__*/React.createElement(CraftingOverlay, {
     serverUrl: cred.url,
     characterId: save.characterId,

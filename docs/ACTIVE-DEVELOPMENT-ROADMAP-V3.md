@@ -239,7 +239,7 @@ Graphics dependency: **G15 Player Information Center UI Pack** provides the shar
 Implementation follows risk routing in `AGENTS.md`; API/DB/player data changes require appropriate branches, QA, deployment and live verification. Do not infer approval for economy mutations, destructive tooling or schema changes from this roadmap.
 
 ### WAVE 3 — Blacksmith + Crafting Redesign
-**Status: APPROVED ROADMAP SLOT / UX DESIGN IN PROGRESS — Blacksmith visual direction agreed; Crafting design pending**
+**Status: WAVE 3.1 IMPLEMENTATION IN PROGRESS — Blacksmith page redesign; Crafting design pending**
 **Scope boundary: VISUAL / UX REDESIGN ONLY. Existing gameplay, economy, server authority, API and persistence behavior must remain unchanged unless separately approved by the Owner.**
 
 Wave 3 is split into two independently designed and sequenced work packages:
@@ -247,7 +247,7 @@ Wave 3 is split into two independently designed and sequenced work packages:
 #### WAVE 3.1 — Blacksmith UI Redesign
 
 **Code organization preparation:** Blacksmith UI and its Phaser forge presentation are separated into dedicated source modules before visual redesign. This refactor preserves current behavior; see [`BLACKSMITH-V2.md`](BLACKSMITH-V2.md).
-**Status: DESIGN DIRECTION AGREED / MOCKUP REFERENCE RECORDED / DESIGN CONTRACT PENDING**
+**Status: IMPLEMENTED ON FEATURE BRANCH / BUILD + QA PENDING**
 **Reference mockup:** [Blacksmith mobile portrait reference](wave3-blacksmith-mobile-reference.jpg)
 
 The approved visual target is to bring the in-game Blacksmith as close as practical to the attached mobile portrait mockup. Treat the image as a visual/layout reference, not as a pixel-perfect or implementation-ready specification. Preserve ThornieDungeons' existing theme, real shared Global Currency Bar and real Global Navigation / GameDock components.
@@ -272,7 +272,7 @@ Visual acceptance target:
 Strict non-change requirements:
 - This is a presentation and navigation redesign only. Do not alter Refine success rates, level rules, costs, materials, Protection Stone behavior, Enchant pools, rarity option limits, Lock rules, Reroll rules, Salvage behavior, inventory ownership, API/Worker contracts, database/schema, or authoritative server-side calculations.
 - Do not add, remove, or rebalance gameplay mechanics. Reuse existing authoritative operations and state.
-- No implementation is authorized by this roadmap note alone. Complete and approve a detailed Design Contract before DEV implementation.
+- Owner authorized Wave 3.1 implementation on 2026-11-16. Implementation and behavior-preservation details are maintained in `BLACKSMITH-V2.md`; merge remains gated on Build, regression and UI QA.
 
 #### WAVE 3.2 — Crafting UI Redesign
 **Status: DESIGN PENDING / NOT YET AUTHORIZED**
@@ -532,3 +532,11 @@ Owner-reported Production symptom after the P0 rollout: after using a Potion, th
 **H01 Halloween Event V1: CLOSED — Owner-confirmed Production QA PASS.** This status supersedes older H01-08/09/10 “not started,” “QA pending,” “release blocked,” and “do not activate” notes above where they conflict with the final closeout records in `docs/H01-RELEASE-GATE-2026-11-03.md` and `docs/H01-HALLOWEEN-EVENT-V1.md`.
 
 Owner confirmed that Event Preview entry, battle completion, reward grant, persistence, and post-battle state passed in Production. Owner explicitly accepted two untested edge cases as deferred risk: (1) rapid repeated entry taps / duplicate protection, and (2) attempting entry after Event expiry/inactivation. They are NOT TESTED, not PASS; if issues arise, deliver a hotfix. H01 closure does not itself activate the Event; activation remains controlled separately.
+
+
+### Wave 3.1 implementation record — 2026-11-16
+- Dedicated Blacksmith page replaces the modal overlay and reuses the App Global Currency Bar plus shared GameDock.
+- Forge/equipped layout, equipped-only two-column grid, no default selection, expandable Equipment Detail, Lock controls, separate Refine action and conditional Enchant/Reroll action are implemented on the feature branch.
+- CSS-only placeholders are used where final forge artwork/VFX assets are not yet available.
+- Existing server-authoritative handlers are reused; no API/Worker/D1 changes are in scope.
+- Target app version: Ver 1.1.61. Update Build/QA/merge status only from workflow evidence.
