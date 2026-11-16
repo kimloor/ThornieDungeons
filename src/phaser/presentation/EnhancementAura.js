@@ -14,8 +14,13 @@ const ENHANCEMENT_AURA_STYLES = Object.freeze({
     palette: Object.freeze({ 1: 0x3dff7a, 2: 0xb15cff, 3: 0xff4fd8, 4: 0xffd23a }),
     // Identical for every stage: only the palette colour changes with enhancement level.
     intensity: Object.freeze({
-      characterFlameCount: 9, characterFlameSpread: 0.25, characterFlameMinHeight: 0.52, characterFlameMaxHeight: 0.95,
-      characterFlameWidth: 0.115, characterBaseY: -0.02, characterFlameAlpha: 0.55, characterLean: 24,
+      // Flames wrap the Hero: bases sit on an ellipse around the body (centre/radii are fractions of
+      // displaySize measured from the feet), pointing outward and licking upward. Tips stay inside the
+      // preview canvas (top of the Hero preview is about -0.8 x displaySize).
+      characterFlameCount: 18, characterCenterY: -0.35, characterRadiusX: 0.23, characterRadiusY: 0.26,
+      characterFlameBase: 0.09, characterFlameTop: 0.06, characterFlameSide: 0.035, characterCrownBoost: 1,
+      characterFlameWidth: 0.13, characterUpBias: 0.7, characterFlameAlpha: 0.55,
+      characterGlowAlpha: 0.3, characterGlowPad: 0.1,
       coreWidthRatio: 0.42, coreHeightRatio: 0.58, coreAlpha: 0.6, coreLighten: 0.55,
       flickerPeriod: 1600, flickerScale: 0.16, flickerAlpha: 0.25, swayDegrees: 5,
       weaponFlameCount: 9, weaponFlameWidth: 0.18, weaponFlameMinLength: 0.27, weaponFlameMaxLength: 0.47,
@@ -109,6 +114,28 @@ function enhancementAuraFlameTextureKey(scene, color, kind, lighten = 0.6) {
     ctx.quadraticCurveTo(52, 120, 60, 252);
     ctx.closePath();
     ctx.fill();
+    canvasTexture.refresh();
+    return key;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Soft radial glow behind the flames so the aura reads as one envelope around the Hero.
+function enhancementAuraGlowTextureKey(scene, color) {
+  const key = `enhancement-aura-glow-${color.toString(16).padStart(6, "0")}`;
+  try {
+    if (scene.textures.exists(key)) return key;
+    const canvasTexture = scene.textures.createCanvas(key, 128, 128);
+    const ctx = canvasTexture?.context;
+    if (!ctx) return null;
+    const rgb = `${(color >> 16) & 255},${(color >> 8) & 255},${color & 255}`;
+    const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gradient.addColorStop(0, `rgba(${rgb},0.55)`);
+    gradient.addColorStop(0.6, `rgba(${rgb},0.3)`);
+    gradient.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 128, 128);
     canvasTexture.refresh();
     return key;
   } catch (_) {
@@ -252,8 +279,9 @@ class EnhancementAuraRenderer {
       if (!flame?.obj) return;
       const wave = Math.sin(t * flame.speed + flame.phase);
       const glow = 0.5 + 0.5 * Math.cos(t * flame.speed + flame.phase * 1.7);
-      flame.obj.setScale(flame.sx, flame.sy * (1 + intensity.flickerScale * wave));
-      flame.obj.setAlpha(flame.alpha * (1 - intensity.flickerAlpha * glow));
+      const strength = flame.flicker ?? 1;
+      flame.obj.setScale(flame.sx, flame.sy * (1 + intensity.flickerScale * strength * wave));
+      flame.obj.setAlpha(flame.alpha * (1 - intensity.flickerAlpha * strength * glow));
       if (flame.sway) flame.obj.setAngle(flame.rot + flame.sway * Math.sin(t * flame.speed + flame.phase * 0.6));
     };
     this.characterFlames.forEach(apply);
@@ -268,7 +296,7 @@ class EnhancementAuraRenderer {
       const obj = this.scene.add.image(0, 0, key).setOrigin(0.5, 1);
       obj.setBlendMode?.(enhancementAuraBlendAdd());
       container.add(obj);
-      return { obj, sx: 1, sy: 1, rot: 0, alpha, phase, speed, sway };
+      return { obj, sx: 1, sy: 1, rot: 0, alpha, phase, speed, sway, flicker: 1 };
     };
     return { seed, outer: make(keys.outer, 0), core: make(keys.core, 0) };
   }
@@ -315,19 +343,45 @@ class EnhancementAuraRenderer {
       this.characterRoot.setVisible(false);
       return;
     }
+    const centerY = size * intensity.characterCenterY;
+    const radiusX = size * intensity.characterRadiusX;
+    const radiusY = size * intensity.characterRadiusY;
+
+    const glowKey = enhancementAuraGlowTextureKey(this.scene, color);
+    if (glowKey) {
+      const glow = this.scene.add.image(0, centerY, glowKey);
+      glow.setBlendMode?.(enhancementAuraBlendAdd());
+      glow.setScale((2 * (radiusX + size * intensity.characterGlowPad)) / 128, (2 * (radiusY + size * intensity.characterGlowPad)) / 128);
+      this.characterRoot.add(glow);
+      this.characterFlames.push({
+        obj: glow, sx: (2 * (radiusX + size * intensity.characterGlowPad)) / 128, sy: (2 * (radiusY + size * intensity.characterGlowPad)) / 128,
+        rot: 0, alpha: intensity.characterGlowAlpha, phase: 0, speed: 1, sway: 0, flicker: 0.3
+      });
+    }
+
     const count = intensity.characterFlameCount;
     for (let index = 0; index < count; index += 1) {
-      const offset = count === 1 ? 0 : (index / (count - 1)) * 2 - 1;
-      const peak = 1 - Math.abs(offset);
-      const height = size * Math.min(intensity.characterFlameMaxHeight,
-        intensity.characterFlameMinHeight + (intensity.characterFlameMaxHeight - intensity.characterFlameMinHeight) * peak * (0.85 + 0.3 * enhancementAuraHash(index, 1)));
+      const theta = (index / count) * Math.PI * 2; // 0 = top of the Hero, clockwise
+      const sin = Math.sin(theta);
+      const cos = Math.cos(theta);
+      // Outward ellipse normal, tilted upward so the flames lick upward like rising fire.
+      const norm = Math.hypot(sin / radiusX, cos / radiusY) || 1;
+      let dx = sin / radiusX / norm;
+      let dy = -cos / radiusY / norm - intensity.characterUpBias;
+      dy = Math.min(dy, 0.15);
+      const length = Math.hypot(dx, dy) || 1;
+      dx /= length;
+      dy /= length;
+      const crown = index === 0;
+      const height = size * (intensity.characterFlameBase + intensity.characterFlameTop * Math.max(0, cos) + intensity.characterFlameSide * Math.abs(sin))
+        * (crown ? intensity.characterCrownBoost : 0.9 + 0.2 * enhancementAuraHash(index, 1));
       const flame = this.createFlame(this.characterRoot, keys, index, intensity.swayDegrees);
       this.placeFlame(flame, {
-        x: offset * size * intensity.characterFlameSpread,
-        y: size * intensity.characterBaseY,
-        width: size * intensity.characterFlameWidth * (0.9 + 0.3 * enhancementAuraHash(index, 2)),
+        x: sin * radiusX,
+        y: centerY - cos * radiusY,
+        width: size * intensity.characterFlameWidth * (0.9 + 0.2 * enhancementAuraHash(index, 2)),
         height,
-        rotation: offset * intensity.characterLean + (enhancementAuraHash(index, 3) - 0.5) * 8,
+        rotation: Math.atan2(dx, -dy) * 180 / Math.PI,
         alpha: intensity.characterFlameAlpha
       });
       this.characterFlames.push(flame.outer, flame.core);
