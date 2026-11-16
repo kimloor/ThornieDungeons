@@ -24,7 +24,7 @@ If a meaningful conflict exists, report it instead of silently choosing one sour
 
 ## Blacksmith V2 module separation
 
-- [`BLACKSMITH-V2.md`](BLACKSMITH-V2.md) — Blacksmith UI and dedicated Phaser module boundaries, behavior preservation, and implementation notes.
+- [`BLACKSMITH-V2.md`](BLACKSMITH-V2.md) — Blacksmith UI and dedicated Phaser modules, Wave 3.1 page redesign, behavior-preservation boundaries and QA requirements.
 
 ## 3. Active core documentation
 

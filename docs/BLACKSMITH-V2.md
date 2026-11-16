@@ -1,6 +1,6 @@
 # Blacksmith V2 — Module Separation and UI Redesign
 
-Status: **ACTIVE — module separation in progress**
+Status: **ACTIVE — Wave 3.1 UI redesign implemented on feature branch; QA pending**
 
 ## 1. Purpose
 
@@ -44,3 +44,20 @@ This refactor does not implement the Blacksmith V2 mockup, dedicated navigation/
 - Run `git diff --check`.
 - Verify Crafting still references the generic Forge presentation.
 - Verify no API, Worker, D1, or gameplay-rule changes were introduced.
+
+
+## 7. Wave 3.1 UI redesign implementation
+
+Blacksmith is now a dedicated full-page route from Town Hub, not a modal/overlay. The page reuses the App-level Global Currency Bar and shared GameDock.
+
+Implemented:
+- Mobile-first forge/equipped layout; two-column icon grid contains only currently equipped gear.
+- No automatic gear selection; selecting gear opens the expandable Equipment Detail panel.
+- Equipment Detail contains existing Enchant options, lock/unlock controls and Protection Stone toggle.
+- Refine remains a separate action. The second action calls existing Enchant/Empower while an option slot is open, or existing Reroll when all slots are full.
+- CSS artwork hooks and fallback forge VFX are provided for future approved art assets. No new image assets were added.
+- Inventory remains reachable; Salvage remains in Inventory.
+
+Behavior preservation: existing App-level guarded handlers and server-authoritative mutations remain unchanged. No API, Worker, D1, schema, economy, costs, success rates, material, rarity-limit, lock, reroll, Protection Stone, ownership, persistence or Salvage rules were changed. Forge animations are presentation-only.
+
+Validation required: branch Build must run `node build.js`; focused Blacksmith/Enhancement/Phaser regression and applicable CI gates must pass. Production UI acceptance must cover mobile portrait, safe area, dock navigation, equipped selection, detail expand/collapse, Refine, Enchant, Reroll and Inventory/Salvage navigation.
