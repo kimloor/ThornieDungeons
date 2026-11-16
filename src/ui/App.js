@@ -3269,7 +3269,7 @@ function ThornieDungeons() {
     onToggleLock: guardItemAction(toggleEmpowerLock),
     onOpenInventory: () => { setBlacksmithOpen(false); setInvOpen(true); },
     onClose: () => setBlacksmithOpen(false),
-    dockProps: Object.assign({}, utilityDockProps(phase), { onOpenInv: () => { setBlacksmithOpen(false); setInvOpen(true); } })
+    dockProps: Object.assign({}, utilityDockProps(phase), { onCharacter: () => { setBlacksmithOpen(false); setCharacterReturnPhase(phase); setPhase("character"); }, onPets: () => { setBlacksmithOpen(false); setPetReturnPhase(phase); setPhase("pets"); }, onSettings: page => { setBlacksmithOpen(false); setAccountSettingsOpen(typeof page === "string" ? page : true); }, onOpenInv: () => { setBlacksmithOpen(false); setInvOpen(true); }, onFriend: () => { setBlacksmithOpen(false); setUtilityReturnPhase(phase); setPhase("friend"); } })
   }), craftingOpen && /*#__PURE__*/React.createElement(CraftingOverlay, {
     serverUrl: cred.url,
     characterId: save.characterId,

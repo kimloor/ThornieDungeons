@@ -48,12 +48,14 @@ function createBlacksmithForgeScene(Phaser, { initialEvent, onReady, onError } =
       const outcome = String(event.outcome || "");
       const duration = Math.max(180, Math.round(520 / Math.max(1, Number(speed) || 1)));
       const isCraft = kind === "craft";
-      const title = isCraft ? (event.special ? "MYTHIC REVEAL" : "CRAFT COMPLETE") : outcome === "success" ? "REFINE SUCCESS" : outcome === "protected" ? "PROTECTED" : outcome === "downgrade" ? "DOWNGRADE" : "REFINE FAILED";
-      const detail = isCraft ? String(event.itemName || "Crafted item") : String(Number(event.levelBefore) || 0) + " → " + String(Number(event.levelAfter) || 0);
+      const isEnchant = kind === "enchant";
+      const isReroll = kind === "reroll";
+      const title = isCraft ? (event.special ? "MYTHIC REVEAL" : "CRAFT COMPLETE") : isEnchant ? "ENCHANT SUCCESS" : isReroll ? "REROLL COMPLETE" : outcome === "success" ? "REFINE SUCCESS" : outcome === "protected" ? "PROTECTED" : outcome === "downgrade" ? "DOWNGRADE" : "REFINE FAILED";
+      const detail = isCraft || isEnchant || isReroll ? String(event.itemName || "Equipment") : String(Number(event.levelBefore) || 0) + " → " + String(Number(event.levelAfter) || 0);
 
       this.title?.setText(title);
       this.detail?.setText(detail);
-      this.hammer?.setText(isCraft ? (event.special ? "✦" : "✨") : "⚒️");
+      this.hammer?.setText(isCraft ? (event.special ? "✦" : "✨") : isEnchant ? "✦" : isReroll ? "↻" : "⚒️");
       this.stage?.setAlpha(1);
       this.stage?.setScale(0.86);
       this.cameras?.main?.flash?.(Math.max(90, Math.round(duration * 0.28)));
