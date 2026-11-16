@@ -55,6 +55,7 @@ test("Inventory order: Sort stores the sorted ids and the overlay receives the o
   assert.equal(applyInventoryOrder(items(["a", "b"]), sorted.map(i => i.id)).length, 2);
 });
 
+// Owner-directed mobile layout follow-up intentionally keeps the existing public version.
 test("Ver 1.1.61: visible badge, meta and roadmap are in sync", () => {
   const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
   assert.match(read("src/data/styles.js"), /content: "Ver 1\.1\.61"/);
@@ -72,6 +73,7 @@ test("Blacksmith Wave 3.1 uses a dedicated page and preserves existing operation
   const app = read("src/ui/App.js");
   const styles = read("src/data/styles.js");
   assert.match(page, /className:"md-blacksmith-page"/);
+  assert.doesNotMatch(page, /md-blacksmith-inventory/);
   assert.doesNotMatch(page, /md-equip-overlay|md-equip-sheet/);
   assert.match(page, /SLOT_ORDER\.filter\(s=>!!equipped\[s\]\)/);
   assert.match(page, /onClick:openSlot\?doEmpower:doReroll/);
@@ -79,4 +81,7 @@ test("Blacksmith Wave 3.1 uses a dedicated page and preserves existing operation
   assert.match(app, /phase === "town" && !blacksmithOpen/);
   assert.match(app, /utilityDockProps\(phase\)/);
   assert.match(styles, /\.md-blacksmith-gear-grid \{ display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(styles, /Blacksmith mobile fit/);
+  assert.match(styles, /md-blacksmith-detail\.expanded \{ max-height/);
+  assert.match(styles, /md-blacksmith-heading \{ min-height:58px/);
 });

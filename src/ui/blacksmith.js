@@ -1,4 +1,4 @@
-function BlacksmithPage({equipped,inventory,busy,gold,protectionStones,onEnhance,onEmpower,onReroll,onToggleLock,onOpenInventory,onClose,dockProps}) {
+function BlacksmithPage({equipped,inventory,busy,gold,protectionStones,onEnhance,onEmpower,onReroll,onToggleLock,onClose,dockProps}) {
  const [selectedEquippedSlot,setSelectedEquippedSlot]=useState(null),[detailExpanded,setDetailExpanded]=useState(false),[actionMsg,setActionMsg]=useState(""),[animState,setAnimState]=useState(null),[forgePresentation,setForgePresentation]=useState(null),[useProtectionStone,setUseProtectionStone]=useState(false);
  const forgePresentationTokenRef=useRef(0),animTimerRef=useRef(null);
  const detailTarget=selectedEquippedSlot?equipped[selectedEquippedSlot]:null,slots=detailTarget?.empowerSlots||[],openSlot=slots.some(s=>!s),filled=slots.filter(Boolean),locked=filled.filter(s=>s.locked).length,canReroll=filled.length>0&&locked<filled.length;
@@ -17,7 +17,7 @@ function BlacksmithPage({equipped,inventory,busy,gold,protectionStones,onEnhance
   /*#__PURE__*/React.createElement("header",{className:"md-blacksmith-header"},
    /*#__PURE__*/React.createElement("button",{type:"button",className:"md-blacksmith-back",onClick:onClose,"aria-label":"กลับเมือง"},"‹"),
    /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-heading"}, /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-kicker"},"THE ROYAL FORGE"), /*#__PURE__*/React.createElement("h1",null,"BLACKSMITH"), /*#__PURE__*/React.createElement("p",null,"ตีบวก · เสริมพลัง · ปรับแต่งอุปกรณ์")),
-   /*#__PURE__*/React.createElement("button",{type:"button",className:"md-blacksmith-inventory",onClick:onOpenInventory},"🎒 กระเป๋า")),
+  ),
   /*#__PURE__*/React.createElement("section",{className:"md-blacksmith-workbench"},
    /*#__PURE__*/React.createElement("div",{className:`md-blacksmith-forge ${animState?"is-"+animState:""}`},
     /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-forge-glow"}),

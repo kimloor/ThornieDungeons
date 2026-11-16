@@ -3327,4 +3327,30 @@ body > .md-inv2-detail-layer .md-inv2-detail {
 @media(max-width:380px){.md-blacksmith-page{gap:7px;padding-left:7px;padding-right:7px}.md-blacksmith-workbench{gap:6px}.md-blacksmith-forge{min-height:185px}.md-blacksmith-equipped{padding:6px}.md-blacksmith-gear-cell{min-height:69px}.md-blacksmith-heading h1{font-size:19px}}
 @media(min-width:700px){.md-blacksmith-page{gap:14px;padding-top:16px}.md-blacksmith-workbench{min-height:300px}.md-blacksmith-forge{min-height:300px}.md-blacksmith-gear-cell{min-height:95px}}
 
+
+/* Blacksmith mobile fit: compact workbench and bounded detail expansion. */
+.md-blacksmith-page { flex:1 1 auto; height:0; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
+.md-blacksmith-page::-webkit-scrollbar { display:none; }
+.md-blacksmith-header { grid-template-columns:40px minmax(0,1fr); gap:8px; }
+.md-blacksmith-heading { min-height:58px; display:flex; flex-direction:column; justify-content:center; padding:7px 12px; border:1px solid rgba(255,209,102,.42); border-radius:13px; background:linear-gradient(145deg,rgba(35,22,55,.94),rgba(13,9,26,.96)); box-shadow:inset 0 0 18px rgba(255,209,102,.07),0 5px 16px rgba(0,0,0,.28); }
+.md-blacksmith-workbench { height:min(43dvh,360px); max-height:min(43dvh,360px); min-height:0; flex:0 0 auto; align-items:stretch; }
+.md-blacksmith-forge { min-height:0; height:100%; }
+.md-blacksmith-forge-art { font-size:clamp(42px,11vw,68px); }
+.md-blacksmith-forge-caption { margin-top:7px; }
+.md-blacksmith-equipped { min-height:0; max-height:100%; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+.md-blacksmith-section-title { flex:0 0 auto; margin-bottom:5px; }
+.md-blacksmith-gear-grid { gap:5px; }
+.md-blacksmith-gear-cell { min-height:clamp(52px,6.8dvh,66px); padding:4px 3px; gap:1px; }
+.md-blacksmith-gear-icon { width:30px; height:30px; }
+.md-blacksmith-gear-icon img { width:26px; height:26px; }
+.md-blacksmith-detail { max-height:58px; transition:max-height .28s cubic-bezier(.2,.75,.25,1); }
+.md-blacksmith-detail.expanded { max-height:min(36dvh,300px); }
+.md-blacksmith-detail-body { max-height:calc(min(36dvh,300px) - 48px); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+.md-blacksmith-page>.md-hub-dock { position:sticky; bottom:0; flex-shrink:0; margin-top:auto; }
+@media(max-width:380px) {
+ .md-blacksmith-workbench { height:min(42dvh,330px); max-height:min(42dvh,330px); }
+ .md-blacksmith-detail.expanded { max-height:min(38dvh,290px); }
+ .md-blacksmith-detail-body { max-height:calc(min(38dvh,290px) - 48px); }
+}
+
 `;

@@ -1,6 +1,6 @@
 # Blacksmith V2 — Module Separation and UI Redesign
 
-Status: **ACTIVE — Wave 3.1 UI redesign implemented on feature branch; QA pending**
+Status: **ACTIVE — Wave 3.1 UI redesign merged; mobile layout follow-up on PR; Owner-directed version remains Ver 1.1.61**
 
 ## 1. Purpose
 
@@ -61,3 +61,15 @@ Implemented:
 Behavior preservation: existing App-level guarded handlers and server-authoritative mutations remain unchanged. No API, Worker, D1, schema, economy, costs, success rates, material, rarity-limit, lock, reroll, Protection Stone, ownership, persistence or Salvage rules were changed. Forge animations are presentation-only.
 
 Validation required: branch Build must run `node build.js`; focused Blacksmith/Enhancement/Phaser regression and applicable CI gates must pass. Production UI acceptance must cover mobile portrait, safe area, dock navigation, equipped selection, detail expand/collapse, Refine, Enchant, Reroll and Inventory/Salvage navigation.
+
+
+## 8. Production mobile layout follow-up — Ver 1.1.61 (no version bump per Owner)
+Owner screenshot identified the top Inventory shortcut, heading readability, oversized workbench, and Equipment Detail overflow.
+
+- Removed only the Blacksmith header Inventory shortcut; bottom GameDock Inventory remains.
+- Added a dark/gold panel behind the BLACKSMITH heading.
+- Constrained mobile workbench height, reduced equipment tile/icon sizes, and made the equipped list independently scrollable.
+- Added bounded detail expansion/collapse and an internally scrollable detail body; the page scrolls within the available viewport.
+- No operation handlers, costs, materials, success rates, server/API/Worker/D1 behavior or item rules changed.
+
+Version policy: at the Owner's explicit direction, this presentation-only follow-up retains the existing visible version `1.1.61`; no version bump is included. Branch Build run `43835342900` passed its focused regression suite, formatting check and `node build.js`; generated `index.html` was committed as `2404cd07aab9b5b6fab9ea3be64d17099254bcb6`. Battle Core parity and Admin V2 QA must pass on the generated-output commit before merge. Production visual acceptance remains pending Owner recheck.
