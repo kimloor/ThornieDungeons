@@ -1,6 +1,6 @@
 # Blacksmith V2 — Module Separation and UI Redesign
 
-Status: **ACTIVE — Wave 3.1 UI redesign merged; Ver 1.1.62 mobile layout follow-up on PR; CI correction in progress**
+Status: **ACTIVE — Wave 3.1 UI redesign merged; mobile layout follow-up on PR; Owner-directed version remains Ver 1.1.61**
 
 ## 1. Purpose
 
@@ -63,7 +63,7 @@ Behavior preservation: existing App-level guarded handlers and server-authoritat
 Validation required: branch Build must run `node build.js`; focused Blacksmith/Enhancement/Phaser regression and applicable CI gates must pass. Production UI acceptance must cover mobile portrait, safe area, dock navigation, equipped selection, detail expand/collapse, Refine, Enchant, Reroll and Inventory/Salvage navigation.
 
 
-## 8. Production mobile layout follow-up — Ver 1.1.62
+## 8. Production mobile layout follow-up — Ver 1.1.61 (no version bump per Owner)
 Owner screenshot identified the top Inventory shortcut, heading readability, oversized workbench, and Equipment Detail overflow.
 
 - Removed only the Blacksmith header Inventory shortcut; bottom GameDock Inventory remains.
@@ -72,4 +72,4 @@ Owner screenshot identified the top Inventory shortcut, heading readability, ove
 - Added bounded detail expansion/collapse and an internally scrollable detail body; the page scrolls within the available viewport.
 - No operation handlers, costs, materials, success rates, server/API/Worker/D1 behavior or item rules changed.
 
-Validation: the first PR CI run exposed a single shared regression-test failure: the version-sync test expected `Visible game version Ver 1.1.62`, but the roadmap had no visible-version marker. The same assertion caused the Frontend Build, Battle Core parity wrapper and Admin V2 QA Build step to fail; the P0 suite did not report a separate gameplay-authority defect. The roadmap marker is being restored to match the existing `head.html` and UI badge version. Rerun all required PR checks before merge. Production visual acceptance remains pending owner recheck.
+Version policy: at the Owner's explicit direction, this presentation-only follow-up retains the existing visible version `1.1.61`; no version bump is included. Build and regression evidence must be recorded from the current PR workflows. Production visual acceptance remains pending Owner recheck.

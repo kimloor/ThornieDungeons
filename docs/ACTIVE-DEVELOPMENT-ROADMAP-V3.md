@@ -1,5 +1,7 @@
 # ThornieDungeons — Active Development Roadmap V3
 
+Visible game version Ver 1.1.61
+
 Visible game version Ver 1.1.62
 
 Status: **ACTIVE-PLANNING — Ver 1.1.1 RELEASED 2026-10-21; WAVE 1 COMPLETE; WAVE 1 PREP (Client Systems V1) contract awaiting Owner approval**
@@ -547,4 +549,4 @@ Owner confirmed that Event Preview entry, battle completion, reward grant, persi
 ### Blacksmith Production mobile layout follow-up — 2026-11-16
 - Owner supplied a Production screenshot requesting removal of the top Inventory shortcut, a distinct heading panel, and compact workbench/equipment with bounded Equipment Detail expansion.
 - Presentation-only follow-up; bottom GameDock Inventory and existing Blacksmith handlers remain unchanged.
-- Target version: Ver 1.1.62. Record build, deployment and Production visual QA only from workflow and owner evidence.
+- Target version: Ver 1.1.61 (Owner-directed: retain the existing version; do not bump). Record build, deployment and Production visual QA only from workflow and owner evidence.
