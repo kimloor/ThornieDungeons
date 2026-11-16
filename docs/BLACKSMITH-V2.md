@@ -72,4 +72,4 @@ Owner screenshot identified the top Inventory shortcut, heading readability, ove
 - Added bounded detail expansion/collapse and an internally scrollable detail body; the page scrolls within the available viewport.
 - No operation handlers, costs, materials, success rates, server/API/Worker/D1 behavior or item rules changed.
 
-Version policy: at the Owner's explicit direction, this presentation-only follow-up retains the existing visible version `1.1.61`; no version bump is included. Build and regression evidence must be recorded from the current PR workflows. Production visual acceptance remains pending Owner recheck.
+Version policy: at the Owner's explicit direction, this presentation-only follow-up retains the existing visible version `1.1.61`; no version bump is included. Branch Build run `43835342900` passed its focused regression suite, formatting check and `node build.js`; generated `index.html` was committed as `2404cd07aab9b5b6fab9ea3be64d17099254bcb6`. Battle Core parity and Admin V2 QA must pass on the generated-output commit before merge. Production visual acceptance remains pending Owner recheck.
