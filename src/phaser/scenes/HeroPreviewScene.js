@@ -9,7 +9,7 @@ function heroPreviewFallbackLayerNames(name) {
   return name ? [name] : [];
 }
 
-function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, surface = "inventory", onReady, onError } = {}) {
+function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, baselineY = 0.86, surface = "inventory", onReady, onError } = {}) {
   return class HeroPreviewScene extends Phaser.Scene {
     constructor() {
       super({ key: "HeroPreviewScene" });
@@ -29,6 +29,8 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, surfac
       this.coreLoadFailed = false;
       this.readyNotified = false;
       this.anchorX = Math.max(0, Math.min(1, Number(anchorX) || 0.5));
+      // Hero baseline (feet) as a fraction of the canvas height; Inventory passes a lower value.
+      this.baselineY = Math.max(0.5, Math.min(0.99, Number(baselineY) || 0.86));
       this.handleResize = this.handleResize.bind(this);
       this.handleLoadError = this.handleLoadError.bind(this);
     }
@@ -135,7 +137,7 @@ function createHeroPreviewScene(Phaser, { initialSnapshot, anchorX = 0.5, surfac
       if (!this.heroRoot) return;
       const width = Math.max(1, Number(this.scale.width) || 1);
       const height = Math.max(1, Number(this.scale.height) || 1);
-      this.heroRoot.setPosition(Math.round(width * this.anchorX), Math.round(height * 0.86));
+      this.heroRoot.setPosition(Math.round(width * this.anchorX), Math.round(height * this.baselineY));
     }
 
     updateEnhancementAura() {

@@ -10,7 +10,7 @@ function isPhaserHeroPreviewEnabled() {
   }
 }
 
-function PhaserHeroPreview({ equipped = {}, heroName = "Hero", fallback = null, className = "", anchorX = 0.5 }) {
+function PhaserHeroPreview({ equipped = {}, heroName = "Hero", fallback = null, className = "", anchorX = 0.5, baselineY = 0.86 }) {
   const hostRef = React.useRef(null);
   const handleRef = React.useRef(null);
   const [status, setStatus] = React.useState("loading");
@@ -27,6 +27,7 @@ function PhaserHeroPreview({ equipped = {}, heroName = "Hero", fallback = null, 
       mountNode: hostRef.current,
       snapshot,
       anchorX,
+      baselineY,
       onReady: () => { if (!disposed) setStatus("ready"); },
       onError: () => { if (!disposed) setStatus("error"); },
       onDestroyed: () => {}
@@ -39,7 +40,7 @@ function PhaserHeroPreview({ equipped = {}, heroName = "Hero", fallback = null, 
       handle.destroy();
       handleRef.current = null;
     };
-  }, [enabled, anchorX]);
+  }, [enabled, anchorX, baselineY]);
 
   React.useEffect(() => {
     if (enabled) handleRef.current?.sync(snapshot);

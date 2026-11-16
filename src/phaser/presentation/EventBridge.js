@@ -356,7 +356,7 @@ function buildArenaBattlefieldSnapshot({
         visualMode: heroFrames.mode || "v3",
         layers: heroFrames.idle?.[0] || [],
         layerFrames: heroFrames,
-        enhancementAura: role === "attacker" ? resolveEnhancementAura(equipped) : null
+        enhancementAura: resolveEnhancementAura(equipped)
       } : null,
       pet: pet ? {
         ...pet,

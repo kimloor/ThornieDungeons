@@ -6738,6 +6738,7 @@ function EquipmentStage({ equipped, previewEquipped = equipped, characterName, o
         equipped:previewEquipped,
         heroName:characterName || "Adventurer",
         anchorX:0.558,
+        baselineY:0.93,
         fallback:fallbackHero
       })),
     /*#__PURE__*/React.createElement("div", { className: "md-inv2-slots" }, SLOT_ORDER.map(slot => /*#__PURE__*/React.createElement(EquipmentSlot, {

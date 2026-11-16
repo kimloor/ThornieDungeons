@@ -1,5 +1,5 @@
 // ---------- W8 Shared Hero Preview Host ----------
-function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, onError, onDestroyed } = {}) {
+function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, baselineY = 0.86, onReady, onError, onDestroyed } = {}) {
   let game = null;
   let scene = null;
   let destroyed = false;
@@ -58,6 +58,7 @@ function createHeroPreviewHost({ mountNode, snapshot, anchorX = 0.5, onReady, on
       const SceneClass = createHeroPreviewScene(Phaser, {
         initialSnapshot: currentSnapshot,
         anchorX,
+        baselineY,
         onReady: payload => {
           scene = payload?.scene || null;
           if (scene) scene.sync(currentSnapshot);
