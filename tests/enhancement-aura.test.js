@@ -192,7 +192,7 @@ test("Weapon diagnostic label is pinned inside the visible stage with a real new
 });
 
 // ---------- Ver 1.1.60: Power Flame style (flame rays, new palette, blade-following weapon Aura) ----------
-function fakeFlameScene({ rendererType } = {}) {
+function fakeFlameScene({ rendererType, glow = false } = {}) {
   const made = [];
   const textures = new Map();
   const chain = obj => new Proxy(obj, { get: (t, k) => (k in t ? t[k] : (...a) => {
@@ -209,7 +209,8 @@ function fakeFlameScene({ rendererType } = {}) {
   const ctx = new Proxy({}, { get: (t, k) => (k === "createLinearGradient" || k === "createRadialGradient" ? () => ({ addColorStop() {} }) : () => {}), set: () => true });
   const scene = {
     sys: rendererType === undefined ? undefined : { game: { renderer: { type: rendererType } } },
-    add: { container: () => mk("container"), image: (x, y, key) => mk("image", { key }), text: () => mk("text") },
+    add: { container: () => mk("container"), image: (x, y, key) => mk("image", { key }), text: () => mk("text"),
+      graphics: () => mk("graphics", glow ? { postFX: { glowCalls: [], clear() {}, addGlow(...args) { this.glowCalls.push(args); } } } : {}) },
     textures: {
       exists: key => textures.has(key),
       createCanvas: key => { textures.set(key, true); return { context: ctx, refresh() {} }; }
@@ -229,96 +230,6 @@ test("Power Flame is the default replaceable style with the approved green/purpl
   assert.equal(resolveEnhancementAuraStyle("future-style"), ENHANCEMENT_AURA_STYLES.powerFlame);
   assert.equal(resolveEnhancementAuraStyle(), ENHANCEMENT_AURA_STYLES.powerFlame);
   assert.equal(Object.isFrozen(style.intensity), true);
-});
-
-test("Effect intensity is identical for every stage; only the baked colour texture changes", () => {
-  const source = read("src/phaser/presentation/EnhancementAura.js");
-  assert.doesNotMatch(source, /intensity\.\w+\[stage\]/);
-  assert.match(source, /this\.style\.palette\[stage\]/);
-  const { scene, root, made } = fakeFlameScene();
-  const renderer = new EnhancementAuraRenderer(scene, root, () => 200);
-  const perStage = [];
-  [1, 2, 3, 4].forEach(stage => {
-    renderer.update({ characterStage: stage, weaponStage: 0 }, NO_HERO);
-    const flames = renderer.characterFlames;
-    perStage.push({
-      count: flames.length,
-      shape: flames.map(f => [Math.round(f.sx * 1000), Math.round(f.sy * 1000), f.rot, f.alpha].join(":")).join("|"),
-      keys: new Set(flameImages(made).slice(-flames.length).map(o => o.key))
-    });
-  });
-  assert.equal(new Set(perStage.map(p => p.count)).size, 1);
-  assert.equal(new Set(perStage.map(p => p.shape)).size, 1, "sizes, angles and alphas never depend on the stage");
-  const allKeys = perStage.flatMap(p => [...p.keys]);
-  assert.equal(new Set(allKeys).size, 8, "4 stages x (outer + core) distinct baked textures");
-});
-
-test("Character Aura is a flame ring OUTSIDE the clear Hero ellipse, with nothing below the ground line", () => {
-  const { scene, root, made } = fakeFlameScene();
-  const SIZE = 452;
-  const renderer = new EnhancementAuraRenderer(scene, root, () => SIZE);
-  renderer.update({ characterStage: 2, weaponStage: 0 }, NO_HERO);
-  const k = ENHANCEMENT_AURA_STYLES.powerFlame.intensity;
-  assert.equal(made.some(o => o.type === "graphics" || o.type === "circle"), false, "no rings, ground glow or orbit particles");
-  assert.equal(renderer.characterRoot.visible, true);
-  assert.equal(renderer.characterFlames.length % 2, 0);
-
-  const outer = renderer.characterFlames.filter(f => String(f.obj.key).includes("-outer-"));
-  assert.ok(outer.length >= 16 && outer.length <= k.characterFlameCount, `flame count ${outer.length}`);
-  const cx = k.characterCenterX * SIZE;
-  const cy = k.characterCenterY * SIZE;
-  const ground = k.characterGroundY * SIZE;
-  const inside = (x, y, rx, ry) => ((x - cx) / (rx * SIZE)) ** 2 + ((y - cy) / (ry * SIZE)) ** 2;
-  outer.forEach(f => {
-    const height = f.sy * 256;
-    const radians = (f.rot * Math.PI) / 180;
-    const base = { x: f.obj.x, y: f.obj.y };
-    const tip = { x: base.x + Math.sin(radians) * height, y: base.y - Math.cos(radians) * height };
-    assert.ok(inside(base.x, base.y, k.characterRadiusX, k.characterRadiusY) >= 0.98, "flame bases never enter the clear ellipse");
-    assert.ok(inside(tip.x, tip.y, k.characterRadiusX, k.characterRadiusY) >= 1, "tips are outside the clear ellipse");
-    const outerRy = tip.y < cy ? k.characterOuterRadiusYTop : k.characterOuterRadiusY;
-    assert.ok(inside(tip.x, tip.y, k.characterOuterRadiusX * 1.05, outerRy * 1.05) <= 1.001, "tips stay inside the outer limit");
-    assert.ok(base.y <= ground && tip.y <= ground, "no Aura below the ground line");
-    assert.ok(tip.y >= k.characterTopLimit * SIZE - 1, "tips stay inside the Hero preview canvas");
-  });
-  assert.ok(outer.some(f => f.obj.x < cx - 0.2 * SIZE) && outer.some(f => f.obj.x > cx + 0.2 * SIZE), "ring on both sides");
-  assert.ok(outer.some(f => f.obj.y < cy - 0.3 * SIZE), "ring above the head");
-  const last = root.moved[root.moved.length - 1];
-  assert.equal(last[0], renderer.characterRoot);
-  assert.equal(last[1], 0, "Character Aura is sent to the very back after each frame (behind wings and body)");
-  renderer.update({ characterStage: 0, weaponStage: 0 }, NO_HERO);
-  assert.equal(renderer.characterFlames.length, 0);
-  assert.equal(renderer.characterRoot.visible, false);
-});
-
-test("Flame colours are baked into textures, never applied with setTint (Canvas ignores tint)", () => {
-  const { scene, root, made, textures } = fakeFlameScene();
-  const renderer = new EnhancementAuraRenderer(scene, root, () => 200);
-  renderer.update({ characterStage: 3, weaponStage: 0 }, NO_HERO);
-  assert.equal(textures.size, 2, "outer and core textures");
-  renderer.characterStage = -1;
-  renderer.update({ characterStage: 3, weaponStage: 0 }, NO_HERO);
-  assert.equal(textures.size, 2, "textures are reused, not recreated");
-  flameImages(made).forEach(o => assert.equal(o.calls.some(c => c[0] === "setTint"), false));
-});
-
-test("Flame animation is one shared driver tween that is stopped on destroy", () => {
-  const { scene, root, made } = fakeFlameScene();
-  const renderer = new EnhancementAuraRenderer(scene, root, () => 200);
-  renderer.update({ characterStage: 4, weaponStage: 0 }, NO_HERO);
-  renderer.update({ characterStage: 4, weaponStage: 0 }, NO_HERO);
-  const tweens = made.filter(o => o.type === "tween");
-  assert.equal(tweens.length, 1, "one driver for all flames");
-  const before = renderer.characterFlames[0].obj.calls.length;
-  renderer.flickerState.t = 1.3;
-  renderer.animateFlames();
-  assert.ok(renderer.characterFlames[0].obj.calls.length > before);
-  const rootRef = renderer.characterRoot;
-  renderer.destroy();
-  assert.equal(tweens[0].tween.stopped, true);
-  assert.equal(rootRef.calls.some(c => c[0] === "destroy"), true);
-  assert.equal(renderer.scene, null);
-  renderer.update({ characterStage: 4, weaponStage: 0 }, NO_HERO);
 });
 
 test("Blade geometry follows the sprite's own silhouette and picks a sensible tip direction", () => {
@@ -413,22 +324,7 @@ test("Tint-based silhouette halos are WebGL-only; Canvas relies on the baked fla
   } finally { delete globalThis.Phaser; }
 });
 
-// ---------- Ver 1.1.62: left shift, longer top, back layer, blade tip at the far end, Arena opponent, Inventory baseline ----------
-test("Character Aura ring is shifted ~8px left and is taller at the top than at the bottom", () => {
-  const k = ENHANCEMENT_AURA_STYLES.powerFlame.intensity;
-  assert.ok(Math.abs((k.characterCenterX - -0.055) * 452 + 8) < 3, "about 8px left of the 1.1.60 position at the Inventory preview size");
-  assert.ok(k.characterOuterRadiusYTop > k.characterOuterRadiusY, "the top limit is higher than the bottom limit");
-  const { scene, root } = fakeFlameScene();
-  const renderer = new EnhancementAuraRenderer(scene, root, () => 452);
-  renderer.update({ characterStage: 1, weaponStage: 0 }, NO_HERO);
-  const tipHeights = renderer.characterFlames.filter(f => String(f.obj.key).includes("-outer-")).map(f => {
-    const radians = (f.rot * Math.PI) / 180;
-    return f.obj.y - Math.cos(radians) * f.sy * 256;
-  });
-  const topTip = Math.min(...tipHeights) / 452;
-  assert.ok(topTip < -0.86 && topTip >= k.characterTopLimit - 0.002, `top tip ${topTip.toFixed(3)} is higher than before but inside the limit`);
-});
-
+// ---------- Ver 1.1.63: left shift, longer top, back layer, blade tip at the far end, Arena opponent, Inventory baseline ----------
 test("Blade tip is the axis end FARTHEST from the Hero body (hilt stays near the body)", () => {
   const geometry = { mx: 200, my: 250, ux: 0.6, uy: -0.8, tmin: -100, tmax: 100, frameW: 400, frameH: 400 };
   const image = { x: 0, y: 0, angle: 0, originX: 0.5, originY: 1, displayWidth: 400, displayHeight: 400 };
@@ -492,4 +388,159 @@ test("Inventory preview places the Hero lower through an opt-in baseline; other 
   assert.match(read("src/phaser/runtime/HeroPreviewHost.js"), /baselineY = 0\.86[\s\S]*baselineY,/);
   assert.match(read("src/phaser/ui/PhaserHeroPreview.js"), /baselineY = 0\.86[\s\S]*baselineY,[\s\S]*\[enabled, anchorX, baselineY\]/);
   assert.match(read("src/ui/components.js"), /anchorX:0\.558,\s*baselineY:0\.93/);
+});
+
+// ---------- Ver 1.1.63: Character Aura style C (jagged sheet + fill + glow + lightning), weapon lean ----------
+const SIZE_C = 452;
+function characterSheetRun(stage, options = {}) {
+  const { scene, root, made } = fakeFlameScene(options);
+  const renderer = new EnhancementAuraRenderer(scene, root, () => SIZE_C);
+  renderer.update({ characterStage: stage, weaponStage: 0 }, NO_HERO);
+  const graphics = made.filter(o => o.type === "graphics");
+  return { renderer, root, made, sheet: graphics[0], bolts: graphics[1] };
+}
+const callsOf = (graphics, name) => graphics.calls.filter(c => c[0] === name);
+const K = () => ENHANCEMENT_AURA_STYLES.powerFlame.intensity;
+const ellipseValue = (x, y, rx, ry) => ((x - K().characterCenterX * SIZE_C) / (rx * SIZE_C)) ** 2 + ((y - K().characterCenterY * SIZE_C) / (ry * SIZE_C)) ** 2;
+
+test("Character Aura is one jagged sheet with a background fill over the clear ellipse, nothing below the ground line", () => {
+  const { sheet, bolts, made, root, renderer } = characterSheetRun(2);
+  assert.ok(sheet && bolts, "one Graphics for the sheet and one for the lightning");
+  assert.equal(made.filter(o => o.type === "image").length, 0, "no flame images for the Character Aura any more");
+  const k = K();
+  const fills = callsOf(sheet, "fillPoints");
+  assert.ok(fills.length > 150, `sheet is built from many quads (${fills.length})`);
+  const ground = k.characterGroundY * SIZE_C;
+  const top = k.characterTopLimit * SIZE_C;
+
+  // 1) first fill = the whole clear ellipse (background), never below the ground line
+  const background = fills[0][1];
+  const xs = background.map(p => p.x);
+  assert.ok(Math.min(...xs) <= (k.characterCenterX - k.characterRadiusX) * SIZE_C + 1 && Math.max(...xs) >= (k.characterCenterX + k.characterRadiusX) * SIZE_C - 1, "fill spans the full width of the ellipse");
+  background.forEach(p => assert.ok(ellipseValue(p.x, p.y, k.characterRadiusX, k.characterRadiusY) <= 1.02 || p.y === ground));
+
+  // 2) every point of the sheet: not below the ground, not above the top limit, inside the outer limit
+  fills.forEach(([, points]) => points.forEach(p => {
+    assert.ok(p.y <= ground + 0.001, "nothing below the ground line");
+    assert.ok(p.y >= top - 0.001, "nothing above the top limit");
+    const outerRy = p.y < k.characterCenterY * SIZE_C ? k.characterOuterRadiusYTop : k.characterOuterRadiusY;
+    assert.ok(ellipseValue(p.x, p.y, k.characterOuterRadiusX, outerRy) <= 1.001 || p.y === ground, "inside the outer limit");
+  }));
+
+  // 3) jagged layers (everything after the background) never enter the clear ellipse
+  // (fill style #1 = background, #2 = rim band inside the ellipse, #3+ = the jagged layers outside it)
+  let styleIndex = 0;
+  const jaggedQuads = [];
+  sheet.calls.forEach(c => { if (c[0] === "fillStyle") styleIndex += 1; else if (c[0] === "fillPoints" && styleIndex >= 3) jaggedQuads.push(c[1]); });
+  assert.equal(styleIndex, 2 + k.characterLayers.length, "background, rim band and every jagged layer");
+  assert.ok(jaggedQuads.length > 150);
+  jaggedQuads.forEach(points => points.forEach(p => assert.ok(ellipseValue(p.x, p.y, k.characterRadiusX, k.characterRadiusY) >= 0.97 || p.y === ground, "jagged layers start at the ellipse edge")));
+  const tipTop = Math.min(...fills.flatMap(([, pts]) => pts.map(p => p.y))) / SIZE_C;
+  assert.ok(tipTop < -0.86 && tipTop >= k.characterTopLimit - 0.002, `top ${tipTop.toFixed(3)} is taller than the 1.1.60 limit and inside the new one`);
+  assert.ok(Math.abs((k.characterCenterX - -0.055) * 452 + 8) < 3, "about 8px left of the 1.1.60 position");
+
+  // 4) bright outline with tips only; layer order = very back
+  assert.ok(callsOf(sheet, "strokePoints").length >= 1);
+  const last = root.moved[root.moved.length - 1];
+  assert.equal(last[0], renderer.characterRoot);
+  assert.equal(last[1], 0, "Character Aura stays behind every Hero layer");
+});
+
+test("Sheet shape and effect strength are identical for every stage; only the colours change", () => {
+  const signatures = [];
+  const colours = [];
+  [1, 2, 3, 4].forEach(stage => {
+    const { sheet } = characterSheetRun(stage);
+    signatures.push(JSON.stringify(callsOf(sheet, "fillPoints").map(c => c[1].map(p => [Math.round(p.x), Math.round(p.y)]))));
+    colours.push(callsOf(sheet, "fillStyle").map(c => c[1]).filter((v, i, a) => a.indexOf(v) === i).sort().join(","));
+  });
+  assert.equal(new Set(signatures).size, 1, "geometry never depends on the stage");
+  assert.equal(new Set(colours).size, 4, "each stage has its own colours");
+  const style = ENHANCEMENT_AURA_STYLES.powerFlame;
+  [1, 2, 3, 4].forEach((stage, index) => assert.ok(colours[index].split(",").includes(String(style.palette[stage]))));
+  assert.doesNotMatch(read("src/phaser/presentation/EnhancementAura.js"), /intensity\.\w+\[stage\]/);
+});
+
+test("WebGL glow is applied once per stage on the sheet and is optional (no postFX on Canvas)", () => {
+  const withGlow = characterSheetRun(3, { glow: true });
+  const glowCalls = withGlow.sheet.postFX.glowCalls;
+  assert.equal(glowCalls.length, 1);
+  assert.equal(glowCalls[0][0], ENHANCEMENT_AURA_STYLES.powerFlame.palette[3]);
+  assert.equal(glowCalls[0][1], K().characterGlowStrength);
+  withGlow.renderer.update({ characterStage: 3, weaponStage: 0 }, NO_HERO);
+  assert.equal(glowCalls.length, 1, "unchanged stage does not add the effect again");
+  withGlow.renderer.update({ characterStage: 4, weaponStage: 0 }, NO_HERO);
+  assert.equal(glowCalls.length, 2);
+  const withoutGlow = characterSheetRun(3, { glow: false });
+  assert.ok(callsOf(withoutGlow.sheet, "fillPoints").length > 150, "still drawn without postFX");
+});
+
+test("Lightning is short, deterministic per step, re-rolled over time and stays above the ground line", () => {
+  const { renderer, bolts } = characterSheetRun(4);
+  const k = K();
+  const ground = k.characterGroundY * SIZE_C;
+  const top = k.characterTopLimit * SIZE_C;
+  const signature = () => JSON.stringify(callsOf(bolts, "strokePoints").map(c => c[1].map(p => [Math.round(p.x), Math.round(p.y)])));
+  const first = signature();
+  const strokes = callsOf(bolts, "strokePoints");
+  assert.ok(strokes.length >= 2 && strokes.length <= k.characterBoltCount * 2);
+  strokes.forEach(([, points]) => {
+    assert.ok(points.length >= 3 && points.length <= k.characterBoltSegments + 1);
+    points.forEach(p => assert.ok(p.y <= ground && p.y >= top, "bolt stays between the top limit and the ground line"));
+    assert.ok(ellipseValue(points[0].x, points[0].y, k.characterRadiusX, k.characterRadiusY) >= 0.97, "bolts start outside the clear ellipse");
+  });
+  renderer.flickerState.t = 2.4;
+  renderer.animateFlames();
+  assert.notEqual(signature(), first, "a later step draws different bolts");
+  renderer.flickerState.t = 2.45;
+  const again = signature();
+  renderer.animateFlames();
+  assert.equal(signature(), again, "within one step the bolts are not redrawn");
+});
+
+test("Sheet redraw is throttled by phase, loops seamlessly, and cleans up", () => {
+  const { renderer, sheet, root } = characterSheetRun(1);
+  const clears = () => callsOf(sheet, "clear").length;
+  const start = clears();
+  renderer.flickerState.t = renderer.lastSheetPhase + 0.05;
+  renderer.animateFlames();
+  assert.equal(clears(), start, "small phase change: no redraw");
+  renderer.flickerState.t = renderer.lastSheetPhase + 0.2;
+  renderer.animateFlames();
+  assert.equal(clears(), start + 1, "a full step redraws once");
+  const wrap = renderer.characterTooth(renderer.characterGeom.samples[0], 0);
+  const wrapEnd = renderer.characterTooth(renderer.characterGeom.samples[renderer.characterGeom.samples.length - 1], 0);
+  assert.ok(Math.abs(wrap - wrapEnd) < 1e-9, "no seam where the outline closes");
+  assert.ok(Math.abs(renderer.characterTooth(renderer.characterGeom.samples[10], 0) - renderer.characterTooth(renderer.characterGeom.samples[10], Math.PI * 2)) < 1e-9, "the animation loops seamlessly");
+  renderer.update({ characterStage: 0, weaponStage: 0 }, NO_HERO);
+  assert.equal(renderer.characterRoot.visible, false);
+  assert.equal(renderer.characterGeom, null);
+  const rootRef = renderer.characterRoot;
+  renderer.destroy();
+  assert.equal(rootRef.calls.some(c => c[0] === "destroy"), true);
+  assert.equal(renderer.characterSheet, null);
+  assert.equal(renderer.characterBolts, null);
+  renderer.update({ characterStage: 4, weaponStage: 0 }, NO_HERO);
+});
+
+test("Weapon: side flames lean back toward the hilt while the tip flare points away from the tip", () => {
+  const size = 160;
+  const rgba = new Uint8ClampedArray(size * size * 4);
+  for (let y = 20; y < 150; y += 1) for (let x = 0; x < size; x += 1) if (Math.abs(x - (30 + (y - 20) * 0.9)) < 2.5) rgba[(y * size + x) * 4 + 3] = 255;
+  stubBladeDom(rgba, size);
+  try {
+    const { scene, root } = fakeFlameScene({ rendererType: 2 });
+    const renderer = new EnhancementAuraRenderer(scene, root, () => 452);
+    const weaponImage = fakeWeaponImage({ x: 0, y: 0, angle: 0 });
+    renderer.update({ characterStage: 0, weaponStage: 3 }, fakeWeaponHero(weaponImage));
+    const axis = enhancementAuraOrientBlade([...renderer.bladeCache.values()][0], weaponImage, { x: -0.073 * 452, y: -0.425 * 452 });
+    assert.ok(axis.ux > 0 && axis.uy > 0, "the tip is the lower-right end, away from the body");
+    const direction = flame => ({ x: Math.sin((flame.outer.rot * Math.PI) / 180), y: -Math.cos((flame.outer.rot * Math.PI) / 180) });
+    const dot = flame => direction(flame).x * axis.ux + direction(flame).y * axis.uy;
+    const parts = renderer.weaponFlameParts;
+    const side = parts.filter(f => !f.tip);
+    assert.ok(side.length >= 8);
+    side.forEach(f => assert.ok(dot(f) < -0.2, `side flame leans toward the hilt (dot ${dot(f).toFixed(2)})`));
+    assert.ok(dot(parts.find(f => f.tip)) > 0.95, "the tip flare points straight out of the blade tip");
+  } finally { delete globalThis.document; }
 });

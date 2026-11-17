@@ -586,3 +586,8 @@ Shared renderer: Inventory Hero preview (`HeroPreviewScene`), Dungeon battlefiel
 
 - Character Aura: about 8 px further left, taller flames at the top, and sent to the very back layer (no longer covers the wings). Weapon Aura: the pointed tip flare now sits at the real blade tip (the end farthest from the body), pointing away from the hilt, and is shortened near the canvas bottom. Inventory Hero preview baseline lowered to `0.93` of the canvas (opt-in `baselineY`, default `0.86`). Arena opponent Aura follows the same rules as the attacker. Details: `docs/PHASER-COMBAT-ARENA-V1.md` §17.3, §17.4, §17.6.
 - Info Center announcements updated through Ver 1.1.62.
+
+## 32. Character Aura style C and weapon lean (Ver 1.1.63)
+
+- Character Aura is now one jagged aura sheet (Owner's choice "C") with a background fill over the whole clear ellipse, an optional WebGL glow and short lightning bolts; the flame ring of Ver 1.1.60–1.1.62 was removed from the Character Aura. Weapon Aura: side flames lean back toward the hilt; the tip flare stays at the blade tip pointing away from the hilt. Details and values: `docs/PHASER-COMBAT-ARENA-V1.md` §17.4 and §17.7.
+- Info Center announcement for Ver 1.1.63 added.
