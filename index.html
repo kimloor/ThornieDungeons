@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.62" />
+<meta name="application-version" content="1.1.63" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.62";
+  content: "Ver 1.1.63";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -8412,17 +8412,16 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.62", date: "2026-11-16", title: "ปรับปรุงออร่าตัวละครและอาวุธ",
+      version: "1.1.63", date: "2026-11-17", title: "ออร่าตัวละครแบบใหม่ และปรับเปลวออร่าอาวุธ",
       items: [
-        "ขยับออร่าตัวละครไปทางซ้ายเล็กน้อย และเพิ่มความสูงของเปลวไฟด้านบน",
-        "ย้ายออร่าตัวละครไปอยู่หลังสุด ไม่ทับปีกและตัวละคร",
-        "เปลวออร่าอาวุธมีปลายแหลมอยู่ที่ปลายดาบ ชี้ออกไปทางตรงข้ามกับด้ามจับ",
-        "หน้า Inventory เลื่อนตัวละครพร้อมออร่าลงมาเล็กน้อย",
-        "สนามประลอง (Arena): คู่ต่อสู้ที่มีอุปกรณ์ตีบวกถึงเงื่อนไขจะแสดงออร่าด้วย",
+        "ออร่าตัวละครเปลี่ยนเป็นแผ่นแสงขอบหยักรอบตัวละคร มีแสงเรืองและสายฟ้า พร้อมพื้นหลังสีเต็มวงด้านหลังตัวละคร",
+        "ออร่าอาวุธ: เปลวข้างดาบเอนกลับไปทางด้ามจับ ส่วนแฉกแหลมอยู่ที่ปลายดาบและชี้ออกจากปลายดาบ",
         "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"
       ]
     },
     history: [
+      { version: "1.1.62", date: "2026-11-16", title: "ปรับปรุงออร่าตัวละครและอาวุธ",
+        items: ["ขยับออร่าตัวละครไปทางซ้ายเล็กน้อย และเพิ่มความสูงของเปลวไฟด้านบน", "ย้ายออร่าตัวละครไปอยู่หลังสุด ไม่ทับปีกและตัวละคร", "เปลวออร่าอาวุธมีปลายแหลมอยู่ที่ปลายดาบ ชี้ออกไปทางตรงข้ามกับด้ามจับ", "หน้า Inventory เลื่อนตัวละครพร้อมออร่าลงมาเล็กน้อย", "สนามประลอง (Arena): คู่ต่อสู้ที่มีอุปกรณ์ตีบวกถึงเงื่อนไขจะแสดงออร่าด้วย", "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"] },
       { version: "1.1.61", date: "2026-11-16", title: "ปรับหน้าร้านช่างตีเหล็ก (Blacksmith)",
         items: ["ปรับหน้า Blacksmith เป็นหน้าเฉพาะ และจัดเลย์เอาต์ให้ใช้งานบนมือถือได้ดีขึ้น", "กติกาและการทำงานเดิมของ Blacksmith ไม่เปลี่ยนแปลง"] },
       { version: "1.1.55–1.1.60", date: "2026-11-15", title: "ออร่าจากการตีบวกแบบใหม่",
@@ -13654,14 +13653,25 @@ const ENHANCEMENT_AURA_STYLES = Object.freeze({
     palette: Object.freeze({ 1: 0x3dff7a, 2: 0xb15cff, 3: 0xff4fd8, 4: 0xffd23a }),
     // Identical for every stage: only the palette colour changes with enhancement level.
     intensity: Object.freeze({
-      // Character Aura = a ring of flames OUTSIDE a clear ellipse that is left empty for the Hero.
-      // All values are fractions of displaySize measured from the Hero root (feet baseline), taken from
-      // the Owner's sketch: clear ellipse centre/radii, outer limit of the flames, and a ground line
-      // below which no Aura is drawn. Wings/sword sit left of the body, hence the negative centre X.
-      characterFlameCount: 24, characterCenterX: -0.073, characterCenterY: -0.425,
+      // Character Aura = one jagged aura sheet around a clear ellipse (Ver 1.1.63, style "C"), drawn with
+      // Graphics. All values are fractions of displaySize measured from the Hero root (feet baseline),
+      // taken from the Owner's sketch: clear ellipse centre/radii, the outer limit of the sheet, and a
+      // ground line below which no Aura is drawn. The Aura layer is sent behind the Hero, so the
+      // background fill may cover the whole clear ellipse. Wings/sword sit left of the body, hence the
+      // negative centre X.
+      characterCenterX: -0.073, characterCenterY: -0.425,
       characterRadiusX: 0.27, characterRadiusY: 0.365, characterOuterRadiusX: 0.405, characterOuterRadiusY: 0.445, characterOuterRadiusYTop: 0.49,
-      characterGroundY: -0.058, characterTopLimit: -0.93, characterFlameWidth: 0.125,
-      characterFlameReach: 1.2, characterUpBias: 0.3, characterLowerUpBias: 0.3, characterFlameAlpha: 0.68,
+      characterGroundY: -0.058, characterTopLimit: -0.93,
+      characterSamples: 96, characterTeeth: 17, characterToothMin: 0.35, characterToothFlicker: 0.3,
+      characterLayers: Object.freeze([
+        Object.freeze({ reach: 1, alpha: 0.2, core: false }),
+        Object.freeze({ reach: 0.72, alpha: 0.26, core: false }),
+        Object.freeze({ reach: 0.45, alpha: 0.3, core: true })
+      ]),
+      characterOutlineWidth: 2.5, characterOutlineAlpha: 0.9,
+      characterFillAlpha: 0.12, characterFillEdgeAlpha: 0.14, characterFillEdgeInset: 0.78,
+      characterRedrawStep: 0.13, characterGlowStrength: 3,
+      characterBoltCount: 7, characterBoltSegments: 6, characterBoltLength: 0.12, characterBoltJitter: 0.03, characterBoltStep: 0.6, characterBoltReach: 0.6,
       coreWidthRatio: 0.42, coreHeightRatio: 0.58, coreAlpha: 0.7, coreLighten: 0.55,
       flickerPeriod: 1600, flickerScale: 0.16, flickerAlpha: 0.25, swayDegrees: 5,
       weaponFlameCount: 9, weaponFlameWidth: 0.18, weaponFlameMinLength: 0.27, weaponFlameMaxLength: 0.47,
@@ -13885,7 +13895,13 @@ class EnhancementAuraRenderer {
     this.characterStage = -1;
     this.weaponStage = -1;
     this.characterRoot = scene.add.container(0, 0).setVisible(false);
-    this.characterFlames = [];
+    this.characterSheet = null;
+    this.characterBolts = null;
+    this.characterGeom = null;
+    this.characterColor = 0;
+    this.characterCoreColor = 0;
+    this.lastSheetPhase = -10;
+    this.lastBoltStep = -1;
     this.characterSize = 0;
     this.weaponFlameRoot = scene.add.container(0, 0).setVisible(false);
     this.weaponFlames = [];
@@ -13943,8 +13959,8 @@ class EnhancementAuraRenderer {
       flame.obj.setAlpha(flame.alpha * (1 - intensity.flickerAlpha * strength * glow));
       if (flame.sway) flame.obj.setAngle(flame.rot + flame.sway * Math.sin(t * flame.speed + flame.phase * 0.6));
     };
-    this.characterFlames.forEach(apply);
     this.weaponFlames.forEach(apply);
+    this.updateCharacterEffects(t, false);
   }
 
   // Creates one flame (soft outer tongue + paler, shorter core) and registers it for animation.
@@ -13979,82 +13995,184 @@ class EnhancementAuraRenderer {
     return outer && core ? { outer, core } : null;
   }
 
-  clearCharacterFlames() {
-    this.characterFlames = [];
-    this.characterRoot?.removeAll?.(true);
+  // Samples of the clear ellipse and of the outer limit; rebuilt when the stage or display size changes.
+  buildCharacterGeometry(size) {
+    const k = this.style.intensity;
+    const centerX = size * k.characterCenterX;
+    const centerY = size * k.characterCenterY;
+    const radiusX = size * k.characterRadiusX;
+    const radiusY = size * k.characterRadiusY;
+    const samples = [];
+    for (let index = 0; index <= k.characterSamples; index += 1) {
+      const theta = (index / k.characterSamples) * Math.PI * 2; // 0 = top of the Hero, clockwise
+      const sin = Math.sin(theta);
+      const cos = Math.cos(theta);
+      const outerRadiusY = cos > 0 ? k.characterOuterRadiusYTop : k.characterOuterRadiusY;
+      samples.push({
+        theta, sin, cos,
+        inner: { x: centerX + sin * radiusX, y: centerY - cos * radiusY },
+        out: { x: centerX + sin * size * k.characterOuterRadiusX, y: centerY - cos * size * outerRadiusY }
+      });
+    }
+    this.characterGeom = { size, centerX, centerY, radiusX, radiusY, ground: size * k.characterGroundY, top: size * k.characterTopLimit, samples };
+  }
+
+  // Tooth height (0..1) of the jagged outer edge at one sample; periodic in the phase so the loop is seamless.
+  characterTooth(sample, t) {
+    const k = this.style.intensity;
+    const position = (sample.theta / (Math.PI * 2)) * k.characterTeeth + Math.sin(t) * 0.15;
+    const saw = ((position % 1) + 1) % 1;
+    const triangle = 1 - Math.abs(2 * saw - 1);
+    const toothIndex = Math.floor((sample.theta / (Math.PI * 2)) * k.characterTeeth);
+    const flicker = 1 - k.characterToothFlicker * 0.5 + k.characterToothFlicker * 0.5 * Math.sin(t * 3 + toothIndex * 1.7);
+    return Math.min(1, k.characterToothMin + (1 - k.characterToothMin) * Math.pow(triangle, 1.3) * flicker * 1.1);
+  }
+
+  // Point between the clear ellipse and the outer limit; never below the ground line nor above the top limit.
+  characterPoint(sample, reach, tooth) {
+    const geom = this.characterGeom;
+    const amount = reach * tooth;
+    return {
+      x: sample.inner.x + (sample.out.x - sample.inner.x) * amount,
+      y: Math.max(geom.top, Math.min(geom.ground, sample.inner.y + (sample.out.y - sample.inner.y) * amount))
+    };
+  }
+
+  drawCharacterAura(t) {
+    const sheet = this.characterSheet;
+    const geom = this.characterGeom;
+    if (!sheet || !geom) return;
+    const k = this.style.intensity;
+    const nearGround = point => point.y > geom.ground - geom.size * 0.012;
+    sheet.clear();
+
+    // 1. Background fill over the whole clear ellipse (the Aura layer is behind the Hero), brighter at the rim.
+    const rim = geom.samples.map(sample => ({ x: sample.inner.x, y: Math.min(geom.ground, sample.inner.y) }));
+    sheet.fillStyle(this.characterColor, k.characterFillAlpha).fillPoints(rim, true);
+    sheet.fillStyle(this.characterColor, k.characterFillEdgeAlpha);
+    for (let index = 0; index < geom.samples.length - 1; index += 1) {
+      const a = geom.samples[index];
+      const b = geom.samples[index + 1];
+      if (nearGround(a.inner) && nearGround(b.inner)) continue;
+      const pull = point => ({
+        x: geom.centerX + (point.x - geom.centerX) * k.characterFillEdgeInset,
+        y: Math.min(geom.ground, geom.centerY + (point.y - geom.centerY) * k.characterFillEdgeInset)
+      });
+      sheet.fillPoints([a.inner, b.inner, pull(b.inner), pull(a.inner)].map(point => ({ x: point.x, y: Math.min(geom.ground, point.y) })), true);
+    }
+
+    // 2. Jagged sheet outside the clear ellipse: three layers, brightest next to the Hero.
+    const tooth = geom.samples.map(sample => this.characterTooth(sample, t));
+    k.characterLayers.forEach(layer => {
+      sheet.fillStyle(layer.core ? this.characterCoreColor : this.characterColor, layer.alpha);
+      for (let index = 0; index < geom.samples.length - 1; index += 1) {
+        const a = geom.samples[index];
+        const b = geom.samples[index + 1];
+        if (nearGround(a.inner) && nearGround(b.inner)) continue;
+        sheet.fillPoints([
+          { x: a.inner.x, y: Math.min(geom.ground, a.inner.y) },
+          this.characterPoint(a, layer.reach, tooth[index]),
+          this.characterPoint(b, layer.reach, tooth[index + 1]),
+          { x: b.inner.x, y: Math.min(geom.ground, b.inner.y) }
+        ], true);
+      }
+    });
+
+    // 3. Bright outline along the tips, skipped near the ground line.
+    sheet.lineStyle(k.characterOutlineWidth, this.characterCoreColor, k.characterOutlineAlpha);
+    let run = [];
+    const flush = () => { if (run.length > 1) sheet.strokePoints(run, false); run = []; };
+    geom.samples.forEach((sample, index) => {
+      if (nearGround(sample.inner)) { flush(); return; }
+      run.push(this.characterPoint(sample, 1, tooth[index]));
+    });
+    flush();
+  }
+
+  // Short lightning arcs around the sheet; re-rolled in steps of the phase with a deterministic hash.
+  drawCharacterBolts(step) {
+    const bolts = this.characterBolts;
+    const geom = this.characterGeom;
+    if (!bolts || !geom) return;
+    const k = this.style.intensity;
+    bolts.clear();
+    for (let n = 0; n < k.characterBoltCount; n += 1) {
+      const seed = step * 31 + n * 7;
+      const sample = geom.samples[Math.floor(enhancementAuraHash(seed, 21) * (geom.samples.length - 1))];
+      if (sample.cos < -0.5) continue;
+      let point = this.characterPoint(sample, k.characterBoltReach, 1);
+      if (point.y > geom.ground - geom.size * 0.03) continue;
+      let dx = sample.sin;
+      let dy = -sample.cos - 0.2;
+      const length = Math.hypot(dx, dy) || 1;
+      dx /= length;
+      dy /= length;
+      const points = [point];
+      for (let segment = 0; segment < k.characterBoltSegments; segment += 1) {
+        const jitterX = (enhancementAuraHash(seed + segment, 22) - 0.5) * geom.size * k.characterBoltJitter;
+        const jitterY = (enhancementAuraHash(seed + segment, 23) - 0.5) * geom.size * k.characterBoltJitter;
+        point = { x: point.x + dx * geom.size * k.characterBoltLength / k.characterBoltSegments + jitterX, y: point.y + dy * geom.size * k.characterBoltLength / k.characterBoltSegments + jitterY };
+        if (point.y > geom.ground || point.y < geom.top) break;
+        points.push(point);
+      }
+      if (points.length < 3) continue;
+      bolts.lineStyle(6, this.characterColor, 0.45).strokePoints(points, false);
+      bolts.lineStyle(2.5, 0xffffff, 1).strokePoints(points, false);
+    }
+  }
+
+  // Redraw the sheet at about 20 fps and re-roll the bolts a few times per loop (cheap on mobile).
+  updateCharacterEffects(t, force) {
+    if (!this.characterGeom || this.characterStage <= 0) return;
+    const k = this.style.intensity;
+    const delta = Math.abs(t - this.lastSheetPhase);
+    if (force || Math.min(delta, Math.PI * 2 - delta) >= k.characterRedrawStep) {
+      this.lastSheetPhase = t;
+      this.drawCharacterAura(t);
+    }
+    const step = Math.floor(t / k.characterBoltStep);
+    if (force || step !== this.lastBoltStep) {
+      this.lastBoltStep = step;
+      this.drawCharacterBolts(step);
+    }
   }
 
   updateCharacter(stage) {
     const size = this.displaySize();
     if (stage === this.characterStage && Math.abs(size - this.characterSize) < 1) return;
+    const stageChanged = stage !== this.characterStage;
     this.characterStage = stage;
     this.characterSize = size;
-    this.clearCharacterFlames();
     if (stage <= 0) {
+      this.characterSheet?.clear?.();
+      this.characterBolts?.clear?.();
+      this.characterGeom = null;
       this.characterRoot.setVisible(false);
       return;
     }
 
     const color = this.style.palette[stage];
     const intensity = this.style.intensity;
-    const keys = this.flameKeys(color);
-    if (!keys) {
+    if (!this.characterSheet && typeof this.scene.add.graphics === "function") {
+      this.characterSheet = this.scene.add.graphics();
+      this.characterSheet.setBlendMode?.(enhancementAuraBlendAdd());
+      this.characterBolts = this.scene.add.graphics();
+      this.characterBolts.setBlendMode?.(enhancementAuraBlendAdd());
+      this.characterRoot.add(this.characterSheet);
+      this.characterRoot.add(this.characterBolts);
+    }
+    if (!this.characterSheet) {
       this.characterRoot.setVisible(false);
       return;
     }
-    const centerX = size * intensity.characterCenterX;
-    const centerY = size * intensity.characterCenterY;
-    const radiusX = size * intensity.characterRadiusX;
-    const radiusY = size * intensity.characterRadiusY;
-    const ground = size * intensity.characterGroundY;
-    const topLimit = size * intensity.characterTopLimit;
-    const count = intensity.characterFlameCount;
-    for (let index = 0; index < count; index += 1) {
-      const theta = ((index + 0.5) / count) * Math.PI * 2; // 0 = top of the Hero, clockwise
-      const sin = Math.sin(theta);
-      const cos = Math.cos(theta);
-      const baseX = centerX + sin * radiusX;
-      const baseY = centerY - cos * radiusY;
-      // Nothing is drawn below the ground line, and the empty ellipse stays empty.
-      if (baseY > ground - size * 0.012) continue;
-      // Outward ellipse normal, tilted upward (stronger in the lower half) so the flames lick upward.
-      const norm = Math.hypot(sin / radiusX, cos / radiusY) || 1;
-      let dx = sin / radiusX / norm;
-      let dy = -cos / radiusY / norm - (cos < 0 ? intensity.characterLowerUpBias : intensity.characterUpBias);
-      if (cos < 0) dy = Math.min(dy, -0.1);
-      const dirLength = Math.hypot(dx, dy) || 1;
-      dx /= dirLength;
-      dy /= dirLength;
-      // Length = distance from the clear ellipse to the outer limit in this direction.
-      const outerRadiusY = cos > 0 ? intensity.characterOuterRadiusYTop : intensity.characterOuterRadiusY;
-      const thickness = Math.hypot((intensity.characterOuterRadiusX - intensity.characterRadiusX) * sin, (outerRadiusY - intensity.characterRadiusY) * cos) * size;
-      let height = thickness * intensity.characterFlameReach * (0.85 + 0.3 * enhancementAuraHash(index, 1));
-      if (dy < 0) height = Math.min(height, (baseY - topLimit) / -dy);
-      if (dy > 0) height = Math.min(height, (ground - baseY) / dy);
-      // Keep the tip inside the outer limit (a little slack for the flicker).
-      const outerX = size * intensity.characterOuterRadiusX * 1.04;
-      for (let step = 0; step < 8; step += 1) {
-        const tipX = baseX + dx * height - centerX;
-        const tipY = baseY + dy * height - centerY;
-        const outerY = size * (tipY < 0 ? intensity.characterOuterRadiusYTop : intensity.characterOuterRadiusY) * 1.04;
-        if ((tipX / outerX) ** 2 + (tipY / outerY) ** 2 <= 1) break;
-        height *= 0.9;
-      }
-      if (!(height > size * 0.02)) continue;
-      const flame = this.createFlame(this.characterRoot, keys, index, intensity.swayDegrees);
-      this.placeFlame(flame, {
-        x: baseX,
-        y: baseY,
-        width: size * intensity.characterFlameWidth * (0.9 + 0.2 * enhancementAuraHash(index, 2)),
-        height,
-        rotation: Math.atan2(dx, -dy) * 180 / Math.PI,
-        alpha: intensity.characterFlameAlpha
-      });
-      this.characterFlames.push(flame.outer, flame.core);
-    }
+    this.characterColor = color;
+    this.characterCoreColor = enhancementAuraLighten(color, intensity.coreLighten);
+    this.buildCharacterGeometry(size);
+    // Optional WebGL glow around the whole sheet (Canvas has no postFX and simply skips it).
+    if (stageChanged && intensity.characterGlowStrength > 0) this.applyWeaponGlow(this.characterSheet, color, intensity.characterGlowStrength);
     this.characterRoot.setVisible(true).setAlpha(1);
     this.ensureFlickerDriver();
-    this.animateFlames();
+    this.updateCharacterEffects(this.flickerState.t, true);
   }
 
   ensureWeaponHalos(textureKey) {
@@ -14146,8 +14264,9 @@ class EnhancementAuraRenderer {
       const side = flame.index % 2 ? 1 : -1;
       const px = -geometry.uy * side;
       const py = geometry.ux * side;
-      const dx = px * 0.55 + geometry.ux * 0.85;
-      const dy = py * 0.55 + geometry.uy * 0.85;
+      // Side flames lean back toward the hilt (the tip flare, in contrast, points away from it).
+      const dx = px * 0.55 - geometry.ux * 0.85;
+      const dy = py * 0.55 - geometry.uy * 0.85;
       this.placeFlame(flame, {
         x: geometry.mx + geometry.ux * t + px * intensity.weaponFlameOffset * length + ox,
         y: geometry.my + geometry.uy * t + py * intensity.weaponFlameOffset * length + oy,
@@ -14334,7 +14453,9 @@ class EnhancementAuraRenderer {
       if (this.root?.remove) this.root.remove(halo, false);
       halo?.destroy?.();
     });
-    this.characterFlames = [];
+    this.characterSheet = null;
+    this.characterBolts = null;
+    this.characterGeom = null;
     this.weaponFlames = [];
     this.weaponFlameParts = [];
     this.weaponHalos = [];
