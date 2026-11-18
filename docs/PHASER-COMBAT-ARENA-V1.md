@@ -691,9 +691,9 @@ W7A A2 adds presentation-only Chapter Boss cues on top of the shared BattleScene
 
 ---
 
-## 17. Enhancement Aura — approved design / implemented (Power Flame style, Ver 1.1.64)
+## 17. Enhancement Aura — approved design / implemented (Power Flame style, Ver 1.1.65)
 
-This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. The runtime is in production (Inventory Hero Preview, Dungeon, Arena). §17.4 records what the renderer does today (Ver 1.1.64, Power Flame); §17.5 records the Owner decisions that produced it.
+This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. The runtime is in production (Inventory Hero Preview, Dungeon, Arena). §17.4 records what the renderer does today (Ver 1.1.65, Power Flame); §17.5 records the Owner decisions that produced it.
 
 ### 17.1 Gameplay rules (presentation-only)
 
@@ -753,7 +753,7 @@ Implemented (merged to `main`):
 6. `HeroActor.destroy()` stops and destroys Aura tweens, particles, graphics, and weapon halo images. Aura remains presentation-only.
 7. Since Ver 1.1.58 the effect is built from small canvas-baked flame textures (one outer + one paler core texture per stage colour) drawn additively; colours are baked into the textures and `setTint()` is not used for flames, because the Phaser Canvas renderer ignores tint. The optional tinted silhouette halos around the weapon (with a guarded `postFX.addGlow`) are created on WebGL only and skipped on Canvas. All flames share one driver tween (no per-flame tweens). The game uses `Phaser.AUTO`.
 
-### 17.4 Current visual implementation (Ver 1.1.64, as in code)
+### 17.4 Current visual implementation (Ver 1.1.65, as in code)
 
 Source: `src/phaser/presentation/EnhancementAura.js`. One shared `EnhancementAuraRenderer` serves the Inventory Hero Preview (`HeroPreviewScene`), the Dungeon battlefield and Arena (`HeroActor` via `BattleScene`). In Arena both sides get an Aura from their own equipment (Ver 1.1.62): the opponent's prepared snapshot carries `enhanceLevel` for every item (real players and bots), so the same stage rules apply; an opponent without qualifying enhancement shows none. The defender faces left, so its Aura is mirrored with the sprite.
 
@@ -772,7 +772,8 @@ Character Aura (defensive-slot minimum rule, §17.1) — style "C": one jagged a
 - Clear ellipse: centre `(-0.073, -0.425) × displaySize` from the Hero root (feet baseline; the art sits left of the root, hence the negative X), radii `0.27 × / 0.365 ×`; its bottom touches the ground line (`characterGroundY` = `-0.058 ×`). Outer limit: `0.405 ×` wide, `0.445 ×` below and `0.49 ×` above the centre (the top is deliberately taller); top limit `-0.93 ×` (inside the Hero preview canvas).
 - Background fill: because the Aura layer is sent behind every Hero layer, the whole clear ellipse is filled with the stage colour (alpha 0.12, plus a brighter rim band alpha 0.14 over the outer 22% of the ellipse radius). It never covers the Hero.
 - Jagged sheet (Ver 1.1.64: scaled up to fill the whole clear ellipse): 96 samples around the ellipse; 17 teeth (saw/triangle profile, minimum height 0.35, ±15% flicker); three additive layers, each running from a start point on the ray from the ellipse centre to its edge out to the teeth: reach 1.0 alpha 0.2 starting at the centre (`start` 0), reach 0.72 alpha 0.26 starting at 55%, reach 0.45 alpha 0.3 in the lighter core colour starting at 80% — so the Aura covers the entire ellipse, dimmer in the middle and brightest at the rim and in the teeth; bright outline along the tips (2.5 px, alpha 0.9). The ellipse bottom is filled too (nothing below the ground line). Nothing is drawn at or below the ground line and no point goes above the top limit.
-- Glow (WebGL only): `postFX.addGlow` on the sheet (strength 3), re-applied only when the stage changes; Canvas has no postFX and simply skips it.
+- Overall strength (Ver 1.1.65): one knob, `characterIntensity` = 0.5, multiplies every alpha of the Character Aura (background fill 0.12 / rim 0.14, the three layers 0.2 / 0.26 / 0.3, outline 0.9, both lightning strokes) and the glow strength, so the effective values are half of those listed here; geometry is unaffected, and 1 restores the Ver 1.1.64 strength.
+- Glow (WebGL only): `postFX.addGlow` on the sheet (base strength 3, effective 1.5 with the intensity knob), re-applied only when the stage changes; Canvas has no postFX and simply skips it.
 - Lightning: 7 short bolts (6 segments, length `0.12 × size`, 0.03 jitter) starting inside the band and pointing outward/up, two strokes each (stage colour, wide and faint; white, thin). Re-rolled in steps of 0.6 rad of the flicker phase from a deterministic hash (about 2.6 times per 1.6 s loop); never below the ground line or above the top limit; none in the lower part of the ring.
 - Cost control: one driver tween; the sheet is redrawn about every 0.13 rad of phase (about 20 fps) and the bolts only when their step changes. All animation is periodic in the phase, so the loop has no seam.
 - Layer order: sent to the very back (index 0 of the Hero root, re-applied after every frame), so it never covers the wings, body or equipment.
@@ -825,6 +826,10 @@ Known limits: placement was verified on synthetic sprites at the measured propor
 ### 17.8 Aura scaled to fill the clear ellipse — Ver 1.1.64 (2026-11-17)
 
 The Owner found the Character Aura still did not fill the area behind the Hero. Instead of adding more background fill (alpha unchanged: 0.12 / rim 0.14), the three jagged layers were enlarged so they start inside the clear ellipse (`characterLayers[].start` 0 / 0.55 / 0.8) rather than at its edge; see §17.4. Nothing else changed (glow, lightning, ground line, top limit, layer order, Weapon Aura). Verified on real Phaser 3.90.0 (WebGL and Canvas) on a dark background; Owner iPhone check needed for brightness (`characterLayers[].alpha`, `start`).
+
+### 17.9 Character Aura at half strength — Ver 1.1.65 (2026-11-18)
+
+The Owner asked to reduce the Character Aura intensity by about half. Implemented as the single multiplier `characterIntensity` = 0.5 (§17.4); the Weapon Aura, geometry, glow/lightning structure, ground line and layer order are unchanged. Gold at half strength looks darker/browner on dark backgrounds, which is expected from the lower brightness. Owner iPhone check needed; a different strength is a one-number change.
 
 The same HeroActor is reused by Dungeon Battle and Arena presentation. The first implementation must explicitly confirm which controlled Hero(s) receive Aura in Arena; do not accidentally show the local player's equipped Aura on an opponent or apply it to every HeroActor by default.
 

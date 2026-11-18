@@ -595,3 +595,7 @@ Shared renderer: Inventory Hero preview (`HeroPreviewScene`), Dungeon battlefiel
 ## 33. Character Aura fills the clear ellipse (Ver 1.1.64)
 
 - The jagged sheet layers now start inside the clear ellipse (centre / 55% / 80% of the radius) so the Aura fills the whole area behind the Hero; the background fill values were not raised. Details: `docs/PHASER-COMBAT-ARENA-V1.md` §17.4 and §17.8. Info Center announcement 1.1.64 added.
+
+## 34. Character Aura at half strength (Ver 1.1.65)
+
+- `characterIntensity` (0.5) scales every alpha and the glow of the Character Aura; geometry and the Weapon Aura are unchanged. Details: `docs/PHASER-COMBAT-ARENA-V1.md` §17.4 and §17.9. Info Center announcement 1.1.65 added.
