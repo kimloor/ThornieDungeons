@@ -324,7 +324,7 @@ test("Tint-based silhouette halos are WebGL-only; Canvas relies on the baked fla
   } finally { delete globalThis.Phaser; }
 });
 
-// ---------- Ver 1.1.64: left shift, longer top, back layer, blade tip at the far end, Arena opponent, Inventory baseline ----------
+// ---------- Ver 1.1.65: left shift, longer top, back layer, blade tip at the far end, Arena opponent, Inventory baseline ----------
 test("Blade tip is the axis end FARTHEST from the Hero body (hilt stays near the body)", () => {
   const geometry = { mx: 200, my: 250, ux: 0.6, uy: -0.8, tmin: -100, tmax: 100, frameW: 400, frameH: 400 };
   const image = { x: 0, y: 0, angle: 0, originX: 0.5, originY: 1, displayWidth: 400, displayHeight: 400 };
@@ -390,7 +390,7 @@ test("Inventory preview places the Hero lower through an opt-in baseline; other 
   assert.match(read("src/ui/components.js"), /anchorX:0\.558,\s*baselineY:0\.93/);
 });
 
-// ---------- Ver 1.1.64: Character Aura style C (jagged sheet + fill + glow + lightning), weapon lean ----------
+// ---------- Ver 1.1.65: Character Aura style C (jagged sheet + fill + glow + lightning), weapon lean ----------
 const SIZE_C = 452;
 function characterSheetRun(stage, options = {}) {
   const { scene, root, made } = fakeFlameScene(options);
@@ -481,7 +481,7 @@ test("WebGL glow is applied once per stage on the sheet and is optional (no post
   const glowCalls = withGlow.sheet.postFX.glowCalls;
   assert.equal(glowCalls.length, 1);
   assert.equal(glowCalls[0][0], ENHANCEMENT_AURA_STYLES.powerFlame.palette[3]);
-  assert.equal(glowCalls[0][1], K().characterGlowStrength);
+  assert.equal(glowCalls[0][1], K().characterGlowStrength * K().characterIntensity, "glow strength follows the overall Character Aura intensity");
   withGlow.renderer.update({ characterStage: 3, weaponStage: 0 }, NO_HERO);
   assert.equal(glowCalls.length, 1, "unchanged stage does not add the effect again");
   withGlow.renderer.update({ characterStage: 4, weaponStage: 0 }, NO_HERO);
@@ -558,4 +558,25 @@ test("Weapon: side flames lean back toward the hilt while the tip flare points a
     side.forEach(f => assert.ok(dot(f) < -0.2, `side flame leans toward the hilt (dot ${dot(f).toFixed(2)})`));
     assert.ok(dot(parts.find(f => f.tip)) > 0.95, "the tip flare points straight out of the blade tip");
   } finally { delete globalThis.document; }
+});
+
+// ---------- Ver 1.1.65: Character Aura at half strength ----------
+test("Character Aura strength is halved through one knob that scales every alpha and the glow", () => {
+  const k = K();
+  assert.equal(k.characterIntensity, 0.5, "half of the Ver 1.1.65 strength");
+  const { sheet, bolts } = characterSheetRun(3, { glow: true });
+  const alphas = callsOf(sheet, "fillStyle").map(c => c[2]);
+  const expected = [k.characterFillAlpha, k.characterFillEdgeAlpha, ...k.characterLayers.map(layer => layer.alpha)].map(value => value * 0.5);
+  assert.equal(alphas.length, expected.length);
+  expected.forEach((value, index) => assert.ok(Math.abs(alphas[index] - value) < 1e-9, `fill #${index + 1} alpha ${alphas[index]} = ${value}`));
+  const outline = callsOf(sheet, "lineStyle")[0];
+  assert.ok(Math.abs(outline[3] - k.characterOutlineAlpha * 0.5) < 1e-9, "outline alpha is halved");
+  const boltAlphas = callsOf(bolts, "lineStyle").map(c => c[3]);
+  assert.ok(boltAlphas.length >= 2);
+  boltAlphas.forEach(alpha => assert.ok(alpha <= 0.5 + 1e-9, "lightning is halved too"));
+  assert.ok(Math.max(...boltAlphas) > 0.4 && Math.min(...boltAlphas) < 0.25, "both strokes (wide faint one and thin bright one) are scaled");
+  assert.equal(sheet.postFX.glowCalls[0][1], k.characterGlowStrength * 0.5);
+  // geometry is untouched by the intensity knob
+  const geometry = callsOf(sheet, "fillPoints").length;
+  assert.ok(geometry > 150);
 });

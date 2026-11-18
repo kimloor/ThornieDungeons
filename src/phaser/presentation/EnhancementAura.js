@@ -33,6 +33,9 @@ const ENHANCEMENT_AURA_STYLES = Object.freeze({
       ]),
       characterOutlineWidth: 2.5, characterOutlineAlpha: 0.9,
       characterFillAlpha: 0.12, characterFillEdgeAlpha: 0.14, characterFillEdgeInset: 0.78,
+      // One knob for the overall strength of the Character Aura: multiplies every alpha (fill, rim band,
+      // layers, outline, lightning) and the glow strength below. 1 = the Ver 1.1.64 strength; 0.5 = half (Ver 1.1.65).
+      characterIntensity: 0.5,
       characterRedrawStep: 0.13, characterGlowStrength: 3,
       characterBoltCount: 7, characterBoltSegments: 6, characterBoltLength: 0.12, characterBoltJitter: 0.03, characterBoltStep: 0.6, characterBoltReach: 0.6,
       coreWidthRatio: 0.42, coreHeightRatio: 0.58, coreAlpha: 0.7, coreLighten: 0.55,
@@ -411,8 +414,9 @@ class EnhancementAuraRenderer {
 
     // 1. Background fill over the whole clear ellipse (the Aura layer is behind the Hero), brighter at the rim.
     const rim = geom.samples.map(sample => ({ x: sample.inner.x, y: Math.min(geom.ground, sample.inner.y) }));
-    sheet.fillStyle(this.characterColor, k.characterFillAlpha).fillPoints(rim, true);
-    sheet.fillStyle(this.characterColor, k.characterFillEdgeAlpha);
+    const strength = k.characterIntensity;
+    sheet.fillStyle(this.characterColor, k.characterFillAlpha * strength).fillPoints(rim, true);
+    sheet.fillStyle(this.characterColor, k.characterFillEdgeAlpha * strength);
     for (let index = 0; index < geom.samples.length - 1; index += 1) {
       const a = geom.samples[index];
       const b = geom.samples[index + 1];
@@ -427,7 +431,7 @@ class EnhancementAuraRenderer {
     // 2. Jagged sheet: three layers that fill the whole clear ellipse and reach out to the teeth (brightest at the rim).
     const tooth = geom.samples.map(sample => this.characterTooth(sample, t));
     k.characterLayers.forEach(layer => {
-      sheet.fillStyle(layer.core ? this.characterCoreColor : this.characterColor, layer.alpha);
+      sheet.fillStyle(layer.core ? this.characterCoreColor : this.characterColor, layer.alpha * strength);
       // Start of the layer on the ray from the ellipse centre to the ellipse edge (never below the ground line).
       const from = sample => ({
         x: geom.centerX + (sample.inner.x - geom.centerX) * layer.start,
@@ -441,7 +445,7 @@ class EnhancementAuraRenderer {
     });
 
     // 3. Bright outline along the tips, skipped near the ground line.
-    sheet.lineStyle(k.characterOutlineWidth, this.characterCoreColor, k.characterOutlineAlpha);
+    sheet.lineStyle(k.characterOutlineWidth, this.characterCoreColor, k.characterOutlineAlpha * strength);
     let run = [];
     const flush = () => { if (run.length > 1) sheet.strokePoints(run, false); run = []; };
     geom.samples.forEach((sample, index) => {
@@ -478,8 +482,8 @@ class EnhancementAuraRenderer {
         points.push(point);
       }
       if (points.length < 3) continue;
-      bolts.lineStyle(6, this.characterColor, 0.45).strokePoints(points, false);
-      bolts.lineStyle(2.5, 0xffffff, 1).strokePoints(points, false);
+      bolts.lineStyle(6, this.characterColor, 0.45 * k.characterIntensity).strokePoints(points, false);
+      bolts.lineStyle(2.5, 0xffffff, k.characterIntensity).strokePoints(points, false);
     }
   }
 
@@ -531,7 +535,7 @@ class EnhancementAuraRenderer {
     this.characterCoreColor = enhancementAuraLighten(color, intensity.coreLighten);
     this.buildCharacterGeometry(size);
     // Optional WebGL glow around the whole sheet (Canvas has no postFX and simply skips it).
-    if (stageChanged && intensity.characterGlowStrength > 0) this.applyWeaponGlow(this.characterSheet, color, intensity.characterGlowStrength);
+    if (stageChanged && intensity.characterGlowStrength * intensity.characterIntensity > 0) this.applyWeaponGlow(this.characterSheet, color, intensity.characterGlowStrength * intensity.characterIntensity);
     this.characterRoot.setVisible(true).setAlpha(1);
     this.ensureFlickerDriver();
     this.updateCharacterEffects(this.flickerState.t, true);
