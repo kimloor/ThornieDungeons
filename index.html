@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.63" />
+<meta name="application-version" content="1.1.64" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.63";
+  content: "Ver 1.1.64";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -8412,14 +8412,15 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.63", date: "2026-11-17", title: "ออร่าตัวละครแบบใหม่ และปรับเปลวออร่าอาวุธ",
+      version: "1.1.64", date: "2026-11-17", title: "ขยายออร่าตัวละครให้เต็มพื้นที่",
       items: [
-        "ออร่าตัวละครเปลี่ยนเป็นแผ่นแสงขอบหยักรอบตัวละคร มีแสงเรืองและสายฟ้า พร้อมพื้นหลังสีเต็มวงด้านหลังตัวละคร",
-        "ออร่าอาวุธ: เปลวข้างดาบเอนกลับไปทางด้ามจับ ส่วนแฉกแหลมอยู่ที่ปลายดาบและชี้ออกจากปลายดาบ",
+        "ออร่าตัวละครขยายให้เต็มพื้นที่รอบและด้านหลังตัวละคร ไล่ความเข้มจากตรงกลางไปยังขอบที่สว่างและหยัก",
         "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"
       ]
     },
     history: [
+      { version: "1.1.63", date: "2026-11-17", title: "ออร่าตัวละครแบบใหม่ และปรับเปลวออร่าอาวุธ",
+        items: ["ออร่าตัวละครเปลี่ยนเป็นแผ่นแสงขอบหยักรอบตัวละคร มีแสงเรืองและสายฟ้า พร้อมพื้นหลังสีเต็มวงด้านหลังตัวละคร", "ออร่าอาวุธ: เปลวข้างดาบเอนกลับไปทางด้ามจับ ส่วนแฉกแหลมอยู่ที่ปลายดาบและชี้ออกจากปลายดาบ", "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"] },
       { version: "1.1.62", date: "2026-11-16", title: "ปรับปรุงออร่าตัวละครและอาวุธ",
         items: ["ขยับออร่าตัวละครไปทางซ้ายเล็กน้อย และเพิ่มความสูงของเปลวไฟด้านบน", "ย้ายออร่าตัวละครไปอยู่หลังสุด ไม่ทับปีกและตัวละคร", "เปลวออร่าอาวุธมีปลายแหลมอยู่ที่ปลายดาบ ชี้ออกไปทางตรงข้ามกับด้ามจับ", "หน้า Inventory เลื่อนตัวละครพร้อมออร่าลงมาเล็กน้อย", "สนามประลอง (Arena): คู่ต่อสู้ที่มีอุปกรณ์ตีบวกถึงเงื่อนไขจะแสดงออร่าด้วย", "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"] },
       { version: "1.1.61", date: "2026-11-16", title: "ปรับหน้าร้านช่างตีเหล็ก (Blacksmith)",
@@ -13664,9 +13665,11 @@ const ENHANCEMENT_AURA_STYLES = Object.freeze({
       characterGroundY: -0.058, characterTopLimit: -0.93,
       characterSamples: 96, characterTeeth: 17, characterToothMin: 0.35, characterToothFlicker: 0.3,
       characterLayers: Object.freeze([
-        Object.freeze({ reach: 1, alpha: 0.2, core: false }),
-        Object.freeze({ reach: 0.72, alpha: 0.26, core: false }),
-        Object.freeze({ reach: 0.45, alpha: 0.3, core: true })
+        // `start` = where the layer begins on the ray from the ellipse centre to its edge (0 = centre), so the
+        // Aura fills the whole clear ellipse: dimmer in the middle, brightest at the rim and in the teeth.
+        Object.freeze({ reach: 1, alpha: 0.2, core: false, start: 0 }),
+        Object.freeze({ reach: 0.72, alpha: 0.26, core: false, start: 0.55 }),
+        Object.freeze({ reach: 0.45, alpha: 0.3, core: true, start: 0.8 })
       ]),
       characterOutlineWidth: 2.5, characterOutlineAlpha: 0.9,
       characterFillAlpha: 0.12, characterFillEdgeAlpha: 0.14, characterFillEdgeInset: 0.78,
@@ -14061,20 +14064,19 @@ class EnhancementAuraRenderer {
       sheet.fillPoints([a.inner, b.inner, pull(b.inner), pull(a.inner)].map(point => ({ x: point.x, y: Math.min(geom.ground, point.y) })), true);
     }
 
-    // 2. Jagged sheet outside the clear ellipse: three layers, brightest next to the Hero.
+    // 2. Jagged sheet: three layers that fill the whole clear ellipse and reach out to the teeth (brightest at the rim).
     const tooth = geom.samples.map(sample => this.characterTooth(sample, t));
     k.characterLayers.forEach(layer => {
       sheet.fillStyle(layer.core ? this.characterCoreColor : this.characterColor, layer.alpha);
+      // Start of the layer on the ray from the ellipse centre to the ellipse edge (never below the ground line).
+      const from = sample => ({
+        x: geom.centerX + (sample.inner.x - geom.centerX) * layer.start,
+        y: Math.min(geom.ground, geom.centerY + (sample.inner.y - geom.centerY) * layer.start)
+      });
       for (let index = 0; index < geom.samples.length - 1; index += 1) {
         const a = geom.samples[index];
         const b = geom.samples[index + 1];
-        if (nearGround(a.inner) && nearGround(b.inner)) continue;
-        sheet.fillPoints([
-          { x: a.inner.x, y: Math.min(geom.ground, a.inner.y) },
-          this.characterPoint(a, layer.reach, tooth[index]),
-          this.characterPoint(b, layer.reach, tooth[index + 1]),
-          { x: b.inner.x, y: Math.min(geom.ground, b.inner.y) }
-        ], true);
+        sheet.fillPoints([from(a), this.characterPoint(a, layer.reach, tooth[index]), this.characterPoint(b, layer.reach, tooth[index + 1]), from(b)], true);
       }
     });
 

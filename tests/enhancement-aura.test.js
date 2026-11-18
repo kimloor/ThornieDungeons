@@ -324,7 +324,7 @@ test("Tint-based silhouette halos are WebGL-only; Canvas relies on the baked fla
   } finally { delete globalThis.Phaser; }
 });
 
-// ---------- Ver 1.1.63: left shift, longer top, back layer, blade tip at the far end, Arena opponent, Inventory baseline ----------
+// ---------- Ver 1.1.64: left shift, longer top, back layer, blade tip at the far end, Arena opponent, Inventory baseline ----------
 test("Blade tip is the axis end FARTHEST from the Hero body (hilt stays near the body)", () => {
   const geometry = { mx: 200, my: 250, ux: 0.6, uy: -0.8, tmin: -100, tmax: 100, frameW: 400, frameH: 400 };
   const image = { x: 0, y: 0, angle: 0, originX: 0.5, originY: 1, displayWidth: 400, displayHeight: 400 };
@@ -390,7 +390,7 @@ test("Inventory preview places the Hero lower through an opt-in baseline; other 
   assert.match(read("src/ui/components.js"), /anchorX:0\.558,\s*baselineY:0\.93/);
 });
 
-// ---------- Ver 1.1.63: Character Aura style C (jagged sheet + fill + glow + lightning), weapon lean ----------
+// ---------- Ver 1.1.64: Character Aura style C (jagged sheet + fill + glow + lightning), weapon lean ----------
 const SIZE_C = 452;
 function characterSheetRun(stage, options = {}) {
   const { scene, root, made } = fakeFlameScene(options);
@@ -433,8 +433,23 @@ test("Character Aura is one jagged sheet with a background fill over the clear e
   const jaggedQuads = [];
   sheet.calls.forEach(c => { if (c[0] === "fillStyle") styleIndex += 1; else if (c[0] === "fillPoints" && styleIndex >= 3) jaggedQuads.push(c[1]); });
   assert.equal(styleIndex, 2 + k.characterLayers.length, "background, rim band and every jagged layer");
-  assert.ok(jaggedQuads.length > 150);
-  jaggedQuads.forEach(points => points.forEach(p => assert.ok(ellipseValue(p.x, p.y, k.characterRadiusX, k.characterRadiusY) >= 0.97 || p.y === ground, "jagged layers start at the ellipse edge")));
+  const perLayer = fills[1] ? (K().characterSamples) : 0;
+  assert.equal(jaggedQuads.length, k.characterLayers.length * perLayer, "every layer covers the full ring of samples (nothing skipped, the ellipse bottom is filled too)");
+  const cx = k.characterCenterX * SIZE_C;
+  const cy = k.characterCenterY * SIZE_C;
+  k.characterLayers.forEach((layer, layerIndex) => {
+    jaggedQuads.slice(layerIndex * perLayer, (layerIndex + 1) * perLayer).forEach(quad => {
+      // quad = [start A, tip A, tip B, start B]; the start lies `layer.start` of the way from the centre to the ellipse edge
+      [quad[0], quad[3]].forEach(point => {
+        if (point.y >= ground - 0.001) return;
+        assert.ok(Math.abs(ellipseValue(point.x, point.y, k.characterRadiusX, k.characterRadiusY) - layer.start ** 2) < 0.02, `layer ${layerIndex} starts at ${layer.start} of the ellipse radius`);
+      });
+      [quad[1], quad[2]].forEach(point => assert.ok(ellipseValue(point.x, point.y, k.characterRadiusX, k.characterRadiusY) >= 0.97 || point.y === ground, "tips reach the ellipse edge or beyond"));
+    });
+  });
+  assert.equal(k.characterLayers[0].start, 0, "the largest layer starts at the centre: the Aura fills the whole clear ellipse");
+  assert.ok(k.characterLayers.every((layer, i, list) => i === 0 || layer.start > list[i - 1].start), "inner layers start further out (dimmer middle, brighter rim)");
+  assert.ok(Math.abs(jaggedQuads[0][0].x - cx) < 0.001 && Math.abs(jaggedQuads[0][0].y - cy) < 0.001, "first quad starts exactly at the ellipse centre");
   const tipTop = Math.min(...fills.flatMap(([, pts]) => pts.map(p => p.y))) / SIZE_C;
   assert.ok(tipTop < -0.86 && tipTop >= k.characterTopLimit - 0.002, `top ${tipTop.toFixed(3)} is taller than the 1.1.60 limit and inside the new one`);
   assert.ok(Math.abs((k.characterCenterX - -0.055) * 452 + 8) < 3, "about 8px left of the 1.1.60 position");

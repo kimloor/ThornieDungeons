@@ -25,9 +25,11 @@ const ENHANCEMENT_AURA_STYLES = Object.freeze({
       characterGroundY: -0.058, characterTopLimit: -0.93,
       characterSamples: 96, characterTeeth: 17, characterToothMin: 0.35, characterToothFlicker: 0.3,
       characterLayers: Object.freeze([
-        Object.freeze({ reach: 1, alpha: 0.2, core: false }),
-        Object.freeze({ reach: 0.72, alpha: 0.26, core: false }),
-        Object.freeze({ reach: 0.45, alpha: 0.3, core: true })
+        // `start` = where the layer begins on the ray from the ellipse centre to its edge (0 = centre), so the
+        // Aura fills the whole clear ellipse: dimmer in the middle, brightest at the rim and in the teeth.
+        Object.freeze({ reach: 1, alpha: 0.2, core: false, start: 0 }),
+        Object.freeze({ reach: 0.72, alpha: 0.26, core: false, start: 0.55 }),
+        Object.freeze({ reach: 0.45, alpha: 0.3, core: true, start: 0.8 })
       ]),
       characterOutlineWidth: 2.5, characterOutlineAlpha: 0.9,
       characterFillAlpha: 0.12, characterFillEdgeAlpha: 0.14, characterFillEdgeInset: 0.78,
@@ -422,20 +424,19 @@ class EnhancementAuraRenderer {
       sheet.fillPoints([a.inner, b.inner, pull(b.inner), pull(a.inner)].map(point => ({ x: point.x, y: Math.min(geom.ground, point.y) })), true);
     }
 
-    // 2. Jagged sheet outside the clear ellipse: three layers, brightest next to the Hero.
+    // 2. Jagged sheet: three layers that fill the whole clear ellipse and reach out to the teeth (brightest at the rim).
     const tooth = geom.samples.map(sample => this.characterTooth(sample, t));
     k.characterLayers.forEach(layer => {
       sheet.fillStyle(layer.core ? this.characterCoreColor : this.characterColor, layer.alpha);
+      // Start of the layer on the ray from the ellipse centre to the ellipse edge (never below the ground line).
+      const from = sample => ({
+        x: geom.centerX + (sample.inner.x - geom.centerX) * layer.start,
+        y: Math.min(geom.ground, geom.centerY + (sample.inner.y - geom.centerY) * layer.start)
+      });
       for (let index = 0; index < geom.samples.length - 1; index += 1) {
         const a = geom.samples[index];
         const b = geom.samples[index + 1];
-        if (nearGround(a.inner) && nearGround(b.inner)) continue;
-        sheet.fillPoints([
-          { x: a.inner.x, y: Math.min(geom.ground, a.inner.y) },
-          this.characterPoint(a, layer.reach, tooth[index]),
-          this.characterPoint(b, layer.reach, tooth[index + 1]),
-          { x: b.inner.x, y: Math.min(geom.ground, b.inner.y) }
-        ], true);
+        sheet.fillPoints([from(a), this.characterPoint(a, layer.reach, tooth[index]), this.characterPoint(b, layer.reach, tooth[index + 1]), from(b)], true);
       }
     });
 

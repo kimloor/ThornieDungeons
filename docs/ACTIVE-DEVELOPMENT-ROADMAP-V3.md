@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V3
 
-Visible game version Ver 1.1.63
+Visible game version Ver 1.1.64
 
 Status: **ACTIVE-PLANNING — Ver 1.1.1 RELEASED 2026-10-21; WAVE 1 COMPLETE; WAVE 1 PREP (Client Systems V1) contract awaiting Owner approval**
 
@@ -399,7 +399,7 @@ Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
                      ↓
 Gate C — Ver 1.1.0 Release Acceptance            ✅ COMPLETE (2026-10-20)
                      ↓
-Visible game version                             Ver 1.1.63
+Visible game version                             Ver 1.1.64
                      ↓
 NEW WAVE 1 — Global Loading System V1         ✅ COMPLETE (Ver 1.1.1)
                      ↓

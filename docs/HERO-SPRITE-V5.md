@@ -591,3 +591,7 @@ Shared renderer: Inventory Hero preview (`HeroPreviewScene`), Dungeon battlefiel
 
 - Character Aura is now one jagged aura sheet (Owner's choice "C") with a background fill over the whole clear ellipse, an optional WebGL glow and short lightning bolts; the flame ring of Ver 1.1.60–1.1.62 was removed from the Character Aura. Weapon Aura: side flames lean back toward the hilt; the tip flare stays at the blade tip pointing away from the hilt. Details and values: `docs/PHASER-COMBAT-ARENA-V1.md` §17.4 and §17.7.
 - Info Center announcement for Ver 1.1.63 added.
+
+## 33. Character Aura fills the clear ellipse (Ver 1.1.64)
+
+- The jagged sheet layers now start inside the clear ellipse (centre / 55% / 80% of the radius) so the Aura fills the whole area behind the Hero; the background fill values were not raised. Details: `docs/PHASER-COMBAT-ARENA-V1.md` §17.4 and §17.8. Info Center announcement 1.1.64 added.
