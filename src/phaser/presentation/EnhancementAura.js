@@ -35,7 +35,7 @@ const ENHANCEMENT_AURA_STYLES = Object.freeze({
       characterFillAlpha: 0.12, characterFillEdgeAlpha: 0.14, characterFillEdgeInset: 0.78,
       // One knob for the overall strength of the Character Aura: multiplies every alpha (fill, rim band,
       // layers, outline, lightning) and the glow strength below. 1 = the Ver 1.1.64 strength; 0.5 = half (Ver 1.1.65).
-      characterIntensity: 0.5,
+      characterIntensity: 0.8,
       characterRedrawStep: 0.13, characterGlowStrength: 3,
       characterBoltCount: 7, characterBoltSegments: 6, characterBoltLength: 0.12, characterBoltJitter: 0.03, characterBoltStep: 0.6, characterBoltReach: 0.6,
       coreWidthRatio: 0.42, coreHeightRatio: 0.58, coreAlpha: 0.7, coreLighten: 0.55,
