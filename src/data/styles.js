@@ -65,7 +65,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.65";
+  content: "Ver 1.1.66";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;

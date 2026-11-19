@@ -599,3 +599,7 @@ Shared renderer: Inventory Hero preview (`HeroPreviewScene`), Dungeon battlefiel
 ## 34. Character Aura at half strength (Ver 1.1.65)
 
 - `characterIntensity` (0.5) scales every alpha and the glow of the Character Aura; geometry and the Weapon Aura are unchanged. Details: `docs/PHASER-COMBAT-ARENA-V1.md` §17.4 and §17.9. Info Center announcement 1.1.65 added.
+
+## 35. Black boxes around the weapon flames (Ver 1.1.66)
+
+- Cause: Phaser's `ADD` blend is `(ONE, DST_ALPHA)`, which darkens what is underneath on the game's transparent canvases. Fix: Aura objects use a registered `(ONE, ONE)` additive blend; the Aura body intensity was recalibrated (0.2). Details: `docs/PHASER-COMBAT-ARENA-V1.md` §17.10. Info Center announcement 1.1.66 added.
