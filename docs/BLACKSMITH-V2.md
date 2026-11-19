@@ -73,3 +73,9 @@ Owner screenshot identified the top Inventory shortcut, heading readability, ove
 - No operation handlers, costs, materials, success rates, server/API/Worker/D1 behavior or item rules changed.
 
 Version policy: at the Owner's explicit direction, this presentation-only follow-up retains the existing visible version `1.1.61`; no version bump is included. Branch Build run `43835342900` passed its focused regression suite, formatting check and `node build.js`; generated `index.html` was committed as `2404cd07aab9b5b6fab9ea3be64d17099254bcb6`. Battle Core parity and Admin V2 QA must pass on the generated-output commit before merge. Production visual acceptance remains pending Owner recheck.
+
+## 9. Carry-over note from the Aura phase — transparent Phaser canvases (2026-11-19)
+
+- `ForgePresentationHost` and `BlacksmithForgeHost` create their Phaser games with `transparent: true`, like the Hero and Battlefield games. Today the Blacksmith/Forge code uses no blend modes, so nothing is affected yet.
+- Trap for new effects: Phaser's built-in `Phaser.BlendModes.ADD` is `blendFunc(ONE, DST_ALPHA)`, which is a true additive only on an OPAQUE canvas. On a transparent canvas, every additive image (sparks, glows, flashes) multiplies the colour underneath by its alpha over the WHOLE quad — black boxes around additive sprites. The Aura hit this on production (Ver 1.1.66).
+- Use a registered `(ONE, ONE)` blend mode instead (`renderer.addBlendMode([gl.ONE, gl.ONE], gl.FUNC_ADD)`, registered once per WebGL renderer; see `enhancementAuraBlendAdd` in `src/phaser/presentation/EnhancementAura.js` and `PHASER-COMBAT-ARENA-V1.md` §17.10), and verify visual effects on a canvas configured exactly like the game (`transparent: true`, over a dark page), not on an opaque test canvas.

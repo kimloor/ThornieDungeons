@@ -12,6 +12,7 @@ This is the successor roadmap after the completed historical W0-W9R and Gameplay
 - New Wave numbering begins only after the pre-V1.1.0 release gate below is complete.
 - Production remains the primary acceptance target unless a task explicitly requires another environment.
 - Existing Battle Core, Arena, Dungeon V2, Reward V2, Pet, Social, Admin and economy authority remain unchanged unless a future Wave explicitly approves a contract change.
+- Enhancement Aura presentation phase (Ver 1.1.47–1.1.66) — **CLOSED 2026-11-19**, Owner-accepted on production; final state, tuning table and decision log: `PHASER-COMBAT-ARENA-V1.md` §17.
 
 ## 2. PRE-V1.1.0 RELEASE GATE — MUST COMPLETE FIRST
 
