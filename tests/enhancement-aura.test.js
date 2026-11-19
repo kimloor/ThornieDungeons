@@ -324,7 +324,7 @@ test("Tint-based silhouette halos are WebGL-only; Canvas relies on the baked fla
   } finally { delete globalThis.Phaser; }
 });
 
-// ---------- Ver 1.1.65: left shift, longer top, back layer, blade tip at the far end, Arena opponent, Inventory baseline ----------
+// ---------- Ver 1.1.66: left shift, longer top, back layer, blade tip at the far end, Arena opponent, Inventory baseline ----------
 test("Blade tip is the axis end FARTHEST from the Hero body (hilt stays near the body)", () => {
   const geometry = { mx: 200, my: 250, ux: 0.6, uy: -0.8, tmin: -100, tmax: 100, frameW: 400, frameH: 400 };
   const image = { x: 0, y: 0, angle: 0, originX: 0.5, originY: 1, displayWidth: 400, displayHeight: 400 };
@@ -390,7 +390,7 @@ test("Inventory preview places the Hero lower through an opt-in baseline; other 
   assert.match(read("src/ui/components.js"), /anchorX:0\.558,\s*baselineY:0\.93/);
 });
 
-// ---------- Ver 1.1.65: Character Aura style C (jagged sheet + fill + glow + lightning), weapon lean ----------
+// ---------- Ver 1.1.66: Character Aura style C (jagged sheet + fill + glow + lightning), weapon lean ----------
 const SIZE_C = 452;
 function characterSheetRun(stage, options = {}) {
   const { scene, root, made } = fakeFlameScene(options);
@@ -481,7 +481,7 @@ test("WebGL glow is applied once per stage on the sheet and is optional (no post
   const glowCalls = withGlow.sheet.postFX.glowCalls;
   assert.equal(glowCalls.length, 1);
   assert.equal(glowCalls[0][0], ENHANCEMENT_AURA_STYLES.powerFlame.palette[3]);
-  assert.equal(glowCalls[0][1], K().characterGlowStrength * K().characterIntensity, "glow strength follows the overall Character Aura intensity");
+  assert.equal(glowCalls[0][1], K().characterGlowStrength, "glow uses an absolute strength (not scaled by the body intensity)");
   withGlow.renderer.update({ characterStage: 3, weaponStage: 0 }, NO_HERO);
   assert.equal(glowCalls.length, 1, "unchanged stage does not add the effect again");
   withGlow.renderer.update({ characterStage: 4, weaponStage: 0 }, NO_HERO);
@@ -560,23 +560,61 @@ test("Weapon: side flames lean back toward the hilt while the tip flare points a
   } finally { delete globalThis.document; }
 });
 
-// ---------- Ver 1.1.65: Character Aura at half strength ----------
-test("Character Aura strength is halved through one knob that scales every alpha and the glow", () => {
+// ---------- Ver 1.1.66: Character Aura at half strength ----------
+test("Character Aura body strength is one calibrated knob; outline, lightning and glow use absolute values", () => {
   const k = K();
-  assert.equal(k.characterIntensity, 0.5, "half of the Ver 1.1.65 strength");
+  assert.equal(k.characterIntensity, 0.2, "calibrated against the Owner's phone screenshot (true additive blend, Ver 1.1.66)");
   const { sheet, bolts } = characterSheetRun(3, { glow: true });
   const alphas = callsOf(sheet, "fillStyle").map(c => c[2]);
-  const expected = [k.characterFillAlpha, k.characterFillEdgeAlpha, ...k.characterLayers.map(layer => layer.alpha)].map(value => value * 0.5);
+  const expected = [k.characterFillAlpha, k.characterFillEdgeAlpha, ...k.characterLayers.map(layer => layer.alpha)].map(value => value * k.characterIntensity);
   assert.equal(alphas.length, expected.length);
-  expected.forEach((value, index) => assert.ok(Math.abs(alphas[index] - value) < 1e-9, `fill #${index + 1} alpha ${alphas[index]} = ${value}`));
-  const outline = callsOf(sheet, "lineStyle")[0];
-  assert.ok(Math.abs(outline[3] - k.characterOutlineAlpha * 0.5) < 1e-9, "outline alpha is halved");
+  expected.forEach((value, index) => assert.ok(Math.abs(alphas[index] - value) < 1e-9, `body fill #${index + 1} alpha ${alphas[index]} = ${value}`));
+  assert.equal(callsOf(sheet, "lineStyle")[0][3], k.characterOutlineAlpha, "outline alpha is absolute");
   const boltAlphas = callsOf(bolts, "lineStyle").map(c => c[3]);
   assert.ok(boltAlphas.length >= 2);
-  boltAlphas.forEach(alpha => assert.ok(alpha <= 0.5 + 1e-9, "lightning is halved too"));
-  assert.ok(Math.max(...boltAlphas) > 0.4 && Math.min(...boltAlphas) < 0.25, "both strokes (wide faint one and thin bright one) are scaled");
-  assert.equal(sheet.postFX.glowCalls[0][1], k.characterGlowStrength * 0.5);
-  // geometry is untouched by the intensity knob
-  const geometry = callsOf(sheet, "fillPoints").length;
-  assert.ok(geometry > 150);
+  boltAlphas.forEach((alpha, index) => assert.equal(alpha, index % 2 === 0 ? k.characterBoltAlpha : k.characterBoltCoreAlpha, "lightning alphas are absolute"));
+  assert.equal(sheet.postFX.glowCalls[0][1], k.characterGlowStrength, "glow strength is absolute");
+});
+
+
+// ---------- Ver 1.1.66: true additive blend on transparent canvases ----------
+test("Aura uses a registered (ONE, ONE) additive blend because Phaser's ADD is (ONE, DST_ALPHA)", () => {
+  const registered = [];
+  const gl = { ONE: 1, FUNC_ADD: 32774 };
+  const renderer = { gl, addBlendMode(func, equation) { registered.push([func, equation]); return 28 + registered.length - 1; } };
+  const { scene, root, made } = fakeFlameScene({ glow: true });
+  scene.sys = { game: { renderer } };
+  const renderer1 = new EnhancementAuraRenderer(scene, root, () => SIZE_C);
+  renderer1.update({ characterStage: 2, weaponStage: 0 }, NO_HERO);
+  assert.equal(registered.length, 1, "registered once per renderer, not per object");
+  assert.deepEqual(registered[0], [[1, 1], 32774]);
+  const blends = made.filter(o => o.type === "graphics").map(o => o.calls.find(c => c[0] === "setBlendMode")[1]);
+  assert.deepEqual(blends, [28, 28], "sheet and lightning use the registered mode");
+  // a second Aura renderer on the same game reuses it
+  const second = new EnhancementAuraRenderer(scene, root, () => SIZE_C);
+  second.update({ characterStage: 3, weaponStage: 0 }, NO_HERO);
+  assert.equal(registered.length, 1);
+  // flames and halos use it too
+  const size = 160;
+  const rgba = new Uint8ClampedArray(size * size * 4);
+  for (let y = 20; y < 150; y += 1) for (let x = 0; x < size; x += 1) if (Math.abs(x - (30 + (y - 20) * 0.9)) < 2.5) rgba[(y * size + x) * 4 + 3] = 255;
+  stubBladeDom(rgba, size);
+  try {
+    const weapon = fakeFlameScene({ rendererType: 2 });
+    weapon.scene.sys.game.renderer.gl = gl;
+    weapon.scene.sys.game.renderer.addBlendMode = () => 28;
+    const weaponRenderer = new EnhancementAuraRenderer(weapon.scene, weapon.root, () => 452);
+    weaponRenderer.update({ characterStage: 0, weaponStage: 3 }, fakeWeaponHero(fakeWeaponImage()));
+    const images = weapon.made.filter(o => o.type === "image" && (String(o.key).startsWith("enhancement-aura-flame") || o.key === "weapon-frame-1"));
+    assert.ok(images.length >= 20);
+    images.forEach(o => assert.equal(o.calls.find(c => c[0] === "setBlendMode")[1], 28, `${o.key} uses the true additive blend`));
+  } finally { delete globalThis.document; }
+});
+
+test("Without a WebGL renderer the built-in additive mode is used (Canvas 'lighter' is already correct)", () => {
+  const { scene, root, made } = fakeFlameScene();
+  const renderer = new EnhancementAuraRenderer(scene, root, () => SIZE_C);
+  renderer.update({ characterStage: 2, weaponStage: 0 }, NO_HERO);
+  made.filter(o => o.type === "graphics").forEach(o => assert.equal(o.calls.find(c => c[0] === "setBlendMode")[1], 1));
+  assert.match(read("src/phaser/presentation/EnhancementAura.js"), /blendFunc\(ONE, DST_ALPHA\)/, "the reason is documented next to the helper");
 });

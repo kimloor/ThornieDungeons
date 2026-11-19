@@ -31,12 +31,16 @@ const ENHANCEMENT_AURA_STYLES = Object.freeze({
         Object.freeze({ reach: 0.72, alpha: 0.26, core: false, start: 0.55 }),
         Object.freeze({ reach: 0.45, alpha: 0.3, core: true, start: 0.8 })
       ]),
-      characterOutlineWidth: 2.5, characterOutlineAlpha: 0.9,
+      characterOutlineWidth: 2.5, characterOutlineAlpha: 0.45,
       characterFillAlpha: 0.12, characterFillEdgeAlpha: 0.14, characterFillEdgeInset: 0.78,
-      // One knob for the overall strength of the Character Aura: multiplies every alpha (fill, rim band,
-      // layers, outline, lightning) and the glow strength below. 1 = the Ver 1.1.64 strength; 0.5 = half (Ver 1.1.65).
-      characterIntensity: 0.8,
-      characterRedrawStep: 0.13, characterGlowStrength: 3,
+      // One knob for the strength of the Aura BODY (background fill, rim band and the three jagged layers). The
+      // outline, lightning and glow below use absolute values. History: Ver 1.1.65 set 0.5, but the canvas is
+      // transparent and Phaser's built-in ADD blend darkened the body by itself; Ver 1.1.66 uses a true (ONE, ONE)
+      // additive blend and this value was calibrated against a measured phone screenshot so the body looks the
+      // same as the strength the Owner approved (about 0.2 of the raw alphas below).
+      characterIntensity: 0.2,
+      characterBoltAlpha: 0.225, characterBoltCoreAlpha: 0.5,
+      characterRedrawStep: 0.13, characterGlowStrength: 1.5,
       characterBoltCount: 7, characterBoltSegments: 6, characterBoltLength: 0.12, characterBoltJitter: 0.03, characterBoltStep: 0.6, characterBoltReach: 0.6,
       coreWidthRatio: 0.42, coreHeightRatio: 0.58, coreAlpha: 0.7, coreLighten: 0.55,
       flickerPeriod: 1600, flickerScale: 0.16, flickerAlpha: 0.25, swayDegrees: 5,
@@ -52,7 +56,20 @@ function resolveEnhancementAuraStyle(styleId = DEFAULT_ENHANCEMENT_AURA_STYLE) {
 }
 
 // Additive blending makes the cosmetic glow readable on any background.
-function enhancementAuraBlendAdd() {
+// Phaser's built-in ADD is blendFunc(ONE, DST_ALPHA): that equals (ONE, ONE) only on an OPAQUE canvas. The
+// game's Hero/Battlefield canvases are `transparent: true`, where everything already drawn has alpha < 1, so
+// ADD multiplies the colour underneath by its alpha over the WHOLE quad of every additive image — the black
+// boxes around the weapon flames, and the aura layers darkening each other (Ver 1.1.66). A registered
+// (ONE, ONE) blend mode is a true additive on both kinds of canvas; Canvas renderers keep the built-in mode.
+function enhancementAuraBlendAdd(scene) {
+  try {
+    const renderer = scene?.sys?.game?.renderer;
+    const gl = renderer?.gl;
+    if (gl && typeof renderer.addBlendMode === "function") {
+      if (typeof renderer.enhancementAuraAddBlend !== "number") renderer.enhancementAuraAddBlend = renderer.addBlendMode([gl.ONE, gl.ONE], gl.FUNC_ADD);
+      return renderer.enhancementAuraAddBlend;
+    }
+  } catch (_) { /* fall back to the built-in additive mode */ }
   return typeof Phaser !== "undefined" && Phaser.BlendModes ? Phaser.BlendModes.ADD : 1;
 }
 
@@ -335,7 +352,7 @@ class EnhancementAuraRenderer {
     const speed = 1 + Math.floor(enhancementAuraHash(seed, 12) * 3);
     const make = (key, alpha) => {
       const obj = this.scene.add.image(0, 0, key).setOrigin(0.5, 1);
-      obj.setBlendMode?.(enhancementAuraBlendAdd());
+      obj.setBlendMode?.(enhancementAuraBlendAdd(this.scene));
       container.add(obj);
       return { obj, sx: 1, sy: 1, rot: 0, alpha, phase, speed, sway, flicker: 1 };
     };
@@ -445,7 +462,7 @@ class EnhancementAuraRenderer {
     });
 
     // 3. Bright outline along the tips, skipped near the ground line.
-    sheet.lineStyle(k.characterOutlineWidth, this.characterCoreColor, k.characterOutlineAlpha * strength);
+    sheet.lineStyle(k.characterOutlineWidth, this.characterCoreColor, k.characterOutlineAlpha);
     let run = [];
     const flush = () => { if (run.length > 1) sheet.strokePoints(run, false); run = []; };
     geom.samples.forEach((sample, index) => {
@@ -482,8 +499,8 @@ class EnhancementAuraRenderer {
         points.push(point);
       }
       if (points.length < 3) continue;
-      bolts.lineStyle(6, this.characterColor, 0.45 * k.characterIntensity).strokePoints(points, false);
-      bolts.lineStyle(2.5, 0xffffff, k.characterIntensity).strokePoints(points, false);
+      bolts.lineStyle(6, this.characterColor, k.characterBoltAlpha).strokePoints(points, false);
+      bolts.lineStyle(2.5, 0xffffff, k.characterBoltCoreAlpha).strokePoints(points, false);
     }
   }
 
@@ -521,9 +538,9 @@ class EnhancementAuraRenderer {
     const intensity = this.style.intensity;
     if (!this.characterSheet && typeof this.scene.add.graphics === "function") {
       this.characterSheet = this.scene.add.graphics();
-      this.characterSheet.setBlendMode?.(enhancementAuraBlendAdd());
+      this.characterSheet.setBlendMode?.(enhancementAuraBlendAdd(this.scene));
       this.characterBolts = this.scene.add.graphics();
-      this.characterBolts.setBlendMode?.(enhancementAuraBlendAdd());
+      this.characterBolts.setBlendMode?.(enhancementAuraBlendAdd(this.scene));
       this.characterRoot.add(this.characterSheet);
       this.characterRoot.add(this.characterBolts);
     }
@@ -535,7 +552,7 @@ class EnhancementAuraRenderer {
     this.characterCoreColor = enhancementAuraLighten(color, intensity.coreLighten);
     this.buildCharacterGeometry(size);
     // Optional WebGL glow around the whole sheet (Canvas has no postFX and simply skips it).
-    if (stageChanged && intensity.characterGlowStrength * intensity.characterIntensity > 0) this.applyWeaponGlow(this.characterSheet, color, intensity.characterGlowStrength * intensity.characterIntensity);
+    if (stageChanged && intensity.characterGlowStrength > 0) this.applyWeaponGlow(this.characterSheet, color, intensity.characterGlowStrength);
     this.characterRoot.setVisible(true).setAlpha(1);
     this.ensureFlickerDriver();
     this.updateCharacterEffects(this.flickerState.t, true);
@@ -547,7 +564,7 @@ class EnhancementAuraRenderer {
     while (this.weaponHalos.length < this.style.intensity.weaponHaloCount) {
       const halo = this.scene.add.image(0, 0, textureKey);
       halo.setOrigin(0.5, 1).setVisible(false);
-      halo.setBlendMode?.(enhancementAuraBlendAdd());
+      halo.setBlendMode?.(enhancementAuraBlendAdd(this.scene));
       this.root.add(halo);
       this.weaponHalos.push(halo);
       created.push(halo);
