@@ -691,9 +691,29 @@ W7A A2 adds presentation-only Chapter Boss cues on top of the shared BattleScene
 
 ---
 
-## 17. Enhancement Aura — approved design / implemented (Power Flame style, Ver 1.1.66)
+## 17. Enhancement Aura — CLOSED phase, in production (Power Flame style, Ver 1.1.66)
 
 This section records the Owner-approved Enhancement Aura rules for the shared Phaser Hero presentation. The runtime is in production (Inventory Hero Preview, Dungeon, Arena). §17.4 records what the renderer does today (Ver 1.1.66, Power Flame); §17.5 records the Owner decisions that produced it.
+
+### 17.0 Phase status and final state at a glance
+
+**Status: PHASE CLOSED 2026-11-19.** The Owner accepted the Aura at Ver 1.1.66 on production (iPhone). Any further Aura change needs a new Owner request; start from §17.4 (what the code does) and the tuning table below. §17.5–§17.10 are the dated decision log; §17.11–§17.13 are superseded history kept for traceability.
+
+| Item | Final state (Ver 1.1.66) | Tune it in `src/phaser/presentation/EnhancementAura.js` |
+| --- | --- | --- |
+| Gameplay rules | +4/+6/+8/+10 = Stage 1–4; Weapon Aura = equipped weapon; Character Aura = minimum of helmet/chest/gloves/boots (all four required); cosmetic only (§17.1) | `ENHANCEMENT_AURA_THRESHOLDS`, `resolveEnhancementAura` |
+| Style / colours | Registry style `powerFlame`; Stage 1 green `0x3dff7a`, 2 purple `0xb15cff`, 3 pink `0xff4fd8`, 4 gold `0xffd23a`; same palette for weapon and character; equal intensity for every stage | `ENHANCEMENT_AURA_STYLES.powerFlame.palette` |
+| Character Aura | Jagged aura sheet (style "C") around a clear ellipse, Graphics-drawn, fills the ellipse, glow + lightning, behind every Hero layer, nothing below the ground line | `characterCenterX/Y`, `characterRadiusX/Y`, `characterOuterRadius*`, `characterGroundY`, `characterTopLimit`, `characterLayers[].alpha/start`, `characterIntensity` |
+| Character strength | Body (fill, rim, 3 layers) = raw alphas × `characterIntensity` 0.2; outline 0.45, lightning 0.225 / 0.5 and glow 1.5 are absolute | `characterIntensity`, `characterOutlineAlpha`, `characterBoltAlpha`, `characterBoltCoreAlpha`, `characterGlowStrength` (0 turns the glow off) |
+| Weapon Aura | 9 flames along the blade axis (leaning back toward the hilt) + one tip flare at the real blade tip pointing away from the hilt (shortened near the canvas bottom); WebGL-only silhouette halos with glow; outermost layer | `weaponFlame*`, `weaponTip*`, `weaponHalo*`, `weaponGlowStrength` |
+| Surfaces | Inventory Hero preview (baseline `0.93` of the canvas, `baselineY`), Dungeon and Arena (both sides, each from its own equipment) share one renderer | `src/ui/components.js` (`baselineY`), `EventBridge.js` |
+| Blend | Registered `(ONE, ONE)` additive blend (§17.10); Canvas renderers use the built-in mode | `enhancementAuraBlendAdd` |
+| Diagnostics | On-screen label and console record OFF by default | `globalThis.THORNIE_AURA_DIAGNOSTIC = true` or `ENHANCEMENT_AURA_DIAGNOSTIC_DEFAULT` |
+| Tests | `tests/enhancement-aura.test.js` (31), `tests/enhancement-aura-guide.test.js` | — |
+
+Version map: 1.1.47 rules + Player Guide topic; 1.1.48 outermost-layer fix; 1.1.55 Golden Power; 1.1.56 visibility + diagnostic; 1.1.57 diagnostic off; 1.1.58 Power Flame (green/purple/pink/gold, flame rays); 1.1.59–1.1.60 flame envelope/ring around the Owner's clear ellipse; 1.1.62 polish (back layer, blade tip, Inventory baseline, Arena opponent, announcements); 1.1.63 style C sheet + glow + lightning; 1.1.64 fills the ellipse; 1.1.65 half strength; 1.1.66 true additive blend (black boxes).
+
+Known limits / open items (none block the phase): placement and look were verified on synthetic sprites at the Owner-measured Inventory proportions on real Phaser 3.90.0 (WebGL and Canvas) plus the Owner's iPhone checks; the Arena opponent Aura could not be exercised with a real enhanced opponent here; the glow is WebGL-only and its cost on very low-end phones is unmeasured (`characterGlowStrength` 0 removes it); the in-game Player Guide ("ออร่าจากการตีบวก") states only the rules and says nothing about colours or shapes, so it stays valid when the look is tuned.
 
 ### 17.1 Gameplay rules (presentation-only)
 
@@ -766,12 +786,12 @@ Style registry: `ENHANCEMENT_AURA_STYLES`, default `powerFlame` ("Power Flame", 
 | 3 | +8/+9 | `0xff4fd8` pink |
 | 4 | +10 and above | `0xffd23a` gold |
 
-Look: a Super Saiyan power-up feel (shape only) — spiky, flickering flame rays; the stage colour is the table above. Every flame is a soft outer tongue plus a shorter, paler core (`coreLighten` 0.55 toward white), additive blend.
+Look: a Super Saiyan power-up feel (shape only), in the stage colour above. The Character Aura is a jagged glowing sheet with a glow and short lightning; the Weapon Aura is spiky, flickering flame tongues (each a soft outer tongue plus a shorter, paler core, `coreLighten` 0.55 toward white). Everything is drawn with the true `(ONE, ONE)` additive blend described in §17.10.
 
 Character Aura (defensive-slot minimum rule, §17.1) — style "C": one jagged aura sheet around the clear ellipse, drawn with Phaser `Graphics` (Ver 1.1.63; replaces the flame ring of Ver 1.1.60–1.1.62). Geometry comes from the Owner's marked screenshot:
 - Clear ellipse: centre `(-0.073, -0.425) × displaySize` from the Hero root (feet baseline; the art sits left of the root, hence the negative X), radii `0.27 × / 0.365 ×`; its bottom touches the ground line (`characterGroundY` = `-0.058 ×`). Outer limit: `0.405 ×` wide, `0.445 ×` below and `0.49 ×` above the centre (the top is deliberately taller); top limit `-0.93 ×` (inside the Hero preview canvas).
-- Background fill: because the Aura layer is sent behind every Hero layer, the whole clear ellipse is filled with the stage colour (alpha 0.12, plus a brighter rim band alpha 0.14 over the outer 22% of the ellipse radius). It never covers the Hero.
-- Jagged sheet (Ver 1.1.64: scaled up to fill the whole clear ellipse): 96 samples around the ellipse; 17 teeth (saw/triangle profile, minimum height 0.35, ±15% flicker); three additive layers, each running from a start point on the ray from the ellipse centre to its edge out to the teeth: reach 1.0 alpha 0.2 starting at the centre (`start` 0), reach 0.72 alpha 0.26 starting at 55%, reach 0.45 alpha 0.3 in the lighter core colour starting at 80% — so the Aura covers the entire ellipse, dimmer in the middle and brightest at the rim and in the teeth; bright outline along the tips (2.5 px, alpha 0.9). The ellipse bottom is filled too (nothing below the ground line). Nothing is drawn at or below the ground line and no point goes above the top limit.
+- Background fill: because the Aura layer is sent behind every Hero layer, the whole clear ellipse is filled with the stage colour (raw alpha 0.12, plus a brighter rim band raw alpha 0.14 over the outer 22% of the ellipse radius; raw alphas are multiplied by `characterIntensity`, see Strength). It never covers the Hero.
+- Jagged sheet (Ver 1.1.64: scaled up to fill the whole clear ellipse): 96 samples around the ellipse; 17 teeth (saw/triangle profile, minimum height 0.35, ±15% flicker); three additive layers, each running from a start point on the ray from the ellipse centre to its edge out to the teeth: reach 1.0 raw alpha 0.2 starting at the centre (`start` 0), reach 0.72 raw alpha 0.26 starting at 55%, reach 0.45 raw alpha 0.3 in the lighter core colour starting at 80% — so the Aura covers the entire ellipse, dimmer in the middle and brightest at the rim and in the teeth; bright outline along the tips (2.5 px, absolute alpha 0.45). The ellipse bottom is filled too (nothing below the ground line). Nothing is drawn at or below the ground line and no point goes above the top limit.
 - Strength (Ver 1.1.66): `characterIntensity` = 0.2 multiplies only the Aura BODY — background fill (0.12), rim band (0.14) and the three jagged layers (0.2 / 0.26 / 0.3). The outline (alpha 0.45), the two lightning strokes (alpha 0.225 and 0.5) and the glow (strength 1.5) are absolute values. The 0.2 was calibrated against a measured phone screenshot: with the true additive blend (see §17.10) the body would otherwise be about 2.4× brighter than the look the Owner approved.
 - Glow (WebGL only): `postFX.addGlow` on the sheet (strength 1.5), re-applied only when the stage changes; Canvas has no postFX and simply skips it.
 - Lightning: 7 short bolts (6 segments, length `0.12 × size`, 0.03 jitter) starting inside the band and pointing outward/up, two strokes each (stage colour, wide and faint; white, thin). Re-rolled in steps of 0.6 rad of the flicker phase from a deterministic hash (about 2.6 times per 1.6 s loop); never below the ground line or above the top limit; none in the lower part of the ring.
@@ -783,7 +803,7 @@ Weapon Aura (weapon-only rule):
 - Blade axis: principal axis of the weapon sprite's opaque pixels (`enhancementAuraBladeGeometry`, sampled once per texture frame from a downscaled copy and cached). Tip: the end of the axis that is farthest from the Hero body centre (`enhancementAuraOrientBlade`, evaluated in the Hero root space from the weapon image's position, angle and scale every update) — the hilt is held near the body, so this works for a sword held up, forward or pointing down. The earlier "up when steep" heuristic put the tip flare on the hilt for a downward sword and was replaced in Ver 1.1.62.
 - 9 flames along the axis (alternating sides, leaning outward and back toward the hilt (Ver 1.1.63; they led toward the tip in Ver 1.1.62), length `0.27–0.47 ×` blade length, width `0.18 ×`) plus one larger tip flame (`0.59 ×` long) at the blade tip pointing away from the hilt; when the tip is close to the bottom edge of the canvas the flare is shortened (down to 20%) so it is not cut off. They live in a container positioned in the weapon texture's pixel space and mirrored to the weapon image's position, angle and display scale every frame, so they follow the animation.
 - If pixels cannot be read (no DOM, tainted image) the blade flames are skipped silently.
-- WebGL only: 2 tinted silhouette halos cloned from the real weapon texture (alpha 0.35, additive) with a guarded glow on the first; skipped on Canvas.
+- WebGL only: 2 tinted silhouette halos cloned from the real weapon texture (alpha 0.35, additive) with a guarded glow on the first (`weaponGlowStrength` 3); skipped on Canvas.
 
 Animation: one shared driver tween (`flickerPeriod` 1600 ms) computes every weapon flame's scale (±16%) and alpha (±25%) and also redraws the Character Aura sheet and lightning from a seamless phase; per-flame phase/speed come from a deterministic hash, so every Hero has the same silhouette.
 
@@ -829,6 +849,8 @@ The Owner found the Character Aura still did not fill the area behind the Hero. 
 
 ### 17.9 Character Aura at half strength — Ver 1.1.65 (2026-11-18)
 
+*Superseded in part by §17.10: the `characterIntensity` value was recalibrated from 0.5 to 0.2 in Ver 1.1.66 (and now scales only the Aura body) once the blend bug that had been darkening the body was fixed; the look the Owner approved is unchanged.*
+
 The Owner asked to reduce the Character Aura intensity by about half. Implemented as the single multiplier `characterIntensity` = 0.5 (§17.4); the Weapon Aura, geometry, glow/lightning structure, ground line and layer order are unchanged. Gold at half strength looks darker/browner on dark backgrounds, which is expected from the lower brightness. Owner iPhone check needed; a different strength is a one-number change.
 
 ### 17.10 Black boxes around the weapon flames — root cause and fix (Ver 1.1.66, 2026-11-18)
@@ -837,22 +859,24 @@ Symptom (Owner's iPhone screenshot): dark angular boxes around the Weapon Aura f
 
 Fix: all Aura objects (Character sheet, lightning, weapon flames, weapon halos) use a renderer-registered blend mode `(ONE, ONE)` (`enhancementAuraBlendAdd(scene)`, registered once per WebGL renderer); Canvas renderers keep the built-in `lighter`-based mode. Because the body had been darkened by the same bug, `characterIntensity` was recalibrated to 0.2 (§17.4) and the outline/lightning/glow keep the values already on screen. Verification: real Phaser 3.90.0 with `transparent: true` (WebGL and Canvas renderers), before/after render, and pixel colours of the aura body compared with the Owner's screenshot (top band about RGB 56,39,86 target vs 55,38,82). Note for other effects: any additive effect on these transparent canvases has the same trap.
 
-The same HeroActor is reused by Dungeon Battle and Arena presentation. The first implementation must explicitly confirm which controlled Hero(s) receive Aura in Arena; do not accidentally show the local player's equipped Aura on an opponent or apply it to every HeroActor by default.
+The same HeroActor is reused by Dungeon Battle and Arena presentation. Each Hero's Aura is derived only from that Hero's own equipment (the Arena snapshot builder evaluates the attacker and the opponent separately); never show one side's Aura from the other side's equipment.
 
 Inventory Hero Preview integration:
 - buildHeroPreviewSnapshot() derives the same immutable Aura stages from the current equipped map used to build the preview Hero layers.
 - HeroPreviewScene owns an EnhancementAuraRenderer alongside the shared HeroRenderer. It refreshes Aura after each Idle frame and whenever the preview snapshot or layout changes.
-- Weapon halos continue to mirror the actual V3/V5 weapon layer in the preview renderer; character rings/particles share the same stage palette and bounded effect implementation as Battle.
+- The Weapon Aura (blade flames and halos) mirrors the actual V3/V5 weapon layer in the preview renderer; the Character Aura sheet shares the same stage palette and effect implementation as Battle.
 - The Inventory preview reads previewEquipped, so Compare candidate swaps immediately preview their Aura without mutating authoritative equipment. Cancel restores the Aura derived from the authoritative loadout.
-- Preview teardown destroys Aura tweens, particles, graphics, and halo images before destroying the Hero root. Aura rendering failure remains optional and cannot disable the Hero preview or Inventory actions.
+- Preview teardown destroys the Aura driver tween, graphics, flame images, and halo images before destroying the Hero root. Aura rendering failure remains optional and cannot disable the Hero preview or Inventory actions.
 
-### 17.4 Initial visual family implemented
+### 17.11 History (superseded): initial visual family, Ver 1.1.47
 
-The first runtime pass uses a cohesive four-stage progression independent of item rarity: Stage 1 cyan, Stage 2 violet, Stage 3 amber, and Stage 4 rose. Character Aura uses restrained elliptical rings and a bounded set of softly pulsing particles; higher stages add rings/particles. Weapon Aura uses low-opacity tinted copies of the real weapon sprite behind the authored layer, with additional halo copies at higher stages. Pulse timing is deliberately slow and subtle for mobile readability. These are initial implementation defaults, not a claim of final Graphics/Owner art approval; the renderer can be refined without changing the approved stage rules.
+*Superseded by §17.4. Kept for traceability only.* The first runtime pass used a cohesive four-stage progression independent of item rarity: Stage 1 cyan, Stage 2 violet, Stage 3 amber, and Stage 4 rose. Character Aura uses restrained elliptical rings and a bounded set of softly pulsing particles; higher stages add rings/particles. Weapon Aura uses low-opacity tinted copies of the real weapon sprite behind the authored layer, with additional halo copies at higher stages. Pulse timing is deliberately slow and subtle for mobile readability. These are initial implementation defaults, not a claim of final Graphics/Owner art approval; the renderer can be refined without changing the approved stage rules.
 
-### 17.5 Player Guide copy — insert into the existing Refine topic
+### 17.12 Player Guide copy (history)
 
-The following Thai copy is prepared for `src/data/infoGuide.js`, topic id `refine`. Publish it in the same release that makes the Aura feature available; do not expose it in the live Guide before the runtime behavior ships.
+*Note (2026-11-19):* the text shipped in `src/data/infoGuide.js` (topic `refine`, heading "ออร่าจากการตีบวก") is shorter than this draft and does **not** claim that higher stages look more spectacular — the final design keeps equal intensity for every stage and changes only the colour. Treat the draft below as history.
+
+The following Thai copy was prepared for `src/data/infoGuide.js`, topic id `refine`. Publish it in the same release that makes the Aura feature available; do not expose it in the live Guide before the runtime behavior ships.
 
 **หัวข้อ: ออร่าจากการตีบวก**
 - ออร่ามี 2 ประเภท คือ ออร่าอาวุธและออร่าตัวละคร โดยเป็นเอฟเฟกต์เพื่อความสวยงามเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้
@@ -864,10 +888,12 @@ The following Thai copy is prepared for `src/data/infoGuide.js`, topic id `refin
 
 The copy is now included in `src/data/infoGuide.js` under the existing `refine` topic id. `tests/info-guide.test.js` asserts the cosmetic-only wording, four defensive slots, excluded slots, and stage thresholds. The existing `refine` topic id/deep link is unchanged.
 
-**Branch verification:** pending GitHub Actions focused tests and generated frontend build. Production verification has not been performed.
+**Verification:** shipped in Ver 1.1.47 and in production; the guide text and the 4-slot / threshold wording are covered by `tests/info-guide.test.js` / `tests/enhancement-aura-guide.test.js`.
 
-### 17.5 Aura outermost-layer visibility fix — Ver 1.1.48
+### 17.13 History: outermost-layer visibility fix — Ver 1.1.48
 
-- The Character Aura container and visible Weapon Aura halos are reordered to the end of the Hero presentation root after updates, placing them above all Hero body/equipment layers.
-- This is a visibility-first diagnostic release. Aura size, color, and intensity are intentionally unchanged until the Owner confirms the effect is visible in Production.
-- Regression coverage checks that the Aura elements are promoted to the final display-list indices. CI/build and live visual confirmation remain separate gates.
+*Superseded for the Character Aura by Ver 1.1.62 (it is now sent to the very back, §17.3 item 3); still true for the Weapon Aura.*
+
+- The Character Aura container and visible Weapon Aura halos were reordered to the end of the Hero presentation root after updates, placing them above all Hero body/equipment layers.
+- It was a visibility-first diagnostic release; size, colour and intensity were intentionally unchanged.
+- Regression coverage checked that the Aura elements were promoted to the final display-list indices.
