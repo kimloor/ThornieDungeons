@@ -1,6 +1,6 @@
 # Blacksmith V2 — Module Separation and UI Redesign
 
-Status: **ACTIVE — Wave 3.1 UI redesign merged; mobile layout follow-up on PR; Owner-directed version remains Ver 1.1.61**
+Status: **ACTIVE — Wave 3.1 UI redesign merged; Ver 1.1.67 reference-match pass (§10) published; production visual acceptance pending Owner recheck; final Forge art pending**
 
 ## 1. Purpose
 
@@ -79,3 +79,22 @@ Version policy: at the Owner's explicit direction, this presentation-only follow
 - `ForgePresentationHost` and `BlacksmithForgeHost` create their Phaser games with `transparent: true`, like the Hero and Battlefield games. Today the Blacksmith/Forge code uses no blend modes, so nothing is affected yet.
 - Trap for new effects: Phaser's built-in `Phaser.BlendModes.ADD` is `blendFunc(ONE, DST_ALPHA)`, which is a true additive only on an OPAQUE canvas. On a transparent canvas, every additive image (sparks, glows, flashes) multiplies the colour underneath by its alpha over the WHOLE quad — black boxes around additive sprites. The Aura hit this on production (Ver 1.1.66).
 - Use a registered `(ONE, ONE)` blend mode instead (`renderer.addBlendMode([gl.ONE, gl.ONE], gl.FUNC_ADD)`, registered once per WebGL renderer; see `enhancementAuraBlendAdd` in `src/phaser/presentation/EnhancementAura.js` and `PHASER-COMBAT-ARENA-V1.md` §17.10), and verify visual effects on a canvas configured exactly like the game (`transparent: true`, over a dark page), not on an opaque test canvas.
+
+
+## 10. Reference-match pass — Ver 1.1.67 (2026-11-24)
+
+Owner compared the production page with `wave3-blacksmith-mobile-reference.jpg` (low-resolution layout/colour reference only) and approved a CSS-first redesign. Presentation only: no handler, API, Worker, D1, cost, rate, material, Lock, Reroll, Protection Stone, ownership or Salvage change.
+
+Decisions (Owner, 2026-11-24): follow the reference; **Enchant (left, purple) / Refine (right, gold)**; do CSS first and wait for the Forge art; Equipment Detail shows three placeholder option rows when nothing is selected; both action buttons stay visible but disabled until gear is selected.
+
+Implemented:
+- Header: back button + single `BLACKSMITH` title (kicker/subtitle removed) + anvil art slot at the right.
+- Workbench grid `1.6fr : 1fr` (Forge ~62% / Equipped Gear ~38%); gold double frame with corner ornaments; CSS anvil with the selected item shown on it; the FORGE/REFINE/ENCHANT caption appears only while an animation plays.
+- Equipped Gear: square cells, large icon, one-line name, `+N` badge top-right; slot name kept only as `aria-label`.
+- Equipment Detail: starts expanded; hammer icon + arrow header; empty state = hammer, "Select equipped equipment" and three dashed placeholder rows; real options render one per row.
+- Actions: always rendered, Enchant/Reroll left and Refine right, disabled until gear is selected; cost lines unchanged; action message moved above the buttons.
+- Art hooks: `--bs-forge-art` and `--bs-header-art` (CSS variables on `.md-blacksmith-page`) take approved image URLs later. Needed from Graphics: painted Forge scene (no baked text), anvil header icon, 9-slice gold frame.
+- Tests: new V2.1 contract test; the stale Refine-presentation source-string test in `w7b-enhance-craft-presentation.test.js` was updated to the current source spacing.
+- Not changed from the spec: the page-level background gradient was left to the app shell.
+
+Carry-over: the old `.md-blacksmith-forge-art` / `-kicker` / `-gear-slot` markup is gone; superseded CSS rules from §8 remain in `styles.js` and are overridden by the "Blacksmith V2.1" block that follows them.

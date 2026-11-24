@@ -13,7 +13,7 @@ Run `node build.js` after source changes. index.html is the single generated app
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="application-version" content="1.1.66" />
+<meta name="application-version" content="1.1.67" />
 <title>ThornieDungeons</title>
 <meta name="theme-color" content="#1B1233" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -203,7 +203,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.66";
+  content: "Ver 1.1.67";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -3489,6 +3489,64 @@ body > .md-inv2-detail-layer .md-inv2-detail {
  .md-blacksmith-workbench { height:min(42dvh,330px); max-height:min(42dvh,330px); }
  .md-blacksmith-detail.expanded { max-height:min(38dvh,290px); }
  .md-blacksmith-detail-body { max-height:calc(min(38dvh,290px) - 48px); }
+}
+
+/* Blacksmith V2.1: reference-matched layout (Ver 1.1.67). --bs-forge-art / --bs-header-art are art hooks: set them to approved image URLs when the assets land; until then CSS shapes stand in. Presentation only. */
+.md-blacksmith-page { --bs-gold-edge:#d9a441; --bs-gold-hi:#ffe08a; --bs-panel-bg:linear-gradient(180deg,rgba(33,21,52,.98),rgba(13,9,25,.99)); --bs-glow-purple:rgba(150,92,255,.5); --bs-glow-gold:rgba(255,190,80,.45); --bs-forge-art:none; --bs-header-art:none; gap:8px; }
+.md-blacksmith-header { position:relative; grid-template-columns:40px minmax(0,1fr) 64px; gap:8px; min-height:48px; padding-bottom:8px; }
+.md-blacksmith-header::after { content:""; position:absolute; left:4%; right:4%; bottom:0; height:1px; background:linear-gradient(90deg,transparent,rgba(217,164,65,.75),transparent); }
+.md-blacksmith-back { width:40px; height:40px; min-height:40px; padding:0; border:2px solid var(--bs-gold-edge); border-radius:50%; background:radial-gradient(circle at 35% 30%,rgba(90,60,130,.95),rgba(20,12,36,.98)); box-shadow:0 0 0 2px rgba(0,0,0,.45),0 0 10px var(--bs-glow-gold),inset 0 0 8px rgba(0,0,0,.6); }
+.md-blacksmith-heading { min-height:0; padding:0 4px; align-items:flex-start; border:0; background:none; box-shadow:none; text-align:left; }
+.md-blacksmith-heading h1 { font-size:22px; letter-spacing:.1em; }
+.md-blacksmith-header-art { position:relative; width:64px; height:40px; background-image:var(--bs-header-art); background-size:contain; background-position:center; background-repeat:no-repeat; }
+.md-blacksmith-header-art::before { content:""; position:absolute; left:10px; right:10px; bottom:6px; height:14px; border-radius:3px 3px 8px 8px; background:linear-gradient(180deg,#6b5a8e,#2a1f45); box-shadow:0 0 14px var(--bs-glow-purple),0 -6px 12px var(--bs-glow-gold); }
+.md-blacksmith-header-art::after { content:""; position:absolute; left:28px; top:4px; width:8px; height:8px; border-radius:2px; background:var(--bs-gold-hi); box-shadow:0 0 10px var(--bs-gold-edge); transform:rotate(45deg); }
+.md-blacksmith-workbench { grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:8px; }
+.md-blacksmith-forge { justify-content:flex-end; padding-bottom:8px; border:2px solid var(--bs-gold-edge); border-radius:12px; background:var(--bs-forge-art) center/cover no-repeat,radial-gradient(ellipse at 26% 60%,rgba(255,120,30,.5),transparent 38%),radial-gradient(ellipse at 50% 100%,rgba(255,150,50,.5),transparent 55%),linear-gradient(180deg,#1a0f22 0%,#2a1218 55%,#4a1c10 100%); box-shadow:inset 0 0 28px rgba(0,0,0,.6),0 0 12px rgba(217,164,65,.25); }
+.md-blacksmith-forge::after { content:""; position:absolute; inset:4px; z-index:3; pointer-events:none; border-radius:8px; background:linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) top left/14px 2px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) top left/2px 14px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) top right/14px 2px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) top right/2px 14px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) bottom left/14px 2px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) bottom left/2px 14px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) bottom right/14px 2px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) bottom right/2px 14px no-repeat; }
+.md-blacksmith-anvil { position:relative; display:block; width:78%; height:46px; margin-top:auto; z-index:1; }
+.md-blacksmith-anvil-top { position:absolute; left:0; right:0; top:0; height:18px; border-radius:4px 14px 4px 4px; background:linear-gradient(180deg,#8a8a9c,#3b3b4c 70%,#22222e); box-shadow:0 -2px 14px rgba(255,160,60,.5); }
+.md-blacksmith-anvil-base { position:absolute; left:22%; right:22%; top:16px; bottom:0; background:linear-gradient(180deg,#2d2d3a,#14141c); clip-path:polygon(0 0,100% 0,85% 100%,15% 100%); }
+.md-blacksmith-forge-item { position:absolute; left:50%; bottom:64px; z-index:1; transform:translateX(-50%); filter:drop-shadow(0 0 14px rgba(255,160,60,.8)); }
+.md-blacksmith-forge-item .md-forge-item-icon { width:56px; height:56px; object-fit:contain; }
+.md-blacksmith-forge-caption { position:absolute; top:10px; left:0; right:0; z-index:3; margin:0; text-align:center; }
+.md-blacksmith-forge-subtitle { margin-top:6px; }
+.md-blacksmith-equipped { padding:6px; border:2px solid var(--bs-gold-edge); border-radius:12px; background:var(--bs-panel-bg); }
+.md-blacksmith-section-title { justify-content:center; padding:4px 6px; border:1px solid rgba(217,164,65,.6); border-radius:8px; background:linear-gradient(180deg,rgba(120,84,30,.5),rgba(40,26,10,.6)); font-size:10px; letter-spacing:.12em; text-align:center; }
+.md-blacksmith-gear-grid { gap:6px; }
+.md-blacksmith-gear-cell { aspect-ratio:1/1; min-height:0; padding:3px 3px 2px; justify-content:space-between; border-width:2px; border-radius:10px; }
+.md-blacksmith-gear-icon { flex:1 1 auto; width:100%; height:auto; min-height:0; background:transparent; }
+.md-blacksmith-gear-icon img { width:min(100%,46px); height:100%; max-height:46px; object-fit:contain; }
+.md-blacksmith-gear-level { top:2px; right:3px; padding:0 3px; border-radius:6px; background:rgba(0,0,0,.6); }
+.md-blacksmith-detail { border:2px solid var(--bs-gold-edge); border-radius:12px; background:var(--bs-panel-bg); }
+.md-blacksmith-detail.collapsed { max-height:44px; }
+.md-blacksmith-detail.expanded { max-height:min(30dvh,250px); }
+.md-blacksmith-detail-body { max-height:calc(min(30dvh,250px) - 44px); }
+.md-blacksmith-detail-toggle { min-height:40px; padding:6px 12px; border-bottom:1px solid rgba(217,164,65,.25); background:linear-gradient(180deg,rgba(70,48,100,.6),rgba(30,20,48,.4)); font-size:11px; letter-spacing:.06em; }
+.md-blacksmith-detail-title { display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.md-blacksmith-detail-hammer { color:var(--bs-gold-hi); }
+.md-blacksmith-detail-toggle span.md-blacksmith-detail-arrow { color:var(--bs-gold-hi); font-size:14px; }
+.md-blacksmith-options { grid-template-columns:1fr; gap:6px; margin:8px 0; }
+.md-blacksmith-option { min-height:34px; padding:6px 10px; border-radius:8px; font-size:10px; text-align:left; }
+.md-blacksmith-options.placeholder .md-blacksmith-option { border-style:dashed; opacity:.45; }
+.md-blacksmith-empty-detail { padding:0 11px 10px; }
+.md-blacksmith-no-selection { display:flex; flex-direction:column; align-items:center; gap:2px; min-height:0; padding:6px 8px 4px; text-align:center; }
+.md-blacksmith-empty-hammer { color:rgba(217,164,65,.55); font-size:26px; line-height:1; }
+.md-blacksmith-no-selection strong { color:var(--ink); font-size:11px; }
+.md-blacksmith-no-selection small { color:var(--ink-soft); font-size:9px; }
+.md-blacksmith-actions { gap:10px; }
+.md-blacksmith-actions button { flex-direction:row; align-items:center; justify-content:center; gap:8px; min-height:52px; padding:6px 10px; border-width:2px; border-radius:14px; font-size:12px; letter-spacing:.06em; box-shadow:0 0 0 1px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.12),0 4px 14px rgba(0,0,0,.4); }
+.md-blacksmith-actions button.md-blacksmith-action-enchant { border-color:#b48cff; color:#fff; background:linear-gradient(180deg,#5b34a8,#2f1a63); box-shadow:0 0 0 1px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.12),0 0 14px var(--bs-glow-purple); }
+.md-blacksmith-actions button.md-blacksmith-action-refine { border-color:var(--bs-gold-edge); color:#fff1c9; background:linear-gradient(180deg,#9a6a2c,#4f3014); box-shadow:0 0 0 1px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.12),0 0 14px var(--bs-glow-gold); }
+.md-blacksmith-actions button:disabled { box-shadow:none; opacity:.55; filter:saturate(.7); }
+.md-blacksmith-action-icon { font-size:20px; line-height:1; }
+.md-blacksmith-action-text { display:flex; flex-direction:column; align-items:flex-start; min-width:0; text-align:left; }
+@media(max-height:800px) {
+ .md-blacksmith-page { gap:6px; padding-top:6px; }
+ .md-blacksmith-workbench { height:min(34dvh,240px); max-height:min(34dvh,240px); }
+ .md-blacksmith-detail.expanded { max-height:min(25dvh,170px); }
+ .md-blacksmith-detail-body { max-height:calc(min(25dvh,170px) - 44px); }
+ .md-blacksmith-actions button { min-height:46px; }
 }
 
 `;
@@ -8412,14 +8470,17 @@ const INFO_CENTER = {
   // Newest first. Ranges group closely related patch versions. Versions before 1.0.7 have no verifiable record.
   announcements: {
     latest: {
-      version: "1.1.66", date: "2026-11-18", title: "แก้กล่องสีดำรอบออร่าอาวุธ",
+      version: "1.1.67", date: "2026-11-24", title: "ปรับหน้า Blacksmith ให้ใกล้ภาพต้นแบบ",
       items: [
-        "แก้ปัญหาเปลวออร่าอาวุธมีกล่องสี่เหลี่ยมสีดำล้อมรอบ ตอนนี้เปลวทุกอันเป็นแสงโปร่งใสผสมกับฉากด้านหลังอย่างถูกต้อง",
-        "ปรับความสว่างของแผ่นออร่าตัวละครให้ดูเหมือนเดิมหลังการแก้",
-        "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"
+        "จัดหน้า Blacksmith ใหม่: โรงตีเหล็กใหญ่ขึ้นทางซ้าย อุปกรณ์ที่สวมใส่อยู่ทางขวาเป็นช่องไอคอนใหญ่ ดูง่ายขึ้น",
+        "ปุ่ม Enchant (ม่วง) อยู่ซ้าย ปุ่ม Refine (ทอง) อยู่ขวา และแสดงตลอดแม้ยังไม่ได้เลือกอุปกรณ์",
+        "ช่องรายละเอียดอุปกรณ์เปิดค้างไว้ และแสดงช่อง Option ว่างเมื่อยังไม่ได้เลือกอุปกรณ์",
+        "ปรับหน้าตาเท่านั้น ไม่เปลี่ยนอัตราสำเร็จ ค่าใช้จ่าย หรือกติกาการตีบวก/เสริมพลัง"
       ]
     },
     history: [
+      { version: "1.1.66", date: "2026-11-18", title: "แก้กล่องสีดำรอบออร่าอาวุธ",
+        items: ["แก้ปัญหาเปลวออร่าอาวุธมีกล่องสี่เหลี่ยมสีดำล้อมรอบ ตอนนี้เปลวทุกอันเป็นแสงโปร่งใสผสมกับฉากด้านหลังอย่างถูกต้อง", "ปรับความสว่างของแผ่นออร่าตัวละครให้ดูเหมือนเดิมหลังการแก้", "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"] },
       { version: "1.1.65", date: "2026-11-18", title: "ลดความเข้มของออร่าตัวละคร",
         items: ["ลดความเข้มของออร่าตัวละครลงครึ่งหนึ่ง (พื้นหลัง แผ่นหยัก เส้นขอบ แสงเรือง และสายฟ้า) ให้มองเห็นตัวละครชัดขึ้น", "ออร่าเป็นเอฟเฟกต์ตกแต่งเท่านั้น ไม่เพิ่มค่าสเตตัสหรือความสามารถในการต่อสู้"] },
       { version: "1.1.64", date: "2026-11-17", title: "ขยายออร่าตัวละครให้เต็มพื้นที่",
@@ -21222,7 +21283,7 @@ function ThornieDungeons() {
 
 // ===== ui/blacksmith.js =====
 function BlacksmithPage({equipped,inventory,busy,gold,protectionStones,onEnhance,onEmpower,onReroll,onToggleLock,onClose,dockProps}) {
- const [selectedEquippedSlot,setSelectedEquippedSlot]=useState(null),[detailExpanded,setDetailExpanded]=useState(false),[actionMsg,setActionMsg]=useState(""),[animState,setAnimState]=useState(null),[forgePresentation,setForgePresentation]=useState(null),[useProtectionStone,setUseProtectionStone]=useState(false);
+ const [selectedEquippedSlot,setSelectedEquippedSlot]=useState(null),[detailExpanded,setDetailExpanded]=useState(true),[actionMsg,setActionMsg]=useState(""),[animState,setAnimState]=useState(null),[forgePresentation,setForgePresentation]=useState(null),[useProtectionStone,setUseProtectionStone]=useState(false);
  const forgePresentationTokenRef=useRef(0),animTimerRef=useRef(null);
  const detailTarget=selectedEquippedSlot?equipped[selectedEquippedSlot]:null,slots=detailTarget?.empowerSlots||[],openSlot=slots.some(s=>!s),filled=slots.filter(Boolean),locked=filled.filter(s=>s.locked).length,canReroll=filled.length>0&&locked<filled.length;
  const playAnim=ok=>{if(animTimerRef.current)clearTimeout(animTimerRef.current);setAnimState(ok?"success":"fail");animTimerRef.current=setTimeout(()=>setAnimState(null),650);};
@@ -21234,35 +21295,38 @@ function BlacksmithPage({equipped,inventory,busy,gold,protectionStones,onEnhance
  const refineCost=detailTarget?(isV2?ENHANCEMENT_V2.enhanceCost(detailTarget):enhanceCost(detailTarget.enhanceLevel||0)):null;
  const enchantCost=detailTarget&&openSlot?(isV2?ENHANCEMENT_V2.empowerOpenCost(detailTarget,nextIndex):empowerCost(nextIndex)):null;
  const rerollCostValue=detailTarget&&canReroll?(isV2?ENHANCEMENT_V2.empowerRerollCost(detailTarget,filled.length,locked):rerollCost(filled.length,locked)):null;
- const renderGear=slot=>{const it=equipped[slot],selected=selectedEquippedSlot===slot;return /*#__PURE__*/React.createElement("button",{key:slot,type:"button",className:`md-blacksmith-gear-cell ${it.rarity||"common"} ${selected?"selected":""}`,title:itemStatText(it),"aria-pressed":selected,onClick:()=>chooseEquipped(slot)}, /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-gear-icon"}, /*#__PURE__*/React.createElement(GameIcon,{item:it,fallback:SLOT_ICON[slot],className:"md-game-icon md-equipped-item-icon",alt:itemDisplayName(it)})), /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-gear-slot"},SLOT_LABEL[slot]), /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-gear-name"},itemDisplayName(it)),(Number(it.enhanceLevel)||0)>0&& /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-gear-level"},`+${Number(it.enhanceLevel)||0}`));};
+ const renderGear=slot=>{const it=equipped[slot],selected=selectedEquippedSlot===slot;return /*#__PURE__*/React.createElement("button",{key:slot,type:"button",className:`md-blacksmith-gear-cell ${it.rarity||"common"} ${selected?"selected":""}`,title:itemStatText(it),"aria-pressed":selected,"aria-label":`${SLOT_LABEL[slot]} ${itemDisplayName(it)}`,onClick:()=>chooseEquipped(slot)}, /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-gear-icon"}, /*#__PURE__*/React.createElement(GameIcon,{item:it,fallback:SLOT_ICON[slot],className:"md-game-icon md-equipped-item-icon",alt:itemDisplayName(it)})), /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-gear-name"},itemDisplayName(it)),(Number(it.enhanceLevel)||0)>0&& /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-gear-level"},`+${Number(it.enhanceLevel)||0}`));};
+ const renderPlaceholderOptions=()=>/*#__PURE__*/React.createElement("div",{className:"md-blacksmith-options placeholder","aria-hidden":"true"},[0,1,2].map(i=>/*#__PURE__*/React.createElement("div",{key:i,className:"md-blacksmith-option empty"},`✦ ช่อง Option ${i+1}`)));
  const renderOptions=it=>{const opts=it.empowerSlots||[],next=opts.findIndex(s=>!s);return /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-options"},opts.map((s,i)=>/*#__PURE__*/React.createElement("button",{key:i,type:"button",className:`md-blacksmith-option ${s?.locked?"locked":""} ${s?"filled":"empty"}`,disabled:!s||busy,onClick:async()=>{if(!s||busy)return;const r=await Promise.resolve(onToggleLock(it.id,i));if(r?.message)setActionMsg(r.message);},title:s?`${s.icon} +${s.value} ${s.label} — แตะเพื่อ${s.locked?"ปลดล็อก":"ล็อก"}`:"ยังไม่ปลดล็อก"},s?`${s.locked?"🔒 ":""}${s.icon} +${s.value} ${s.label}`:`ช่อง ${i+1} · ${i===next?"ถัดไป":"ว่าง"}`)));};
  return /*#__PURE__*/React.createElement("main",{className:"md-blacksmith-page"},
   /*#__PURE__*/React.createElement("header",{className:"md-blacksmith-header"},
    /*#__PURE__*/React.createElement("button",{type:"button",className:"md-blacksmith-back",onClick:onClose,"aria-label":"กลับเมือง"},"‹"),
-   /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-heading"}, /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-kicker"},"THE ROYAL FORGE"), /*#__PURE__*/React.createElement("h1",null,"BLACKSMITH"), /*#__PURE__*/React.createElement("p",null,"ตีบวก · เสริมพลัง · ปรับแต่งอุปกรณ์")),
+   /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-heading"}, /*#__PURE__*/React.createElement("h1",null,"BLACKSMITH")),
+   /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-header-art","aria-hidden":"true"}),
   ),
   /*#__PURE__*/React.createElement("section",{className:"md-blacksmith-workbench"},
    /*#__PURE__*/React.createElement("div",{className:`md-blacksmith-forge ${animState?"is-"+animState:""}`},
     /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-forge-glow"}),
-    /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-forge-art","aria-hidden":"true"},"⚒"),
-    /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-forge-caption"},forgePresentation?.kind==="enhance"?"REFINE":forgePresentation?.kind==="reroll"?"REROLL":forgePresentation?"ENCHANT":"FORGE"),
+    /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-anvil","aria-hidden":"true"}, /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-anvil-top"}), /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-anvil-base"})),
+    detailTarget&& /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-forge-item"}, /*#__PURE__*/React.createElement(GameIcon,{item:detailTarget,fallback:SLOT_ICON[detailTarget.type]||"📦",className:"md-game-icon md-forge-item-icon",alt:itemDisplayName(detailTarget)})),
+    forgePresentation&& /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-forge-caption"},forgePresentation?.kind==="enhance"?"REFINE":forgePresentation?.kind==="reroll"?"REROLL":forgePresentation?"ENCHANT":"FORGE"),
     /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-forge-subtitle"},detailTarget?itemDisplayName(detailTarget):"เลือกอุปกรณ์เพื่อเริ่มต้น"),
     forgePresentation&& /*#__PURE__*/React.createElement(PhaserBlacksmithForgePresentation,{event:forgePresentation})),
    /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-equipped"},
-    /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-section-title"}, /*#__PURE__*/React.createElement("span",null,"EQUIPPED GEAR"), /*#__PURE__*/React.createElement("small",null,`${equippedSlots.length} / ${SLOT_ORDER.length}`)),
+    /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-section-title"}, /*#__PURE__*/React.createElement("span",null,"EQUIPPED GEAR")),
     equippedSlots.length? /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-gear-grid"},equippedSlots.map(renderGear)): /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-empty-gear"},"ยังไม่มีอุปกรณ์ที่สวมใส่"))),
   /*#__PURE__*/React.createElement("section",{className:`md-blacksmith-detail ${detailExpanded?"expanded":"collapsed"}`},
-   /*#__PURE__*/React.createElement("button",{type:"button",className:"md-blacksmith-detail-toggle",onClick:()=>setDetailExpanded(v=>!v),"aria-expanded":detailExpanded}, /*#__PURE__*/React.createElement("span",null,detailTarget?itemDisplayName(detailTarget):"EQUIPMENT DETAIL"), /*#__PURE__*/React.createElement("span",null,detailExpanded?"⌄ ย่อรายละเอียด":"⌃ ดูรายละเอียด")),
+   /*#__PURE__*/React.createElement("button",{type:"button",className:"md-blacksmith-detail-toggle",onClick:()=>setDetailExpanded(v=>!v),"aria-expanded":detailExpanded}, /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-detail-title"}, /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-detail-hammer","aria-hidden":"true"},"⚒"),detailTarget?itemDisplayName(detailTarget):"EQUIPMENT DETAIL"), /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-detail-arrow","aria-hidden":"true"},detailExpanded?"▴":"▾")),
    detailExpanded&&(detailTarget? /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-detail-body"},
     /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-item-summary"}, /*#__PURE__*/React.createElement(GameIcon,{item:detailTarget,fallback:SLOT_ICON[detailTarget.type]||"📦",className:"md-game-icon md-detail-item-icon",alt:itemDisplayName(detailTarget)}), /*#__PURE__*/React.createElement("div",null, /*#__PURE__*/React.createElement("strong",null,itemDisplayName(detailTarget)), /*#__PURE__*/React.createElement("small",null,RARITY_LABEL[detailTarget.rarity]||detailTarget.rarity," · ",itemStatText(detailTarget)||"ไม่มีค่าสเตตัส")),MYTHIC_V2.signatureText(detailTarget)&& /*#__PURE__*/React.createElement("em",null,`✦ ${MYTHIC_V2.signatureText(detailTarget)}`)),
     renderOptions(detailTarget),
     ENHANCEMENT_V2.isV2Item(detailTarget)&&(Number(detailTarget.enhanceLevel)||0)>=6&&(Number(detailTarget.enhanceLevel)||0)<ENHANCEMENT_V2.ENHANCE_MAX&& /*#__PURE__*/React.createElement("label",{className:"md-blacksmith-protection"}, /*#__PURE__*/React.createElement("input",{type:"checkbox",checked:useProtectionStone,disabled:busy||(protectionStones||0)<1,onChange:e=>setUseProtectionStone(e.target.checked)}),`ใช้ Protection Stone เมื่อ downgrade (มี ${protectionStones||0})`),
     /*#__PURE__*/React.createElement("div",{className:"md-equip-summary"}, /*#__PURE__*/React.createElement("span",{className:"md-equip-stat-chip"}, /*#__PURE__*/React.createElement(GameIcon,{item:{type:"junk",junkId:"iron"},fallback:JUNK_INFO.iron.icon,className:"md-game-icon md-inline-item-icon",alt:JUNK_INFO.iron.name})," ",junkTotal(inventory,"iron")), /*#__PURE__*/React.createElement("span",{className:"md-equip-stat-chip"}, /*#__PURE__*/React.createElement(GameIcon,{item:{type:"junk",junkId:"manaOre"},fallback:JUNK_INFO.manaOre.icon,className:"md-game-icon md-inline-item-icon",alt:JUNK_INFO.manaOre.name})," ",junkTotal(inventory,"manaOre")), /*#__PURE__*/React.createElement("span",{className:"md-equip-stat-chip"}, /*#__PURE__*/React.createElement(GameIcon,{category:"currency",iconKey:"gold",fallback:"🪙",className:"md-game-icon md-inline-item-icon",alt:"Gold"})," ",formatNumber(gold))))
-    : /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-no-selection"},"เลือกอุปกรณ์จาก Equipped Gear เพื่อดูรายละเอียดและจัดการ Option"))),
-  detailTarget&& /*#__PURE__*/React.createElement("section",{className:"md-blacksmith-actions"},
-   /*#__PURE__*/React.createElement("button",{type:"button",className:"md-btn info md-blacksmith-action-refine",disabled:busy||(Number(detailTarget.enhanceLevel)||0)>=ENHANCE_MAX,onClick:doEnhance},(Number(detailTarget.enhanceLevel)||0)>=ENHANCE_MAX?"REFINE MAX":`⚒ REFINE +${(Number(detailTarget.enhanceLevel)||0)+1}`,refineCost&& /*#__PURE__*/React.createElement("small",null,`${isV2?ENHANCEMENT_V2.enhanceSuccessRate(detailTarget.enhanceLevel||0):enhanceSuccessRate(detailTarget.enhanceLevel||0)}% · ${refineCost.iron} Iron · ${refineCost.gold} Gold`)),
-   /*#__PURE__*/React.createElement("button",{type:"button",className:"md-btn primary md-blacksmith-action-enchant",disabled:busy||(openSlot?!enchantCost:!canReroll||!rerollCostValue),onClick:openSlot?doEmpower:doReroll},openSlot?"✦ ENCHANT":"↻ REROLL", /*#__PURE__*/React.createElement("small",null,openSlot?(enchantCost?`${enchantCost.manaOre} Mana Ore · ${enchantCost.gold} Gold`:"ไม่สามารถเสริมพลังได้"):(rerollCostValue?`${rerollCostValue.manaOre} Mana Ore · ${rerollCostValue.gold} Gold`:"ไม่มี Option ให้รีโรล")))),
+    : /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-detail-body md-blacksmith-empty-detail"}, /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-no-selection"}, /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-empty-hammer","aria-hidden":"true"},"⚒"), /*#__PURE__*/React.createElement("strong",null,"Select equipped equipment"), /*#__PURE__*/React.createElement("small",null,"เลือกอุปกรณ์จาก Equipped Gear เพื่อดูรายละเอียดและจัดการ Option")),renderPlaceholderOptions()))),
   actionMsg&& /*#__PURE__*/React.createElement("div",{className:"md-blacksmith-message"},actionMsg),
+  /*#__PURE__*/React.createElement("section",{className:"md-blacksmith-actions"},
+   /*#__PURE__*/React.createElement("button",{type:"button",className:"md-btn primary md-blacksmith-action-enchant",disabled:busy||!detailTarget||(openSlot?!enchantCost:!canReroll||!rerollCostValue),onClick:openSlot?doEmpower:doReroll}, /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-action-icon","aria-hidden":"true"},detailTarget&&!openSlot?"↻":"✦"), /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-action-text"}, /*#__PURE__*/React.createElement("span",null,detailTarget&&!openSlot?"REROLL":"ENCHANT"), /*#__PURE__*/React.createElement("small",null,!detailTarget?"เลือกอุปกรณ์":openSlot?(enchantCost?`${enchantCost.manaOre} Mana Ore · ${enchantCost.gold} Gold`:"ไม่สามารถเสริมพลังได้"):(rerollCostValue?`${rerollCostValue.manaOre} Mana Ore · ${rerollCostValue.gold} Gold`:"ไม่มี Option ให้รีโรล")))),
+   /*#__PURE__*/React.createElement("button",{type:"button",className:"md-btn info md-blacksmith-action-refine",disabled:busy||!detailTarget||(Number(detailTarget.enhanceLevel)||0)>=ENHANCE_MAX,onClick:doEnhance}, /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-action-icon","aria-hidden":"true"},"⚒"), /*#__PURE__*/React.createElement("span",{className:"md-blacksmith-action-text"}, /*#__PURE__*/React.createElement("span",null,!detailTarget?"REFINE":(Number(detailTarget.enhanceLevel)||0)>=ENHANCE_MAX?"REFINE MAX":`REFINE +${(Number(detailTarget.enhanceLevel)||0)+1}`), /*#__PURE__*/React.createElement("small",null,refineCost?`${isV2?ENHANCEMENT_V2.enhanceSuccessRate(detailTarget.enhanceLevel||0):enhanceSuccessRate(detailTarget.enhanceLevel||0)}% · ${refineCost.iron} Iron · ${refineCost.gold} Gold`:"เลือกอุปกรณ์")))),
   /*#__PURE__*/React.createElement(GameDock,Object.assign({},dockProps||{},{activeKey:"blacksmith"})));
 }
 // ===== ui/infoCenter.js =====

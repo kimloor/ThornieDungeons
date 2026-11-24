@@ -55,14 +55,14 @@ test("Inventory order: Sort stores the sorted ids and the overlay receives the o
   assert.equal(applyInventoryOrder(items(["a", "b"]), sorted.map(i => i.id)).length, 2);
 });
 
-test("Ver 1.1.66: visible badge, meta and roadmap are in sync", () => {
+test("Ver 1.1.67: visible badge, meta and roadmap are in sync", () => {
   const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
-  assert.match(read("src/data/styles.js"), /content: "Ver 1\.1\.66"/);
-  assert.match(read("head.html"), /name="application-version" content="1\.1\.66"/);
+  assert.match(read("src/data/styles.js"), /content: "Ver 1\.1\.67"/);
+  assert.match(read("head.html"), /name="application-version" content="1\.1\.67"/);
   // Generated index.html is checked after node build.js by the Frontend Production workflow.
   // The main-branch build job commits that generated output before Battle Core parity runs.
   // Keep this source/version assertion aligned with the production build marker.
-  assert.match(read("docs/ACTIVE-DEVELOPMENT-ROADMAP-V3.md"), /Visible game version\s+Ver 1\.1\.66/);
+  assert.match(read("docs/ACTIVE-DEVELOPMENT-ROADMAP-V3.md"), /Visible game version\s+Ver 1\.1\.67/);
 });
 
 
@@ -83,4 +83,27 @@ test("Blacksmith Wave 3.1 uses a dedicated page and preserves existing operation
   assert.match(styles, /Blacksmith mobile fit/);
   assert.match(styles, /md-blacksmith-detail\.expanded \{ max-height/);
   assert.match(styles, /md-blacksmith-heading \{ min-height:58px/);
+});
+
+test("Blacksmith V2.1 matches the reference layout: Enchant left / Refine right, always-visible actions, empty-state detail", () => {
+  const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+  const page = read("src/ui/blacksmith.js");
+  const styles = read("src/data/styles.js");
+  // Enchant (left) comes before Refine (right) and the action bar is not gated on a selection.
+  assert.ok(page.indexOf("md-blacksmith-action-enchant") > 0 && page.indexOf("md-blacksmith-action-enchant") < page.indexOf("md-blacksmith-action-refine"));
+  assert.doesNotMatch(page, /detailTarget&&\s*\/\*#__PURE__\*\/React\.createElement\("section",\{className:"md-blacksmith-actions"/);
+  assert.match(page, /disabled:busy\|\|!detailTarget\|\|\(openSlot\?!enchantCost:!canReroll\|\|!rerollCostValue\)/);
+  // Detail starts expanded and shows three placeholder option rows until gear is selected.
+  assert.match(page, /\[detailExpanded,setDetailExpanded\]=useState\(true\)/);
+  assert.match(page, /renderPlaceholderOptions=\(\)=>[\s\S]*?\[0,1,2\]\.map/);
+  assert.match(page, /Select equipped equipment/);
+  // Header: single title, no kicker/subtitle; the gear cell no longer prints the slot label.
+  assert.doesNotMatch(page, /md-blacksmith-kicker|THE ROYAL FORGE|md-blacksmith-gear-slot/);
+  assert.match(page, /md-blacksmith-header-art/);
+  // Presentation-only: handlers and server-authoritative callbacks are untouched.
+  for (const h of ["onEnhance(detailTarget.id,useProtectionStone)", "onEmpower(detailTarget.id)", "onReroll(detailTarget.id)", "onToggleLock(it.id,i)"]) assert.ok(page.includes(h), h);
+  // CSS: Forge ~62% / Gear ~38%, art hooks for future assets, square gear cells.
+  assert.match(styles, /\.md-blacksmith-workbench \{ grid-template-columns:minmax\(0,1\.6fr\) minmax\(0,1fr\)/);
+  assert.match(styles, /--bs-forge-art:none; --bs-header-art:none/);
+  assert.match(styles, /\.md-blacksmith-gear-cell \{ aspect-ratio:1\/1/);
 });

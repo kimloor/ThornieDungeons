@@ -65,7 +65,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.66";
+  content: "Ver 1.1.67";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -3351,6 +3351,64 @@ body > .md-inv2-detail-layer .md-inv2-detail {
  .md-blacksmith-workbench { height:min(42dvh,330px); max-height:min(42dvh,330px); }
  .md-blacksmith-detail.expanded { max-height:min(38dvh,290px); }
  .md-blacksmith-detail-body { max-height:calc(min(38dvh,290px) - 48px); }
+}
+
+/* Blacksmith V2.1: reference-matched layout (Ver 1.1.67). --bs-forge-art / --bs-header-art are art hooks: set them to approved image URLs when the assets land; until then CSS shapes stand in. Presentation only. */
+.md-blacksmith-page { --bs-gold-edge:#d9a441; --bs-gold-hi:#ffe08a; --bs-panel-bg:linear-gradient(180deg,rgba(33,21,52,.98),rgba(13,9,25,.99)); --bs-glow-purple:rgba(150,92,255,.5); --bs-glow-gold:rgba(255,190,80,.45); --bs-forge-art:none; --bs-header-art:none; gap:8px; }
+.md-blacksmith-header { position:relative; grid-template-columns:40px minmax(0,1fr) 64px; gap:8px; min-height:48px; padding-bottom:8px; }
+.md-blacksmith-header::after { content:""; position:absolute; left:4%; right:4%; bottom:0; height:1px; background:linear-gradient(90deg,transparent,rgba(217,164,65,.75),transparent); }
+.md-blacksmith-back { width:40px; height:40px; min-height:40px; padding:0; border:2px solid var(--bs-gold-edge); border-radius:50%; background:radial-gradient(circle at 35% 30%,rgba(90,60,130,.95),rgba(20,12,36,.98)); box-shadow:0 0 0 2px rgba(0,0,0,.45),0 0 10px var(--bs-glow-gold),inset 0 0 8px rgba(0,0,0,.6); }
+.md-blacksmith-heading { min-height:0; padding:0 4px; align-items:flex-start; border:0; background:none; box-shadow:none; text-align:left; }
+.md-blacksmith-heading h1 { font-size:22px; letter-spacing:.1em; }
+.md-blacksmith-header-art { position:relative; width:64px; height:40px; background-image:var(--bs-header-art); background-size:contain; background-position:center; background-repeat:no-repeat; }
+.md-blacksmith-header-art::before { content:""; position:absolute; left:10px; right:10px; bottom:6px; height:14px; border-radius:3px 3px 8px 8px; background:linear-gradient(180deg,#6b5a8e,#2a1f45); box-shadow:0 0 14px var(--bs-glow-purple),0 -6px 12px var(--bs-glow-gold); }
+.md-blacksmith-header-art::after { content:""; position:absolute; left:28px; top:4px; width:8px; height:8px; border-radius:2px; background:var(--bs-gold-hi); box-shadow:0 0 10px var(--bs-gold-edge); transform:rotate(45deg); }
+.md-blacksmith-workbench { grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:8px; }
+.md-blacksmith-forge { justify-content:flex-end; padding-bottom:8px; border:2px solid var(--bs-gold-edge); border-radius:12px; background:var(--bs-forge-art) center/cover no-repeat,radial-gradient(ellipse at 26% 60%,rgba(255,120,30,.5),transparent 38%),radial-gradient(ellipse at 50% 100%,rgba(255,150,50,.5),transparent 55%),linear-gradient(180deg,#1a0f22 0%,#2a1218 55%,#4a1c10 100%); box-shadow:inset 0 0 28px rgba(0,0,0,.6),0 0 12px rgba(217,164,65,.25); }
+.md-blacksmith-forge::after { content:""; position:absolute; inset:4px; z-index:3; pointer-events:none; border-radius:8px; background:linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) top left/14px 2px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) top left/2px 14px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) top right/14px 2px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) top right/2px 14px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) bottom left/14px 2px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) bottom left/2px 14px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) bottom right/14px 2px no-repeat,linear-gradient(var(--bs-gold-edge),var(--bs-gold-edge)) bottom right/2px 14px no-repeat; }
+.md-blacksmith-anvil { position:relative; display:block; width:78%; height:46px; margin-top:auto; z-index:1; }
+.md-blacksmith-anvil-top { position:absolute; left:0; right:0; top:0; height:18px; border-radius:4px 14px 4px 4px; background:linear-gradient(180deg,#8a8a9c,#3b3b4c 70%,#22222e); box-shadow:0 -2px 14px rgba(255,160,60,.5); }
+.md-blacksmith-anvil-base { position:absolute; left:22%; right:22%; top:16px; bottom:0; background:linear-gradient(180deg,#2d2d3a,#14141c); clip-path:polygon(0 0,100% 0,85% 100%,15% 100%); }
+.md-blacksmith-forge-item { position:absolute; left:50%; bottom:64px; z-index:1; transform:translateX(-50%); filter:drop-shadow(0 0 14px rgba(255,160,60,.8)); }
+.md-blacksmith-forge-item .md-forge-item-icon { width:56px; height:56px; object-fit:contain; }
+.md-blacksmith-forge-caption { position:absolute; top:10px; left:0; right:0; z-index:3; margin:0; text-align:center; }
+.md-blacksmith-forge-subtitle { margin-top:6px; }
+.md-blacksmith-equipped { padding:6px; border:2px solid var(--bs-gold-edge); border-radius:12px; background:var(--bs-panel-bg); }
+.md-blacksmith-section-title { justify-content:center; padding:4px 6px; border:1px solid rgba(217,164,65,.6); border-radius:8px; background:linear-gradient(180deg,rgba(120,84,30,.5),rgba(40,26,10,.6)); font-size:10px; letter-spacing:.12em; text-align:center; }
+.md-blacksmith-gear-grid { gap:6px; }
+.md-blacksmith-gear-cell { aspect-ratio:1/1; min-height:0; padding:3px 3px 2px; justify-content:space-between; border-width:2px; border-radius:10px; }
+.md-blacksmith-gear-icon { flex:1 1 auto; width:100%; height:auto; min-height:0; background:transparent; }
+.md-blacksmith-gear-icon img { width:min(100%,46px); height:100%; max-height:46px; object-fit:contain; }
+.md-blacksmith-gear-level { top:2px; right:3px; padding:0 3px; border-radius:6px; background:rgba(0,0,0,.6); }
+.md-blacksmith-detail { border:2px solid var(--bs-gold-edge); border-radius:12px; background:var(--bs-panel-bg); }
+.md-blacksmith-detail.collapsed { max-height:44px; }
+.md-blacksmith-detail.expanded { max-height:min(30dvh,250px); }
+.md-blacksmith-detail-body { max-height:calc(min(30dvh,250px) - 44px); }
+.md-blacksmith-detail-toggle { min-height:40px; padding:6px 12px; border-bottom:1px solid rgba(217,164,65,.25); background:linear-gradient(180deg,rgba(70,48,100,.6),rgba(30,20,48,.4)); font-size:11px; letter-spacing:.06em; }
+.md-blacksmith-detail-title { display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.md-blacksmith-detail-hammer { color:var(--bs-gold-hi); }
+.md-blacksmith-detail-toggle span.md-blacksmith-detail-arrow { color:var(--bs-gold-hi); font-size:14px; }
+.md-blacksmith-options { grid-template-columns:1fr; gap:6px; margin:8px 0; }
+.md-blacksmith-option { min-height:34px; padding:6px 10px; border-radius:8px; font-size:10px; text-align:left; }
+.md-blacksmith-options.placeholder .md-blacksmith-option { border-style:dashed; opacity:.45; }
+.md-blacksmith-empty-detail { padding:0 11px 10px; }
+.md-blacksmith-no-selection { display:flex; flex-direction:column; align-items:center; gap:2px; min-height:0; padding:6px 8px 4px; text-align:center; }
+.md-blacksmith-empty-hammer { color:rgba(217,164,65,.55); font-size:26px; line-height:1; }
+.md-blacksmith-no-selection strong { color:var(--ink); font-size:11px; }
+.md-blacksmith-no-selection small { color:var(--ink-soft); font-size:9px; }
+.md-blacksmith-actions { gap:10px; }
+.md-blacksmith-actions button { flex-direction:row; align-items:center; justify-content:center; gap:8px; min-height:52px; padding:6px 10px; border-width:2px; border-radius:14px; font-size:12px; letter-spacing:.06em; box-shadow:0 0 0 1px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.12),0 4px 14px rgba(0,0,0,.4); }
+.md-blacksmith-actions button.md-blacksmith-action-enchant { border-color:#b48cff; color:#fff; background:linear-gradient(180deg,#5b34a8,#2f1a63); box-shadow:0 0 0 1px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.12),0 0 14px var(--bs-glow-purple); }
+.md-blacksmith-actions button.md-blacksmith-action-refine { border-color:var(--bs-gold-edge); color:#fff1c9; background:linear-gradient(180deg,#9a6a2c,#4f3014); box-shadow:0 0 0 1px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.12),0 0 14px var(--bs-glow-gold); }
+.md-blacksmith-actions button:disabled { box-shadow:none; opacity:.55; filter:saturate(.7); }
+.md-blacksmith-action-icon { font-size:20px; line-height:1; }
+.md-blacksmith-action-text { display:flex; flex-direction:column; align-items:flex-start; min-width:0; text-align:left; }
+@media(max-height:800px) {
+ .md-blacksmith-page { gap:6px; padding-top:6px; }
+ .md-blacksmith-workbench { height:min(34dvh,240px); max-height:min(34dvh,240px); }
+ .md-blacksmith-detail.expanded { max-height:min(25dvh,170px); }
+ .md-blacksmith-detail-body { max-height:calc(min(25dvh,170px) - 44px); }
+ .md-blacksmith-actions button { min-height:46px; }
 }
 
 `;

@@ -29,7 +29,7 @@ test("Refine presentation is triggered only from resolved authoritative mutation
   assert.equal(app.includes("const result = res.mutation || {};"), true);
   assert.equal(app.includes("return { ok: true, result, message:"), true);
   assert.equal(app.includes("return { ok: false, result, message:"), true);
-  const enhanceCall = blacksmith.indexOf("const res = await Promise.resolve(onEnhance(detailTarget.id, useProtectionStone));");
+  const enhanceCall = blacksmith.indexOf("const res=await Promise.resolve(onEnhance(detailTarget.id,useProtectionStone));");
   const presentation = blacksmith.indexOf("setForgePresentation({", enhanceCall);
   assert.ok(enhanceCall >= 0 && presentation > enhanceCall);
   assert.equal(blacksmith.includes('outcome:x.success?"success":x.protectionConsumed?"protected":x.downgraded?"downgrade":"fail"'), true);
