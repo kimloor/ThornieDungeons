@@ -65,7 +65,7 @@ const STYLE = `
 .md-root * { box-sizing: border-box; }
 /* Visible build badge: bump patch version for each user-visible runtime fix. */
 body::after {
-  content: "Ver 1.1.67";
+  content: "Ver 1.1.68";
   position: fixed;
   top: calc(4px + var(--safe-top-eff));
   left: 50%;
@@ -3290,8 +3290,8 @@ body > .md-inv2-detail-layer .md-inv2-detail {
 .md-root-blacksmith { min-height:100dvh; }
 .md-blacksmith-page { position:relative;z-index:3;display:flex;flex-direction:column;gap:10px;width:100%;max-width:760px;min-height:calc(100dvh - var(--md-currency-height,58px));margin:0 auto;padding:10px max(10px,var(--safe-left)) max(8px,var(--safe-bottom)) max(10px,var(--safe-right));color:var(--ink); }
 .md-blacksmith-header { display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:8px;flex:0 0 auto; }
-.md-blacksmith-back,.md-blacksmith-inventory { min-height:38px;border:1px solid rgba(255,209,102,.38);border-radius:11px;color:var(--gold);background:linear-gradient(180deg,rgba(66,43,93,.94),rgba(25,16,44,.96));font-weight:900; }
-.md-blacksmith-back { font-size:27px;line-height:1; }.md-blacksmith-inventory { padding:0 10px;font-size:10px; }
+.md-blacksmith-inventory { min-height:38px;border:1px solid rgba(255,209,102,.38);border-radius:11px;color:var(--gold);background:linear-gradient(180deg,rgba(66,43,93,.94),rgba(25,16,44,.96));font-weight:900; }
+.md-blacksmith-inventory { padding:0 10px;font-size:10px; }
 .md-blacksmith-heading { min-width:0;text-align:center; }.md-blacksmith-kicker { color:#b8a1e8;font-size:8px;font-weight:900;letter-spacing:.22em; }
 .md-blacksmith-heading h1 { margin:0;color:var(--gold);font-family:'Baloo 2',system-ui,sans-serif;font-size:22px;line-height:1.05;letter-spacing:.08em;text-shadow:0 2px 10px rgba(255,184,74,.24); }
 .md-blacksmith-heading p { margin:2px 0 0;color:var(--ink-soft);font-size:9px;font-weight:800; }
@@ -3355,9 +3355,8 @@ body > .md-inv2-detail-layer .md-inv2-detail {
 
 /* Blacksmith V2.1: reference-matched layout (Ver 1.1.67). --bs-forge-art / --bs-header-art are art hooks: set them to approved image URLs when the assets land; until then CSS shapes stand in. Presentation only. */
 .md-blacksmith-page { --bs-gold-edge:#d9a441; --bs-gold-hi:#ffe08a; --bs-panel-bg:linear-gradient(180deg,rgba(33,21,52,.98),rgba(13,9,25,.99)); --bs-glow-purple:rgba(150,92,255,.5); --bs-glow-gold:rgba(255,190,80,.45); --bs-forge-art:none; --bs-header-art:none; gap:8px; }
-.md-blacksmith-header { position:relative; grid-template-columns:40px minmax(0,1fr) 64px; gap:8px; min-height:48px; padding-bottom:8px; }
+.md-blacksmith-header { position:relative; grid-template-columns:44px minmax(0,1fr) 64px; gap:8px; min-height:48px; padding-bottom:8px; }
 .md-blacksmith-header::after { content:""; position:absolute; left:4%; right:4%; bottom:0; height:1px; background:linear-gradient(90deg,transparent,rgba(217,164,65,.75),transparent); }
-.md-blacksmith-back { width:40px; height:40px; min-height:40px; padding:0; border:2px solid var(--bs-gold-edge); border-radius:50%; background:radial-gradient(circle at 35% 30%,rgba(90,60,130,.95),rgba(20,12,36,.98)); box-shadow:0 0 0 2px rgba(0,0,0,.45),0 0 10px var(--bs-glow-gold),inset 0 0 8px rgba(0,0,0,.6); }
 .md-blacksmith-heading { min-height:0; padding:0 4px; align-items:flex-start; border:0; background:none; box-shadow:none; text-align:left; }
 .md-blacksmith-heading h1 { font-size:22px; letter-spacing:.1em; }
 .md-blacksmith-header-art { position:relative; width:64px; height:40px; background-image:var(--bs-header-art); background-size:contain; background-position:center; background-repeat:no-repeat; }
@@ -3378,12 +3377,13 @@ body > .md-inv2-detail-layer .md-inv2-detail {
 .md-blacksmith-gear-grid { gap:6px; }
 .md-blacksmith-gear-cell { aspect-ratio:1/1; min-height:0; padding:3px 3px 2px; justify-content:space-between; border-width:2px; border-radius:10px; }
 .md-blacksmith-gear-icon { flex:1 1 auto; width:100%; height:auto; min-height:0; background:transparent; }
-.md-blacksmith-gear-icon img { width:min(100%,46px); height:100%; max-height:46px; object-fit:contain; }
+.md-blacksmith-gear-icon img { width:min(100%,34px); height:100%; max-height:34px; object-fit:contain; }
+.md-blacksmith-gear-icon .md-game-icon { max-width:34px; max-height:34px; }
 .md-blacksmith-gear-level { top:2px; right:3px; padding:0 3px; border-radius:6px; background:rgba(0,0,0,.6); }
 .md-blacksmith-detail { border:2px solid var(--bs-gold-edge); border-radius:12px; background:var(--bs-panel-bg); }
 .md-blacksmith-detail.collapsed { max-height:44px; }
-.md-blacksmith-detail.expanded { max-height:min(30dvh,250px); }
-.md-blacksmith-detail-body { max-height:calc(min(30dvh,250px) - 44px); }
+.md-blacksmith-detail.expanded { max-height:none; }
+.md-blacksmith-detail-body { max-height:none; overflow:visible; }
 .md-blacksmith-detail-toggle { min-height:40px; padding:6px 12px; border-bottom:1px solid rgba(217,164,65,.25); background:linear-gradient(180deg,rgba(70,48,100,.6),rgba(30,20,48,.4)); font-size:11px; letter-spacing:.06em; }
 .md-blacksmith-detail-title { display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .md-blacksmith-detail-hammer { color:var(--bs-gold-hi); }
@@ -3403,11 +3403,35 @@ body > .md-inv2-detail-layer .md-inv2-detail {
 .md-blacksmith-actions button:disabled { box-shadow:none; opacity:.55; filter:saturate(.7); }
 .md-blacksmith-action-icon { font-size:20px; line-height:1; }
 .md-blacksmith-action-text { display:flex; flex-direction:column; align-items:flex-start; min-width:0; text-align:left; }
+/* Blacksmith V2.2 (Ver 1.1.68): scroll region is separate from actions + dock so buttons never sit under the nav bar; wireframe-style detail panel; result popup. */
+.md-blacksmith-page { overflow:hidden; }
+.md-blacksmith-workbench { height:min(38dvh,300px); max-height:min(38dvh,300px); }
+.md-blacksmith-scroll { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:8px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
+.md-blacksmith-scroll::-webkit-scrollbar { display:none; }
+.md-blacksmith-page>.md-hub-dock { position:static; margin-top:0; }
+.md-blacksmith-detail-layout { display:grid; grid-template-columns:86px minmax(0,1fr); gap:10px; align-items:stretch; margin:8px 0; }
+.md-blacksmith-detail-icon { display:grid; place-items:center; min-height:120px; border:2px solid rgba(217,164,65,.8); border-radius:10px; background:rgba(0,0,0,.28); }
+.md-blacksmith-detail-icon .md-game-icon,.md-blacksmith-detail-icon img { width:60px; height:60px; object-fit:contain; }
+.md-blacksmith-detail-icon.placeholder,.md-blacksmith-detail-name.placeholder { border-style:dashed; opacity:.55; }
+.md-blacksmith-detail-rows { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.md-blacksmith-detail-name { align-self:flex-start; min-width:58%; max-width:100%; padding:4px 10px; border:2px solid rgba(217,164,65,.8); border-radius:7px; background:rgba(0,0,0,.28); }
+.md-blacksmith-detail-name strong { display:block; overflow:hidden; color:var(--ink); font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.md-blacksmith-detail-name small { display:block; overflow:hidden; color:var(--ink-soft); font-size:8px; text-overflow:ellipsis; white-space:nowrap; }
+.md-blacksmith-detail-rows .md-blacksmith-options { margin:0; gap:5px; }
+.md-blacksmith-detail-rows .md-blacksmith-option { min-height:28px; padding:4px 8px; border-width:2px; }
+.md-blacksmith-unique { min-height:28px; padding:5px 8px; border:2px solid rgba(217,164,65,.8); border-radius:7px; background:rgba(0,0,0,.28); color:#ffe098; font-size:9px; font-weight:800; overflow-wrap:anywhere; }
+.md-blacksmith-unique.none { border-style:dashed; color:var(--ink-soft); opacity:.55; }
+.md-blacksmith-result { padding:20px 18px 16px; text-align:center; }
+.md-blacksmith-result h3 { margin:0 0 6px; font-size:21px; }
+.md-blacksmith-result.success { border-color:#7ee0a0; box-shadow:0 0 22px rgba(80,220,140,.35),0 16px 45px rgba(0,0,0,.55); }
+.md-blacksmith-result.success h3 { color:#8bf0b1; }
+.md-blacksmith-result.fail { border-color:#ff8a8a; box-shadow:0 0 22px rgba(255,90,90,.3),0 16px 45px rgba(0,0,0,.55); }
+.md-blacksmith-result.fail h3 { color:#ff9a9a; }
+.md-blacksmith-result-levels { margin:0 0 6px; color:var(--gold); font-size:18px; font-weight:900; }
+.md-blacksmith-result-msg { margin:0; color:var(--ink); font-size:12px; line-height:1.4; }
 @media(max-height:800px) {
  .md-blacksmith-page { gap:6px; padding-top:6px; }
  .md-blacksmith-workbench { height:min(34dvh,240px); max-height:min(34dvh,240px); }
- .md-blacksmith-detail.expanded { max-height:min(25dvh,170px); }
- .md-blacksmith-detail-body { max-height:calc(min(25dvh,170px) - 44px); }
  .md-blacksmith-actions button { min-height:46px; }
 }
 

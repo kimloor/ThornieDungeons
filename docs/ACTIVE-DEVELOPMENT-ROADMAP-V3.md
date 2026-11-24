@@ -1,6 +1,6 @@
 # ThornieDungeons — Active Development Roadmap V3
 
-Visible game version Ver 1.1.67
+Visible game version Ver 1.1.68
 
 Status: **ACTIVE-PLANNING — Ver 1.1.1 RELEASED 2026-10-21; WAVE 1 COMPLETE; WAVE 1 PREP (Client Systems V1) contract awaiting Owner approval**
 
@@ -250,7 +250,7 @@ Wave 3 is split into two independently designed and sequenced work packages:
 #### WAVE 3.1 — Blacksmith UI Redesign
 
 **Code organization preparation:** Blacksmith UI and its Phaser forge presentation are separated into dedicated source modules before visual redesign. This refactor preserves current behavior; see [`BLACKSMITH-V2.md`](BLACKSMITH-V2.md).
-**Status: IMPLEMENTED AND MERGED TO main; Ver 1.1.67 reference-match pass published; PRODUCTION VISUAL ACCEPTANCE PENDING (Owner recheck)**
+**Status: IMPLEMENTED AND MERGED TO main; Ver 1.1.67 reference-match pass and Ver 1.1.68 layout/popup follow-up published; PRODUCTION VISUAL ACCEPTANCE PENDING (Owner recheck)**
 **Reference mockup:** [Blacksmith mobile portrait reference](wave3-blacksmith-mobile-reference.jpg)
 
 The approved visual target is to bring the in-game Blacksmith as close as practical to the attached mobile portrait mockup. Treat the image as a visual/layout reference, not as a pixel-perfect or implementation-ready specification. Preserve ThornieDungeons' existing theme, real shared Global Currency Bar and real Global Navigation / GameDock components.
@@ -400,7 +400,7 @@ Dungeon V2 Skill + Event acceptance             ✅ COMPLETE
                      ↓
 Gate C — Ver 1.1.0 Release Acceptance            ✅ COMPLETE (2026-10-20)
                      ↓
-Visible game version                             Ver 1.1.67
+Visible game version                             Ver 1.1.68
                      ↓
 NEW WAVE 1 — Global Loading System V1         ✅ COMPLETE (Ver 1.1.1)
                      ↓
