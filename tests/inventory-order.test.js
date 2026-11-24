@@ -55,14 +55,14 @@ test("Inventory order: Sort stores the sorted ids and the overlay receives the o
   assert.equal(applyInventoryOrder(items(["a", "b"]), sorted.map(i => i.id)).length, 2);
 });
 
-test("Ver 1.1.67: visible badge, meta and roadmap are in sync", () => {
+test("Ver 1.1.68: visible badge, meta and roadmap are in sync", () => {
   const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
-  assert.match(read("src/data/styles.js"), /content: "Ver 1\.1\.67"/);
-  assert.match(read("head.html"), /name="application-version" content="1\.1\.67"/);
+  assert.match(read("src/data/styles.js"), /content: "Ver 1\.1\.68"/);
+  assert.match(read("head.html"), /name="application-version" content="1\.1\.68"/);
   // Generated index.html is checked after node build.js by the Frontend Production workflow.
   // The main-branch build job commits that generated output before Battle Core parity runs.
   // Keep this source/version assertion aligned with the production build marker.
-  assert.match(read("docs/ACTIVE-DEVELOPMENT-ROADMAP-V3.md"), /Visible game version\s+Ver 1\.1\.67/);
+  assert.match(read("docs/ACTIVE-DEVELOPMENT-ROADMAP-V3.md"), /Visible game version\s+Ver 1\.1\.68/);
 });
 
 
@@ -95,7 +95,7 @@ test("Blacksmith V2.1 matches the reference layout: Enchant left / Refine right,
   assert.match(page, /disabled:busy\|\|!detailTarget\|\|\(openSlot\?!enchantCost:!canReroll\|\|!rerollCostValue\)/);
   // Detail starts expanded and shows three placeholder option rows until gear is selected.
   assert.match(page, /\[detailExpanded,setDetailExpanded\]=useState\(true\)/);
-  assert.match(page, /renderPlaceholderOptions=\(\)=>[\s\S]*?\[0,1,2\]\.map/);
+  assert.match(page, /renderPlaceholderOptions=\(\)=>[\s\S]*?\[0,1,2,3\]\.map/);
   assert.match(page, /Select equipped equipment/);
   // Header: single title, no kicker/subtitle; the gear cell no longer prints the slot label.
   assert.doesNotMatch(page, /md-blacksmith-kicker|THE ROYAL FORGE|md-blacksmith-gear-slot/);
@@ -106,4 +106,29 @@ test("Blacksmith V2.1 matches the reference layout: Enchant left / Refine right,
   assert.match(styles, /\.md-blacksmith-workbench \{ grid-template-columns:minmax\(0,1\.6fr\) minmax\(0,1fr\)/);
   assert.match(styles, /--bs-forge-art:none; --bs-header-art:none/);
   assert.match(styles, /\.md-blacksmith-gear-cell \{ aspect-ratio:1\/1/);
+});
+
+test("Blacksmith V2.2: global back button, separate scroll region, wireframe detail panel and result popup", () => {
+  const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+  const page = read("src/ui/blacksmith.js");
+  const styles = read("src/data/styles.js");
+  // Back button reuses the shared overlay back button style.
+  assert.match(page, /className:"md-shared-overlay-back md-blacksmith-back"/);
+  assert.doesNotMatch(styles, /\.md-blacksmith-back[,\s]*\{/);
+  // Gear + detail scroll together; actions and dock are outside the scroll region.
+  const scrollAt = page.indexOf("md-blacksmith-scroll"), actionsAt = page.indexOf('className:"md-blacksmith-actions"'), dockAt = page.indexOf("GameDock,Object.assign");
+  assert.ok(scrollAt > 0 && scrollAt < page.indexOf("md-blacksmith-workbench") && page.indexOf("md-blacksmith-detail ") < actionsAt && actionsAt < dockAt);
+  assert.match(styles, /\.md-blacksmith-page \{ overflow:hidden; \}/);
+  assert.match(styles, /\.md-blacksmith-scroll \{ flex:1 1 auto; min-height:0;[^}]*overflow-y:auto/);
+  // Detail panel: large icon at the left, name + level, option rows, unique detail row.
+  for (const c of ["md-blacksmith-detail-layout", "md-blacksmith-detail-icon", "md-blacksmith-detail-name", "md-blacksmith-detail-rows", "md-blacksmith-unique"]) assert.ok(page.includes(c), c);
+  assert.match(page, /MYTHIC_V2\.signatureText\(detailTarget\)/);
+  // Results are popups, not an inline message.
+  assert.doesNotMatch(page, /md-blacksmith-message|setActionMsg|actionMsg/);
+  assert.match(page, /md-inv2-modal-layer md-blacksmith-result-layer/);
+  assert.match(page, /showResult\("enhance",res\)/);
+  assert.match(page, /REFINE สำเร็จ/);
+  assert.match(page, /REFINE ล้มเหลว/);
+  // Gear icons were reduced.
+  assert.match(styles, /\.md-blacksmith-gear-icon img \{ width:min\(100%,34px\)/);
 });

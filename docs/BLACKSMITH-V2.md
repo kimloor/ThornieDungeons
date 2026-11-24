@@ -1,6 +1,6 @@
 # Blacksmith V2 — Module Separation and UI Redesign
 
-Status: **ACTIVE — Wave 3.1 UI redesign merged; Ver 1.1.67 reference-match pass (§10) published; production visual acceptance pending Owner recheck; final Forge art pending**
+Status: **ACTIVE — Wave 3.1 UI redesign merged; Ver 1.1.67 reference-match pass (§10) and Ver 1.1.68 layout/popup follow-up (§11) published; production visual acceptance pending Owner recheck; final Forge art pending**
 
 ## 1. Purpose
 
@@ -98,3 +98,13 @@ Implemented:
 - Not changed from the spec: the page-level background gradient was left to the app shell.
 
 Carry-over: the old `.md-blacksmith-forge-art` / `-kicker` / `-gear-slot` markup is gone; superseded CSS rules from §8 remain in `styles.js` and are overridden by the "Blacksmith V2.1" block that follows them.
+
+
+## 11. Layout and popup follow-up — Ver 1.1.68 (2026-11-24)
+
+Owner feedback after viewing production Ver 1.1.67 (presentation only; same non-change rules as §10):
+- **Back button:** now uses the global `md-shared-overlay-back` style (44px, same as Guild/Inventory/Crafting); custom circle removed.
+- **Equipped Gear:** icons reduced (max 34px).
+- **Equipment Detail:** follows the Owner wireframe: large icon box at the left; at the right the name + level box, one row per Option slot, then a "Unique detail" row (Mythic signature text, or an empty dashed row). Empty state keeps the same layout with 4 placeholder option rows.
+- **Actions never under the nav bar:** root cause was a single scroll container with a sticky dock. Now Forge/Gear/Detail live in `.md-blacksmith-scroll` (the only scrolling region) while Enchant/Refine and the dock are fixed siblings below it; the detail panel is no longer height-capped.
+- **Results are popups:** Refine success/fail (with `+N → +M`), Enchant and Reroll results use the shared `md-inv2-modal-layer` / `md-inv2-popup` pattern (centred, tap OK or backdrop to close, success/fail colour). Popup waits ~0.7s after a successful action so the Forge animation is visible. The inline message bar was removed; Lock toggles are silent unless they fail.
